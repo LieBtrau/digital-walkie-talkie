@@ -2,7 +2,7 @@
 """
 Read audio from the sound card
 Send the audio to the connected clients
-https://gist.github.com/fopina/3cefaed1b2d2d79984ad7894aef39a68
+Based on : https://gist.github.com/fopina/3cefaed1b2d2d79984ad7894aef39a68
 """
 
 import pyaudio
@@ -12,7 +12,7 @@ import select
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
-CHUNK = 4096
+CHUNK = 1024
 SERVER_PORT = 4444
 MAXIMUM_NR_OF_CLIENTS = 5
 sound_card = 0
@@ -60,9 +60,12 @@ try:
                 print("Connection from", address)
             else:
                 # a client_socket is ready to be read from
-                data = s.recv(1024)
-                # no valid data from the client.  Remove it from the list.
-                if not data:
+                try:
+                    data = s.recv(1024)
+                    # no valid data from the client.  Remove it from the list.
+                    if not data:
+                        read_list.remove(s)
+                except ConnectionResetError:
                     read_list.remove(s)
 except KeyboardInterrupt:
     pass

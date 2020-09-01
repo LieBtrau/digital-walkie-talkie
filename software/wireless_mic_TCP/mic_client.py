@@ -2,20 +2,30 @@
 """
 Connect to the audio source server.
 Output audio to the sound card.
-https://gist.github.com/fopina/3cefaed1b2d2d79984ad7894aef39a68
-Run locally using : python3 mic_client.py 127.0.0.1
+Based on : https://gist.github.com/fopina/3cefaed1b2d2d79984ad7894aef39a68
+
 Run remotely to Wandboard mic_server using : python3 mic_client.py wandboard.local
+Don't run this locally (mic_server and mic_client) running on the same machine.  That works well on the Wandboard,
+but not on the i7 laptop.
 """
 import pyaudio
 import socket
 import sys
+import time
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
-CHUNK = 4096
+CHUNK = 1024
 sound_card = 0
 SERVER_PORT = 4444
+
+
+def callback(in_data, frame_count, time_info, status):
+    out_data = s.recv(CHUNK * audio.get_sample_size(FORMAT))
+    # out_data is a byte array whose length should be the (frame_count * channels * bytes-per-channel) if output=True
+    return out_data, pyaudio.paContinue
+
 
 # Create a socket
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -29,14 +39,13 @@ stream = audio.open(
     rate=RATE,
     output=True,
     output_device_index=sound_card,
-    frames_per_buffer=CHUNK)
+    frames_per_buffer=CHUNK,
+    stream_callback=callback,
+    )
 
 try:
-    while True:
-        # Read data from the socket
-        data = s.recv(CHUNK)
-        # Send it to the audio sink
-        stream.write(data)
+    while stream.is_active():
+        time.sleep(1)
 except KeyboardInterrupt:
     pass
 
