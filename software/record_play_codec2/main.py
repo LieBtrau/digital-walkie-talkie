@@ -34,7 +34,7 @@ def encode_codec2(in_data):
 def decode_codec2(packet):
     """
     Convert codec2 packet back to audio samples
-    :param encoded: byte array of codec2 data
+    :param packet: byte array of codec2 data
     :return: bytes object, mono audio sampled at AUDIO_SAMPLE_RATE, encoded in int16
     """
     packet = c2.decode(packet)
