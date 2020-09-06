@@ -48,8 +48,9 @@ def callback(in_data, frame_count, time_info, status):
     """
     # Get 320 speech samples (=640 bytes)
     data = wf.readframes(c2.samples_per_frame())
+    if len(data) != c2.samples_per_frame()*2:
+        return None, pyaudio.paComplete
     packet = np.frombuffer(data, dtype=np.int16)
-
     # Codec2 operation
     encoded = c2.encode(packet)
     packet = c2.decode(encoded)
@@ -63,8 +64,8 @@ def callback(in_data, frame_count, time_info, status):
 
 
 # List existing sound cards for this hardware
-for ii in range(p.get_device_count()):
-    print(str(ii) + '\t' + p.get_device_info_by_index(ii).get('name'))
+# for ii in range(p.get_device_count()):
+#     print(str(ii) + '\t' + p.get_device_info_by_index(ii).get('name'))
 
 # open stream based on the wave object which has been input.
 stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
