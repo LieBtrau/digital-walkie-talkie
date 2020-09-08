@@ -33,7 +33,8 @@ def callback(in_data, frame_count, time_info, status):
     for s in read_list[1:]:
         s.send(in_data)
         try:
-            out_data = s.recv(CHUNK * audio.get_sample_size(FORMAT))
+            if len(out_data) == 0:
+                out_data = s.recv(CHUNK * audio.get_sample_size(FORMAT))
         except OSError:
             pass
     if len(out_data) < CHUNK * audio.get_sample_size(FORMAT):

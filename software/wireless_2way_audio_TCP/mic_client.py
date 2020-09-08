@@ -17,7 +17,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
 CHUNK = 1024
-sound_card = 2
+sound_card = 0
 SERVER_PORT = 4444
 
 
