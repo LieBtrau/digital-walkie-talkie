@@ -10,7 +10,8 @@
 #include "codec2.h"
 #include "lookdave.h"
 
-int16_t *p16bitdata;
+void exportEncodedData();
+void exportDecodedData();
 
 const int mode = CODEC2_MODE_1200;
 
@@ -22,12 +23,12 @@ unsigned char *bits;
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("started");
 
   unsigned long startTime = millis();
   while (!Serial && (startTime + (10 * 1000) > millis()))
   {
   }
+  Serial.printf("Build %s\r\n", __TIMESTAMP__);
 
   codec2 = codec2_create(mode);
   nsam = codec2_samples_per_frame(codec2);
@@ -38,51 +39,75 @@ void setup()
 
   codec2_set_natural_or_gray(codec2, 0);
 
-  char s[100];
-  sprintf(s, "Number of audio samples: %d", nsam);
-  Serial.println(s);
+  Serial.printf("Number of audio samples per packet: %d", nsam);
 
-  int i=0;
-  int bufsize=nsam<<1;
-  lookdave_8Khz_raw_len=1100;
-  while(i+bufsize<lookdave_8Khz_raw_len)
-  {
-    memcpy(buf, lookdave_8Khz_raw + i, bufsize);
-    codec2_encode(codec2, bits, buf);
-    codec2_decode(codec2, buf, bits);
-    for (int x = 0; x < nbyte; x++)
-    {
-      sprintf(s, "%02x ", bits[x]);
-      Serial.print(s);
-    }
-    Serial.println();
-    i+=bufsize;
-  }
-  // char s[100];
+  exportEncodedData();
+  exportDecodedData();
 
-  // uint8_t c2Buf[nbyte];
-  // int16_t audioOut[nsam];
-
-  // unsigned long ulTimer = millis();
-  // 
-  // sprintf(s, "Encoding takes %d ms.", (int)(millis() - ulTimer));
-  // Serial.println(s);
-  // sprintf(s, "Encoding should take less than %d ms.", nsam / 8);
-  // Serial.println(s);
-  // ulTimer = millis();
-  // codec2_decode(codec2, audioOut, c2Buf);
-  // sprintf(s, "Decoding takes %d ms.", (int)(millis() - ulTimer));
-  // Serial.println(s);
-  // codec2_destroy(codec2);
-  // for (int x = 0; x < nsam; x++)
-  // {
-  //   sprintf(s, "%d %d", audioBuf[x], audioOut[x]);
-  //   Serial.println(s);
-  // }
+  codec2_destroy(codec2);
 }
 
 void loop()
 {
   Serial.print(".");
   delay(500);
+}
+
+/* This function will export the codec2 packet to the serial port.
+ * The concatenated packets will be base16-encoded.
+ * Copy these lines of hex data and paste them into a file (e.g. lookdave.hex)
+ * You can convert that file to a binary format (e.g. lookdave.bit) using xxd:
+ *    xxd -r -p lookdave.hex lookdave.bit
+ * This bit-file can then be decoded back to raw audio using c2dec.
+ */
+void exportEncodedData()
+{
+  int nsam_ctr = 0;
+  int bufsize = nsam << 1;
+  int linectr = 0;
+  Serial.println();
+  while (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
+  {
+    memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
+    codec2_encode(codec2, bits, buf);
+    for (int i = 0; i < nbyte; i++)
+    {
+      Serial.printf("%02x", bits[i]);
+      if ((++linectr) % 30 == 0)
+      {
+        Serial.println();
+      }
+    }
+    nsam_ctr += bufsize;
+  }
+  Serial.println();
+}
+
+/* This function reads codec2 packets and turns them back to audio.
+ * The data are exported as base16-encoded.  Paste the data into a file, e.g. audioout.dat.
+ * You can converted that data to raw audio (e.g. audioout.raw) using:
+ *    xxd -p -r audioout.dat audioout.raw
+ * The raw audio can be converted to a wav-file, which can then be played by about any audioplayer you like:
+ *    sox -e signed-integer -b 16 -r 8000 -c 1 audioout.raw audioout.wav
+ */
+void exportDecodedData()
+{
+  int nbit_ctr = 0;
+  int linectr = 0;
+  Serial.println();
+  while (nbit_ctr + nbyte < lookdave_bit_len)
+  {
+    memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
+    codec2_decode(codec2, buf, bits);
+    for (int i = 0; i < nsam; i++)
+    {
+      Serial.printf("%02x%02x", buf[i] & 0xFF, (buf[i] >> 8) & 0xFF);
+      if ((++linectr) % 30 == 0)
+      {
+        Serial.println();
+      }
+    }
+    nbit_ctr += nbyte;
+  }
+  Serial.println();
 }
