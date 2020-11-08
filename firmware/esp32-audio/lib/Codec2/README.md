@@ -13,14 +13,17 @@ This is just a proof-of-concept.
 
 ### Prerequisites
 
-Codec2 requires about 146KB of flash.
+Codec2 requires about 87KB of flash.
+
 The default main.cpp in the Arduino framework only gives the main loop about 8KB of RAM.  You must manually edit this file and change that to at least 24KB.  Otherwise you'll run into stack overflow trouble.
 
 ### Installing
 
 
-## Testing
-
+## Performance
+On ESP32, mode 1200bps (40ms audio packet)
+* Encoding : 16.8ms/packet
+* Decoding : 15.2ms/packet
 
 
 ## Contributing

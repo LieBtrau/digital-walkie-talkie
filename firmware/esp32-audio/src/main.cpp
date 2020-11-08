@@ -12,6 +12,8 @@
 
 void exportEncodedData();
 void exportDecodedData();
+void encodingSpeed();
+void decodingSpeed();
 
 const int mode = CODEC2_MODE_1200;
 
@@ -39,10 +41,12 @@ void setup()
 
   codec2_set_natural_or_gray(codec2, 0);
 
-  Serial.printf("Number of audio samples per packet: %d", nsam);
+  Serial.printf("Number of audio samples per packet: %d\r\n", nsam);
 
-  exportEncodedData();
-  exportDecodedData();
+  //exportEncodedData();
+  //exportDecodedData();
+  //encodingSpeed();
+  decodingSpeed();
 
   codec2_destroy(codec2);
 }
@@ -110,4 +114,41 @@ void exportDecodedData()
     nbit_ctr += nbyte;
   }
   Serial.println();
+}
+
+void encodingSpeed()
+{
+  int nsam_ctr = 0;
+  int bufsize = nsam << 1;
+  int packet_ctr = 0;
+  unsigned long startTime;
+  unsigned long totalTime = 0;
+  while (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
+  {
+    memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
+    startTime = micros();
+    codec2_encode(codec2, bits, buf);
+    totalTime += micros() - startTime;
+    packet_ctr++;
+    nsam_ctr += bufsize;
+  }
+  Serial.printf("Average encoding time per packet: %luµs\r\n", totalTime / packet_ctr);
+}
+
+void decodingSpeed()
+{
+  int nbit_ctr = 0;
+  int packet_ctr = 0;
+  unsigned long startTime;
+  unsigned long totalTime = 0;
+  while (nbit_ctr + nbyte < lookdave_bit_len)
+  {
+    memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
+    startTime = micros();
+    codec2_decode(codec2, buf, bits);
+    totalTime += micros() - startTime;
+    packet_ctr++;
+    nbit_ctr += nbyte;
+  }
+  Serial.printf("Average decoding time per packet: %luµs\r\n", totalTime / packet_ctr);
 }
