@@ -67,7 +67,7 @@ void I2SOutput::start(i2s_config_t i2sConfig, SampleSource *sample_generator)
     //install and start i2s driver
     i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sQueue);
     // set up the i2s pins
-    i2s_set_pin(m_i2sPort, NULL);
+    i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN);
     startTask();
 }
 

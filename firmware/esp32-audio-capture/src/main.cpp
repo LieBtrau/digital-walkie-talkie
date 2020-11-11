@@ -14,7 +14,7 @@ void setup()
 
   Serial.println("Created sample source");
 
-  sampleSource = new SinWaveGenerator(40000, 10000, 0.75);
+  sampleSource = new SinWaveGenerator(40000, 1000, 255);
 
   Serial.println("Starting I2S Output");
   output = new DacOutput();
