@@ -10,9 +10,8 @@ void setup()
 {
   Serial.begin(115200);
 
-  Serial.println("Starting up");
-
-  Serial.println("Created sample source");
+  Serial.printf("Build %s\r\n", __TIMESTAMP__);
+  Serial.printf("CPU clock speed: %uMHz\r\n",ESP.getCpuFreqMHz());
 
   sampleSource = new SinWaveGenerator(40000, 1000, 255);
 
