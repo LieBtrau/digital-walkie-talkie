@@ -1,3 +1,8 @@
 info
 venv
 *.wav
+README
+**/.idea/
+**/__pycache__
+**/.vscode
+.piopm

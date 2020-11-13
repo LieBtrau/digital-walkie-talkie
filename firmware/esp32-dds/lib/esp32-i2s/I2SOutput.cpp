@@ -4,15 +4,14 @@
 #include "SampleSource.h"
 #include "I2SOutput.h"
 
-// number of frames to try and send at once (a frame is a left and right sample)
-#define NUM_FRAMES_TO_SEND 128
+static int packetSize = 128;
 
 void i2sWriterTask(void *param)
 {
     I2SOutput *output = (I2SOutput *)param;
     int availableBytes = 0;
     int buffer_position = 0;
-    Frame_t frames[128];
+    Frame_t frames[packetSize];
     while (true)
     {
         // wait for some data to be requested
@@ -27,9 +26,9 @@ void i2sWriterTask(void *param)
                     if (availableBytes == 0)
                     {
                         // get some frames from the wave file - a frame consists of a 16 bit left and right sample
-                        output->m_sample_generator->getFrames(frames, NUM_FRAMES_TO_SEND);
-                        // how maby bytes do we now have to send
-                        availableBytes = NUM_FRAMES_TO_SEND * sizeof(uint32_t);
+                        output->m_sample_generator->getFrames(frames, packetSize);
+                        // how many bytes do we now have to send
+                        availableBytes = packetSize * sizeof(Frame_t);
                         // reset the buffer position back to the start
                         buffer_position = 0;
                     }
@@ -73,9 +72,10 @@ void I2SOutput::start(i2s_config_t i2sConfig, SampleSource *sample_generator)
 
 void I2SOutput::startTask()
 {
+    packetSize = m_sample_generator->getFrameSize();
     // clear the DMA buffers
     i2s_zero_dma_buffer(m_i2sPort);
     // start a task to write samples to the i2s peripheral
     TaskHandle_t writerTaskHandle;
-    xTaskCreate(i2sWriterTask, "i2s Writer Task", 4096, this, 1, &writerTaskHandle);
+    xTaskCreate(i2sWriterTask, "i2s Writer Task", 24576, this, 1, &writerTaskHandle);
 }

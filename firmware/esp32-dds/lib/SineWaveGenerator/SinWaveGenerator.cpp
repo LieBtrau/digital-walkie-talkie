@@ -24,4 +24,5 @@ void SinWaveGenerator::getFrames(Frame_t *frames, int number_frames)
         m_phaseAccu+=m_tuningWord;
         frames[i].left = m_lut[m_phaseAccu>>8]*m_magnitude;
     }
+    delay(15);
 }

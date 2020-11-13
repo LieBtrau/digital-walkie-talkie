@@ -15,10 +15,16 @@ typedef struct
 class SampleSource
 {
 public:
+    SampleSource(){};
+    SampleSource(int frameSize) : m_frameSize(frameSize){};
     virtual int sampleRate() = 0;
     // This should fill the samples buffer with the specified number of frames
-    // A frame contains a LEFT and a RIGHT sample. Each sample should be signed 16 bits
+    // A frame contains a LEFT and a RIGHT sample.
+    // This function should take no longer than m_frameSize / sampleRate
     virtual void getFrames(Frame_t *frames, int number_frames) = 0;
+    int getFrameSize(){return m_frameSize;};
+private:
+    int m_frameSize = 128;
 };
 
 #endif
