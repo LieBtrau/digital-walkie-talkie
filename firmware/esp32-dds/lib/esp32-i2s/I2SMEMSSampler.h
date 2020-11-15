@@ -11,7 +11,6 @@ private:
 
 protected:
     void configureI2S();
-    void processI2SData(uint8_t *i2sData, size_t bytesRead);
 
 public:
     I2SMEMSSampler(i2s_pin_config_t &i2sPins, bool fixSPH0645 = false);

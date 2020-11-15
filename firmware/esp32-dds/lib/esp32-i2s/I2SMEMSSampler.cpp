@@ -22,13 +22,3 @@ void I2SMEMSSampler::configureI2S()
 
     i2s_set_pin(getI2SPort(), &m_i2sPins);
 }
-
-void I2SMEMSSampler::processI2SData(uint8_t *i2sData, size_t bytesRead)
-{
-    int32_t *samples = (int32_t *)i2sData;
-    for (int i = 0; i < bytesRead / 4; i++)
-    {
-        // you may need to vary the >> 11 to fit your volume - ideally we'd have some kind of AGC here
-        addSample(samples[i] >> 11);
-    }
-}

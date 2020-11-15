@@ -11,8 +11,9 @@ private:
 
 protected:
     void configureI2S();
-    void processI2SData(uint8_t *i2sData, size_t bytesRead);
 
 public:
     ADCSampler(adc_unit_t adc_unit, adc1_channel_t adc_channel);
+    void start(int32_t bufferSizeInSamples, TaskHandle_t writerTaskHandle);
+
 };

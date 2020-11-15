@@ -44,6 +44,6 @@ void loop()
   int milliVolts = esp_adc_cal_raw_to_voltage(sample, adc_chars);
 
   Serial.printf("Sample=%d, mV=%d\n", sample, milliVolts);
-
+  //Serial.printf("%04X\r\n", sample);
   delay(500);
 }
