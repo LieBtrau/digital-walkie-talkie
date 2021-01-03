@@ -15,29 +15,36 @@ ADCSampler::ADCSampler(adc_unit_t adcUnit, adc1_channel_t adcChannel)
 
 void ADCSampler::configureI2S()
 {
-    // esp_adc_cal_characteristics_t *adc_chars;
-    // const uint32_t DEFAULT_VREF = 1100; // calibration values for the adc
+    esp_adc_cal_characteristics_t *adc_chars;
+    const uint32_t DEFAULT_VREF = 1100; // calibration values for the adc
+    
     //Range 0-4096
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    // full voltage range
-    adc1_config_channel_atten(m_adcChannel, ADC_ATTEN_DB_11);
+    switch (m_adcUnit)
+    {
+    case ADC_UNIT_1:
+        adc1_config_width(ADC_WIDTH_BIT_12);
+        // full voltage range
+        adc1_config_channel_atten(m_adcChannel, ADC_ATTEN_DB_11);
+        break;
+    default:
+        break;
+    }
 
-    // // check to see what calibration is available
-    // if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF) == ESP_OK)
-    // {
-    //     Serial.println("Using voltage ref stored in eFuse");
-    // }
-    // if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK)
-    // {
-    //     Serial.println("Using two point values from eFuse");
-    // }
-    // if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_DEFAULT_VREF) == ESP_OK)
-    // {
-    //     Serial.println("Using default VREF");
-    // }
-    // //Characterize ADC
-    // adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
-    // esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
+    //Characterize ADC
+    adc_chars = (esp_adc_cal_characteristics_t *)calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(m_adcUnit, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, DEFAULT_VREF, adc_chars);
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF)
+    {
+        Serial.printf("eFuse Vref");
+    }
+    else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP)
+    {
+        Serial.printf("Two Point");
+    }
+    else
+    {
+        Serial.printf("Default");
+    }
 
     //init ADC pad
     i2s_set_adc_mode(m_adcUnit, m_adcChannel);
