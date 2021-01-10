@@ -523,13 +523,13 @@ bool AudioControlSGTL5000::enable(void)
 	{
 		return false;
 	}
-	//This follows the steps as outlined in the initialisation procedure of the SGTL5000 datasheet.
+	//This initialization sequence follows the steps as outlined in the initialisation procedure of the SGTL5000 datasheet.
 	this->write(CHIP_ANA_POWER, 0x4060);  
 		//datasheet : 0x4260 : bit 9=0 because VDDD is externally driven with 1.8V
 	bool retVal = this->write(CHIP_LINREG_CTRL, 0x006C) &&  // VDDA & VDDIO both over 3.1V
 	this->write(CHIP_REF_CTRL, 0x01F2) &&  // VAG=1.575, normal ramp, +12.5% bias current
 	this->write(CHIP_LINE_OUT_CTRL, 0x0F22) &&  // LO_VAGCNTRL=1.65V, OUT_CURRENT=0.54mA
-	this->write(CHIP_REF_CTRL, 0x004F) &&  
+	this->write(CHIP_REF_CTRL, 0x01F3) &&  
 	this->write(CHIP_SHORT_CTRL, 0x1106) &&  
 	this->write(CHIP_ANA_CTRL, 0x0137) &&   // enable zero cross detectors and mute all outputs
 	this->write(CHIP_ANA_POWER, 0x40FF) &&  // power up: lineout, hp, adc, dac

@@ -22,8 +22,8 @@ void Sgtl5000_Output::start(SampleSource *sample_generator)
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,        // 2-channels
         .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, //Interrupt level 1
-        .dma_buf_count = 32,
-        .dma_buf_len = 64, //
+        .dma_buf_count = 8,
+        .dma_buf_len = 1024, //
         .use_apll = true,
         .tx_desc_auto_clear = true,
         .fixed_mclk = sample_generator->sampleRate() * 256

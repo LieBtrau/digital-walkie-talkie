@@ -1,5 +1,5 @@
 /**
- * Output a 200Hz 800mVpp sine wave out on the left channel of the analog line-out of the SGTL5000.
+ * Output a 200Hz 1300mVpp sine wave out on the left channel of the analog line-out of the SGTL5000.
  * 
  * Maybe helpful for debugging:
  *  http://www.iotsharing.com/2017/07/how-to-use-arduino-esp32-i2s-to-play-wav-music-from-sdcard.html
