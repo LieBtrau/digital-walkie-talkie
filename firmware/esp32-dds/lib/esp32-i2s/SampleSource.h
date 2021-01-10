@@ -1,7 +1,7 @@
-#ifndef __sample_source_h__
-#define __sample_source_h__
+#pragma once
 
 #include <Arduino.h>
+
 
 typedef struct
 {
@@ -26,5 +26,3 @@ public:
 private:
     int m_frameSize = 128;
 };
-
-#endif

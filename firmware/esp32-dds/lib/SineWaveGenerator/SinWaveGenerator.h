@@ -7,14 +7,12 @@ class SinWaveGenerator : public SampleSource
 {
 private:
     int m_sample_rate;
-    int m_frequency;
-    byte m_magnitude;
     uint16_t m_phaseAccu;
     uint16_t m_tuningWord;
-    byte m_lut[256];
+    uint16_t m_lut[256];
 
 public:
-    SinWaveGenerator(int sample_rate, int frequency, byte magnitude);
+    SinWaveGenerator(int sample_rate, int frequency, float magnitude, float offset=0);
     virtual int sampleRate() { return m_sample_rate; }
     virtual void getFrames(Frame_t *frames, int number_frames);
 };
