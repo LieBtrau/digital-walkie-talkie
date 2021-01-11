@@ -32,9 +32,15 @@ void Codec2Generator::getFrames(Frame_t *frames, int number_frames)
         codec2_decode(m_codec2, buf, bits);
         for (int i = 0; i < nsam; i++)
         {
-            int audio = buf[i] * m_magnitude + 32768;                //convert from signed to unsigned 16bit
-            audio = audio < 0 ? 0 : (audio > 65535 ? 65535 : audio); //audio clipping
-            frames[i].left = audio;
+            //For internal audio DAC
+            // int audio = buf[i] * m_magnitude + 32768;                //convert from signed to unsigned 16bit
+            // audio = audio < 0 ? 0 : (audio > 65535 ? 65535 : audio); //audio clipping
+            // frames[i].left = audio;
+
+            //For external audio DAC
+            frames[i].left = buf[i];
+            
+            frames[i].right = 0;
         }
         nbit_ctr += nbyte;
     }

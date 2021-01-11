@@ -533,7 +533,7 @@ bool AudioControlSGTL5000::enable(void)
 	this->write(CHIP_SHORT_CTRL, 0x1106) &&  
 	this->write(CHIP_ANA_CTRL, 0x0137) &&   // enable zero cross detectors and mute all outputs
 	this->write(CHIP_ANA_POWER, 0x40FF) &&  // power up: lineout, hp, adc, dac
-	this->write(CHIP_DIG_POWER, 0x0073);// power up all digital stuff
+	this->write(CHIP_DIG_POWER, 0x0073);	// power up all digital stuff
 	if(!retVal)
 	{
 		return false;
@@ -541,16 +541,16 @@ bool AudioControlSGTL5000::enable(void)
 	delay(400);
 	retVal &= 
 	this->write(CHIP_LINE_OUT_VOL, 0x1D1D) &&   // default approx 1.3 volts peak-to-peak
-	//this->write(CHIP_CLK_CTRL, 0x0004);  // 44.1 kHz, 256*Fs
-	//this->write(CHIP_CLK_CTRL, 0x0008); // 48kHz, 256*Fs
-	this->write(CHIP_CLK_CTRL, 0x0020) &&  // 8kHz, 256*Fs
-	this->write(CHIP_I2S_CTRL, 0x0030) &&  // SCLK=32*Fs, 16bit, I2S format
+	//this->write(CHIP_CLK_CTRL, 0x0004);  		// 44.1 kHz, 256*Fs
+	//this->write(CHIP_CLK_CTRL, 0x0008); 		// 48kHz, 256*Fs
+	this->write(CHIP_CLK_CTRL, 0x0020) &&  		// 8kHz, 256*Fs
+	this->write(CHIP_I2S_CTRL, 0x0030) &&  		// SCLK=32*Fs, 16bit, I2S format
 	// default signal routing is ok?
-	this->write(CHIP_SSS_CTRL, 0x0010) &&  // ADC->I2S, I2S->DAC
-	this->write(CHIP_ADCDAC_CTRL, 0x0000) &&   // disable dac mute
-	this->write(CHIP_DAC_VOL, 0x3C3C) &&   // digital gain, 0dB
-	this->write(CHIP_ANA_HP_CTRL, 0x7F7F) &&   // set volume (lowest level)
-	this->write(CHIP_ANA_CTRL, 0x0026);  // enable zero cross detectors and unmute
+	this->write(CHIP_SSS_CTRL, 0x0010) &&  		// ADC->I2S, I2S->DAC
+	this->write(CHIP_ADCDAC_CTRL, 0x0000) &&   	// disable dac mute
+	this->write(CHIP_DAC_VOL, 0x3C3C) &&   		// digital gain, 0dB
+	//this->write(CHIP_ANA_HP_CTRL, 0x7F7F) &&  // set volume (lowest level)
+	this->write(CHIP_ANA_CTRL, 0x0026);  		// enable zero cross detectors and unmute
 	muted = false;
 	semi_automated = true;
 	return retVal;
