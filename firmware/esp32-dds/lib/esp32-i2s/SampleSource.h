@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 
-
 typedef struct
 {
     uint16_t left;

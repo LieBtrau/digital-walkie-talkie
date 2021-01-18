@@ -1,10 +1,10 @@
 //https://github.com/atomic14/esp32_audio/
 #include <Arduino.h>
 #include "driver/i2s.h"
-#include "SampleSource.h"
 #include "I2SOutput.h"
+#include "SampleSource.h"
 
-static int packetSize = 128;
+static int packetSize;
 
 void i2sWriterTask(void *param)
 {
@@ -16,17 +16,15 @@ void i2sWriterTask(void *param)
     {
         // wait for some data to be requested
         i2s_event_t evt;
-        if (xQueueReceive(output->m_i2sQueue, &evt, portMAX_DELAY) == pdPASS)
+        if (xQueueReceive(output->m_i2sEventQueue, &evt, portMAX_DELAY) == pdPASS)
         {
             if (evt.type == I2S_EVENT_TX_DONE)
             {
                 size_t bytesWritten = 0;
                 do
                 {
-                    if (availableBytes == 0)
+                    if (availableBytes == 0 && xQueueReceive(output->m_samplesQueue, &frames, portMAX_DELAY) == pdTRUE)
                     {
-                        // get some frames from the wave file - a frame consists of a 16 bit left and right sample
-                        output->m_sample_generator->getFrames(frames, packetSize);
                         // how many bytes do we now have to send
                         availableBytes = packetSize * sizeof(Frame_t);
                         // reset the buffer position back to the start
@@ -41,30 +39,31 @@ void i2sWriterTask(void *param)
                         availableBytes -= bytesWritten;
                         buffer_position += bytesWritten;
                     }
-                } while (bytesWritten > 0);
+               } while (bytesWritten > 0);
             }
         }
     }
 }
 
-void I2SOutput::start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_t i2sConfig, SampleSource *sample_generator)
+void I2SOutput::start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize)
 {
-    m_sample_generator = sample_generator;
+    m_samplesQueue = samplesQueue;
     m_i2sPort = i2sPort;
+    packetSize = pktSize;
     //install and start i2s driver
-    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sQueue);
+    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
     // set up the i2s pins
     i2s_set_pin(m_i2sPort, &i2sPins);
     startTask();
 }
 
 //For internal DAC-only (GPIO 25 & GPIO 26)
-void I2SOutput::start(i2s_config_t i2sConfig, SampleSource *sample_generator)
+void I2SOutput::start(i2s_config_t i2sConfig, QueueHandle_t samplesQueue)
 {
-    m_sample_generator = sample_generator;
+    m_samplesQueue = samplesQueue;
     m_i2sPort = I2S_NUM_0;
     //install and start i2s driver
-    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sQueue);
+    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
     // set up the i2s pins
     i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN);
     startTask();
@@ -72,7 +71,6 @@ void I2SOutput::start(i2s_config_t i2sConfig, SampleSource *sample_generator)
 
 void I2SOutput::startTask()
 {
-    packetSize = m_sample_generator->getFrameSize();
     // clear the DMA buffers
     i2s_zero_dma_buffer(m_i2sPort);
     // start a task to write samples to the i2s peripheral

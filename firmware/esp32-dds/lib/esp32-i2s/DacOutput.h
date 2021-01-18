@@ -1,9 +1,10 @@
 #pragma once
 #include "I2SOutput.h"
+#include "SampleSource.h"
 
 class DacOutput : public I2SOutput
 {
 public:
-    void start(SampleSource *sample_generator);
+    void start(SampleSource* sample_generator, QueueHandle_t xQueue);
 private:
 };

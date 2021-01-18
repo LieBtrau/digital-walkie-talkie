@@ -36,25 +36,49 @@
 Sgtl5000_Output *output;
 SampleSource *sampleSource;
 //i2c control
-AudioControlSGTL5000   audioShield;
+AudioControlSGTL5000 audioShield;
+QueueHandle_t xQueue;
+
+void vSenderTask(void *pvParameters)
+{
+	SampleSource *source = (SampleSource *)pvParameters;
+	Frame_t samples[source->getFrameSize()];
+
+	for (;;)
+	{
+		do
+		{
+			source->getFrames(samples, source->getFrameSize());
+		} while (xQueueSendToBack(xQueue, &samples, portMAX_DELAY) == pdTRUE);
+		taskYIELD();
+	}
+}
 
 void setup()
 {
-  Serial.begin(115200);
+	Serial.begin(115200);
 
-  Serial.printf("Build %s\r\n", __TIMESTAMP__);
-  Serial.printf("CPU clock speed: %uMHz\r\n",ESP.getCpuFreqMHz());
+	Serial.printf("Build %s\r\n", __TIMESTAMP__);
+	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
+	sampleSource = new SinWaveGenerator(8000, 100, 32000);
+	xQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
+	if (xQueue == NULL)
+	{
+		Serial.println("Can't create queue");
+		while (true)
+			;
+	}
 
-  sampleSource = new SinWaveGenerator(8000, 200, 32000);
+	Serial.println("Starting I2S Output");
+	output = new Sgtl5000_Output(26, 25, 23);
+	output->start(sampleSource, xQueue);
 
-  Serial.println("Starting I2S Output");
-  output = new Sgtl5000_Output(26, 25, 23);
-  output->start(sampleSource);
-
-  Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is": "not");
+	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+	TaskHandle_t writerTaskHandle;
+	xTaskCreate(vSenderTask, "Sender1", 8192, (void *)sampleSource, 2, &writerTaskHandle);
 }
 
 void loop()
 {
-  // nothing to do here - everything is taken care of by tasks
+	// nothing to do here - everything is taken care of by tasks
 }

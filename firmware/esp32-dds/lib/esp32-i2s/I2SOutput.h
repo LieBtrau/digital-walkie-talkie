@@ -4,8 +4,6 @@
 #include <Arduino.h>
 #include "driver/i2s.h"
 
-class SampleSource;
-
 /**
  * Base Class for both the DAC and other outputs
  **/
@@ -15,16 +13,16 @@ private:
     // I2S write task
     TaskHandle_t m_i2sWriterTaskHandle;
     // i2s writer queue
-    QueueHandle_t m_i2sQueue;
+    QueueHandle_t m_i2sEventQueue;
     // i2s port
     i2s_port_t m_i2sPort;
     // src of samples for us to play
-    SampleSource *m_sample_generator;
+    QueueHandle_t m_samplesQueue;
 protected:
-    void start(i2s_config_t i2sConfig, SampleSource *sample_generator);
+    void start(i2s_config_t i2sConfig, QueueHandle_t samplesQueue);
     void startTask();
 
 public:
-    void start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_t i2sConfig, SampleSource *sample_generator);
+    void start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize);
     friend void i2sWriterTask(void *param);
 };

@@ -26,13 +26,13 @@ private:
     // writer task
     TaskHandle_t m_writerTaskHandle;
     // i2s reader queue
-    QueueHandle_t m_i2sQueue;
+    QueueHandle_t m_i2sEventQueue;
     // i2s port
     i2s_port_t m_i2sPort;
     void processI2SData(uint16_t *i2sData, size_t bytesRead);
 
 protected:
-    static const uint16_t I2S_IN_DMA_BUFFER_LEN = 64;
+    static const uint16_t I2S_IN_DMA_BUFFER_LEN = 256; //size in bytes
     void addSample(uint16_t sample);
     virtual void configureI2S() = 0;
     i2s_port_t getI2SPort()

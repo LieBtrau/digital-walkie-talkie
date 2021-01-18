@@ -10,15 +10,21 @@ void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, int bufferSi
     m_i2sPort = i2sPort;
     m_writerTaskHandle = writerTaskHandle;
     m_bufferSizeInSamples = bufferSizeInSamples;
-    m_i2s_in_Buffer1 = (uint16_t*)calloc(bufferSizeInSamples, sizeof(uint16_t));
-    m_i2s_in_Buffer2 = (uint16_t*)calloc(bufferSizeInSamples, sizeof(uint16_t));
+    m_i2s_in_Buffer1 = (uint16_t *)calloc(bufferSizeInSamples, sizeof(uint16_t));
+    m_i2s_in_Buffer2 = (uint16_t *)calloc(bufferSizeInSamples, sizeof(uint16_t));
 
     m_current_i2s_in_Buffer = m_i2s_in_Buffer1;
     m_captured_i2s_in_Buffer = m_i2s_in_Buffer2;
 
     m_writerTaskHandle = writerTaskHandle;
     //install and start i2s driver
-    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sQueue);
+    esp_err_t err = i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
+    if (err != ESP_OK)
+    {
+        Serial.printf("Failed installing driver: %d\n", err);
+        while (true)
+            ;
+    }
     // set up the I2S configuration from the subclass
     configureI2S();
     // clear the DMA buffers
@@ -35,7 +41,7 @@ void i2sReaderTask(void *param)
     {
         // wait for some data to arrive on the queue
         i2s_event_t evt;
-        if (xQueueReceive(sampler->m_i2sQueue, &evt, portMAX_DELAY) == pdPASS)
+        if (xQueueReceive(sampler->m_i2sEventQueue, &evt, portMAX_DELAY) == pdPASS)
         {
             if (evt.type == I2S_EVENT_RX_DONE)
             {
@@ -43,7 +49,7 @@ void i2sReaderTask(void *param)
                 do
                 {
                     // read data from the I2S peripheral
-                    uint16_t i2sData[I2SSampler::I2S_IN_DMA_BUFFER_LEN];
+                    uint16_t i2sData[I2SSampler::I2S_IN_DMA_BUFFER_LEN>>1];
                     // read from i2s
                     // 0xFFF (4095)-> <= 0.128V
                     // 0xBCF (3023)-> =  1.00V
@@ -74,7 +80,6 @@ void I2SSampler::processI2SData(uint16_t *i2sData, size_t bytesRead)
         //Serial.printf("%u ", adcSample);
         addSample(adcSample);
     }
-    Serial.println();
 }
 
 void I2SSampler::addSample(uint16_t sample)
@@ -92,4 +97,3 @@ void I2SSampler::addSample(uint16_t sample)
         xTaskNotify(m_writerTaskHandle, 1, eIncrement);
     }
 }
-

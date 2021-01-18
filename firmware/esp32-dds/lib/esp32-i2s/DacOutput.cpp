@@ -5,7 +5,7 @@
 #include "DacOutput.h"
 #include "SampleSource.h"
 
-void DacOutput::start(SampleSource *sample_generator)
+void DacOutput::start(SampleSource* sample_generator, QueueHandle_t xQueue)
 {
     // i2s config for left channel only
     i2s_config_t i2sConfig = {
@@ -18,5 +18,5 @@ void DacOutput::start(SampleSource *sample_generator)
         .dma_buf_count = 8,
         .dma_buf_len = 64,
         .use_apll = false};
-    I2SOutput::start(i2sConfig, sample_generator);
+    I2SOutput::start(i2sConfig, xQueue);
 }

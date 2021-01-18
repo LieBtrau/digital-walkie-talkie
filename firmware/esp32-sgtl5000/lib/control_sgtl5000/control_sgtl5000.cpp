@@ -532,7 +532,7 @@ bool AudioControlSGTL5000::enable(void)
 	this->write(CHIP_REF_CTRL, 0x01F3) &&  
 	this->write(CHIP_SHORT_CTRL, 0x1106) &&  
 	this->write(CHIP_ANA_CTRL, 0x0137) &&   // enable zero cross detectors and mute all outputs
-	this->write(CHIP_ANA_POWER, 0x40FF) &&  // power up: lineout, hp, adc, dac
+	this->write(CHIP_ANA_POWER, 0x40FF) &&  // DAC mono, power up: lineout, hp, adc, dac
 	this->write(CHIP_DIG_POWER, 0x0073);	// power up all digital stuff
 	if(!retVal)
 	{

@@ -5,7 +5,7 @@
 
 
 
-SinWaveGenerator::SinWaveGenerator(int sample_rate, int frequency, float magnitude, float offset)
+SinWaveGenerator::SinWaveGenerator(int sample_rate, int frequency, float magnitude, float offset) : SampleSource(320)
 {
     m_sample_rate = sample_rate;
     int bitwidth=sizeof(m_tuningWord)<<3;//number of bits in tuning_word
@@ -23,7 +23,7 @@ void SinWaveGenerator::getFrames(Frame_t *frames, int number_frames)
     {
         m_phaseAccu+=m_tuningWord;
         frames[i].left = m_lut[m_phaseAccu>>8];
-        frames[i].right = 0;//m_lut[m_phaseAccu>>8]*m_magnitude;
+        frames[i].right = m_lut[m_phaseAccu>>8];
     }
     delay(15);
 }
