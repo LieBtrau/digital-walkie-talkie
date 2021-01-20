@@ -75,5 +75,5 @@ void I2SOutput::startTask()
     i2s_zero_dma_buffer(m_i2sPort);
     // start a task to write samples to the i2s peripheral
     TaskHandle_t writerTaskHandle;
-    xTaskCreate(i2sWriterTask, "i2s Writer Task", 24576, this, 1, &writerTaskHandle);
+    xTaskCreate(i2sWriterTask, "i2s Writer Task", 4096, this, 1, &writerTaskHandle);
 }
