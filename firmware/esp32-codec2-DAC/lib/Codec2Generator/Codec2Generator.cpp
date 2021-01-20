@@ -8,9 +8,10 @@ short *buf;
 unsigned char *bits;
 int nbit_ctr = 0;
 
-Codec2Generator::Codec2Generator(CODEC2 *codec2, byte *bitSource, byte magnitude) : SampleSource(codec2_samples_per_frame(codec2)),
+Codec2Generator::Codec2Generator(CODEC2 *codec2, byte *bitSource, unsigned int sourceByteCount, byte magnitude) : SampleSource(codec2_samples_per_frame(codec2)),
                                                                                     m_codec2(codec2),
                                                                                     m_bitSource(bitSource),
+                                                                                    m_bitSourceByteCount(sourceByteCount),
                                                                                     m_magnitude(magnitude)
 {
     nsam = codec2_samples_per_frame(codec2);
@@ -25,8 +26,7 @@ Codec2Generator::Codec2Generator(CODEC2 *codec2, byte *bitSource, byte magnitude
  */
 void Codec2Generator::getFrames(Frame_t *frames, int number_frames)
 {
-    const unsigned int lookdave_bit_len = 558; //dirty!
-    if (nbit_ctr + nbyte < lookdave_bit_len)
+    if (nbit_ctr + nbyte < m_bitSourceByteCount)
     {
         memcpy(bits, m_bitSource + nbit_ctr, nbyte);
         codec2_decode(m_codec2, buf, bits);

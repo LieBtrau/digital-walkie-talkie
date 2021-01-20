@@ -27,7 +27,6 @@
  * SCL                                      19                              GPIO22
  */
 
-#include <Arduino.h>
 #include "Codec2Generator.h"
 #include "DacOutput.h"
 #include "codec2.h"
@@ -38,29 +37,54 @@
 CODEC2 *codec2;
 Sgtl5000_Output *output;
 SampleSource *sampleSource;
-AudioControlSGTL5000   audioShield;
+AudioControlSGTL5000 audioShield;
+QueueHandle_t xQueue;
+
+void vSenderTask(void *pvParameters)
+{
+	SampleSource *source = (SampleSource *)pvParameters;
+	Frame_t samples[source->getFrameSize()];
+
+	for (;;)
+	{
+		do
+		{
+			source->getFrames(samples, source->getFrameSize());
+		} while (xQueueSendToBack(xQueue, &samples, portMAX_DELAY) == pdTRUE);
+		taskYIELD();
+	}
+}
 
 void setup()
 {
-  Serial.begin(115200);
+	Serial.begin(115200);
 
-  Serial.printf("Build %s\r\n", __TIMESTAMP__);
-  Serial.printf("CPU clock speed: %uMHz\r\n",ESP.getCpuFreqMHz());
+	Serial.printf("Build %s\r\n", __TIMESTAMP__);
+	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
 
-  codec2 = codec2_create(CODEC2_MODE_1200);
-  codec2_set_natural_or_gray(codec2, 0);
-  sampleSource = new Codec2Generator(codec2, lookdave_bit, 1);
+	codec2 = codec2_create(CODEC2_MODE_1200);
+	codec2_set_natural_or_gray(codec2, 0);
+	sampleSource = new Codec2Generator(codec2, lookdave_bit, lookdave_bit_len, 1);
+	xQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
+	if (xQueue == NULL)
+	{
+		Serial.println("Can't create queue");
+		while (true)
+			;
+	}
 
-//  codec2_destroy(codec2);
+	//  codec2_destroy(codec2);
 
-  Serial.println("Starting I2S Output");
-  output = new Sgtl5000_Output(26, 25, 23);
-  output->start(sampleSource);
+	Serial.println("Starting I2S Output");
+	output = new Sgtl5000_Output(26, 25, 23);
+	output->start(sampleSource, xQueue);
 
-  Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is": "not");
+	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+	TaskHandle_t writerTaskHandle;
+	xTaskCreate(vSenderTask, "Sender1", 24576, (void *)sampleSource, 2, &writerTaskHandle);
 }
 
 void loop()
 {
-  // nothing to do here - everything is taken care of by tasks
+	// nothing to do here - everything is taken care of by tasks
 }
