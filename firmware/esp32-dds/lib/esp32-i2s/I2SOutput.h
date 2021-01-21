@@ -18,6 +18,7 @@ private:
     i2s_port_t m_i2sPort;
     // src of samples for us to play
     QueueHandle_t m_samplesQueue;
+    int m_packetSize;
 protected:
     void start(i2s_config_t i2sConfig, QueueHandle_t samplesQueue);
     void startTask();

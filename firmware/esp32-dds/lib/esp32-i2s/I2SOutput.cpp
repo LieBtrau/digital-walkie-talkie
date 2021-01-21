@@ -4,14 +4,12 @@
 #include "I2SOutput.h"
 #include "SampleSource.h"
 
-static int packetSize;
-
 void i2sWriterTask(void *param)
 {
     I2SOutput *output = (I2SOutput *)param;
     int availableBytes = 0;
     int buffer_position = 0;
-    Frame_t frames[packetSize];
+    Frame_t frames[output->m_packetSize];
     while (true)
     {
         // wait for some data to be requested
@@ -26,7 +24,7 @@ void i2sWriterTask(void *param)
                     if (availableBytes == 0 && xQueueReceive(output->m_samplesQueue, &frames, portMAX_DELAY) == pdTRUE)
                     {
                         // how many bytes do we now have to send
-                        availableBytes = packetSize * sizeof(Frame_t);
+                        availableBytes = output->m_packetSize * sizeof(Frame_t);
                         // reset the buffer position back to the start
                         buffer_position = 0;
                     }
@@ -49,7 +47,7 @@ void I2SOutput::start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_
 {
     m_samplesQueue = samplesQueue;
     m_i2sPort = i2sPort;
-    packetSize = pktSize;
+    m_packetSize = pktSize;
     //install and start i2s driver
     i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
     // set up the i2s pins
