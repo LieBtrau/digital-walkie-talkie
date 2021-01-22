@@ -50,7 +50,7 @@ void vSenderTask(void *pvParameters)
 		do
 		{
 			source->getFrames(samples, source->getFrameSize());
-		} while (xQueueSendToBack(xQueue, &samples, portMAX_DELAY) == pdTRUE);
+		} while (xQueueSendToBack(xQueue, samples, portMAX_DELAY) == pdTRUE);
 		taskYIELD();
 	}
 }

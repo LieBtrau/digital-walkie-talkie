@@ -21,7 +21,7 @@ void i2sWriterTask(void *param)
                 size_t bytesWritten = 0;
                 do
                 {
-                    if (availableBytes == 0 && xQueueReceive(output->m_samplesQueue, &frames, portMAX_DELAY) == pdTRUE)
+                    if (availableBytes == 0 && xQueueReceive(output->m_samplesQueue, frames, portMAX_DELAY) == pdTRUE)
                     {
                         // how many bytes do we now have to send
                         availableBytes = output->m_packetSize * sizeof(Frame_t);
