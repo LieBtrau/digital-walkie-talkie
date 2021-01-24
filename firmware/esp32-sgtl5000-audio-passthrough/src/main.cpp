@@ -34,7 +34,7 @@
 const i2s_port_t I2S_PORT = I2S_NUM_0;
 const int I2S_READLEN = 256;
 AudioControlSGTL5000 audioShield;
-const int BUFLEN = 10000;
+const int BUFLEN = 1000;
 int16_t buffer[BUFLEN];
 int bufCtr=0;
 
@@ -90,6 +90,7 @@ void setup()
   PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
   delay(5);
   Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+  audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
   delay(200); //to skip the junk samples
 }
 
@@ -104,23 +105,24 @@ void loop()
   /* continuously read data over I2S, pass it through and write it back */
   i2s_read(I2S_PORT, sample, I2S_READLEN, &i2s_bytes_read, portMAX_DELAY);
 
-    // for (int i = 0; i < I2S_READLEN / 2; i++)
-    // {
-    //   if (bufCtr < BUFLEN)
-    //   {
-    //     buffer[bufCtr++] = sample[i];
-    //   }
-    //   else
-    //   {
-    //     //Comport logging to file: minicom -D /dev/ttyUSB0 -C log.me
-    //     for (int j = 0; j < BUFLEN; j++)
-    //     {
-    //       Serial.printf("%d, %d\n\r", j, buffer[j]);
-    //     }
-    //     while (true)
-    //       ;
-    //   }
-    // }
+    for (int i = 0; i < I2S_READLEN / 2; i++)
+    {
+      if (bufCtr < BUFLEN)
+      {
+        buffer[bufCtr++] = sample[i];
+      }
+      else
+      {
+        //Comport logging to file: minicom -D /dev/ttyUSB0 -C log.me
+        for (int j = 0; j < BUFLEN; j++)
+        {
+          //Serial.printf("%d, %d\n\r", j, buffer[j]);
+          Serial.println(buffer[j]);
+        }
+        // while (true)
+        //   ;
+      }
+    }
 
   i2s_write(I2S_PORT, sample, i2s_bytes_read, &i2s_bytes_written, portMAX_DELAY);
 }

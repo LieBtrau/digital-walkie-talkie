@@ -11,7 +11,7 @@ class I2SSampler
 {
 public:
     // the number of samples in one frame
-    static const int FRAMESIZE = 100;
+    static const int FRAMESIZE = 320;
     void start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_t samplesQueue);
     friend void i2sReaderTask(void *param);
 

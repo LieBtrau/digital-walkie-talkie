@@ -6,7 +6,7 @@
  *  
  * Sound sample data can be viewed with:
  *  sox lookdave_8Khz.raw lookdave_8Khz.dat
- *  The .dat file can be imported in Excel.  Multiply all samples by 32768 to convert to 16bit signed little-endian.
+ *  The .dat file can be imported in Excel.  Multiply all samples by 32768 to convert from [0..1] float to 16bit signed little-endian.
  */
 unsigned char lookdave_8Khz_raw[] = {
   0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
