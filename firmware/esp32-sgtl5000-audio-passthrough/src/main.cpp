@@ -32,7 +32,11 @@
 #include "control_sgtl5000.h"
 
 const i2s_port_t I2S_PORT = I2S_NUM_0;
+const int I2S_READLEN = 256;
 AudioControlSGTL5000 audioShield;
+const int BUFLEN = 10000;
+int16_t buffer[BUFLEN];
+int bufCtr=0;
 
 void setup()
 {
@@ -44,24 +48,24 @@ void setup()
   const i2s_config_t i2s_config = {
       .mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_RX), // Receive, not transfer
       .sample_rate = samplerate,                                       // 8KHz
-      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,                    
-      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,                     // use left channel
+      .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+      .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT, // use left channel
       //I2S_CHANNEL_FMT_ALL_LEFT : WS toggles, L&R always get the same sample twice
       //I2S_CHANNEL_FMT_ONLY_LEFT : same as above
       .communication_format = i2s_comm_format_t(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
       .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // Interrupt level 1
       .dma_buf_count = 4,                       // number of buffers
-      .dma_buf_len = 256,                         
+      .dma_buf_len = I2S_READLEN,
       .use_apll = true,
       .tx_desc_auto_clear = true,
       .fixed_mclk = samplerate * 256};
 
   // The pin config as per the setup
   const i2s_pin_config_t pin_config = {
-      .bck_io_num = 26,                  // Serial Clock (SCK)
-      .ws_io_num = 25,                   // Word Select (WS)
-      .data_out_num = 23,                // data out to audio codec
-      .data_in_num = 33                  // data from audio codec
+      .bck_io_num = 26,   // Serial Clock (SCK)
+      .ws_io_num = 25,    // Word Select (WS)
+      .data_out_num = 23, // data out to audio codec
+      .data_in_num = 33   // data from audio codec
   };
 
   // Configuring the I2S driver and pins.
@@ -86,16 +90,37 @@ void setup()
   PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
   delay(5);
   Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+  delay(200); //to skip the junk samples
 }
 
+int bufCnt = 0;
 void loop()
 {
   // Read a single sample and log it for the Serial Plotter.
-  int16_t sample[128];
-	size_t i2s_bytes_read = 0;
-	size_t i2s_bytes_written = 0;
+  int16_t sample[I2S_READLEN / sizeof(int16_t)];
+  size_t i2s_bytes_read = 0;
+  size_t i2s_bytes_written = 0;
 
-	/* continuously read data over I2S, pass it through the filtering function and write it back */
-		i2s_read(I2S_PORT, sample, 256, &i2s_bytes_read, portMAX_DELAY);
-		i2s_write(I2S_PORT, sample, i2s_bytes_read, &i2s_bytes_written, portMAX_DELAY);
+  /* continuously read data over I2S, pass it through and write it back */
+  i2s_read(I2S_PORT, sample, I2S_READLEN, &i2s_bytes_read, portMAX_DELAY);
+
+    // for (int i = 0; i < I2S_READLEN / 2; i++)
+    // {
+    //   if (bufCtr < BUFLEN)
+    //   {
+    //     buffer[bufCtr++] = sample[i];
+    //   }
+    //   else
+    //   {
+    //     //Comport logging to file: minicom -D /dev/ttyUSB0 -C log.me
+    //     for (int j = 0; j < BUFLEN; j++)
+    //     {
+    //       Serial.printf("%d, %d\n\r", j, buffer[j]);
+    //     }
+    //     while (true)
+    //       ;
+    //   }
+    // }
+
+  i2s_write(I2S_PORT, sample, i2s_bytes_read, &i2s_bytes_written, portMAX_DELAY);
 }
