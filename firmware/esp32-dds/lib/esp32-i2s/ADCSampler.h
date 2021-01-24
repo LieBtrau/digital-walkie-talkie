@@ -14,6 +14,6 @@ protected:
 
 public:
     ADCSampler(adc_unit_t adc_unit, adc1_channel_t adc_channel);
-    void start(int32_t bufferSizeInSamples, TaskHandle_t writerTaskHandle);
+    void start(QueueHandle_t samplesQueue);
 
 };

@@ -52,7 +52,7 @@ void ADCSampler::configureI2S()
     i2s_adc_enable(getI2SPort());
 }
 
-void ADCSampler::start(int32_t bufferSizeInSamples, TaskHandle_t writerTaskHandle)
+void ADCSampler::start(QueueHandle_t samplesQueue)
 {
     // i2s config for using the internal ADC
     i2s_config_t adcI2SConfig = {
@@ -69,5 +69,7 @@ void ADCSampler::start(int32_t bufferSizeInSamples, TaskHandle_t writerTaskHandl
         .fixed_mclk = 0*/
     };
     //Only works on I2S port 0
-    I2SSampler::start(I2S_NUM_0, adcI2SConfig, bufferSizeInSamples, writerTaskHandle);
+    I2SSampler::start(I2S_NUM_0, adcI2SConfig, samplesQueue);
 }
+
+    //// Also need to mask upper 4 bits which contain channel info (see gitter chat between me-no-dev and bzeeman)
