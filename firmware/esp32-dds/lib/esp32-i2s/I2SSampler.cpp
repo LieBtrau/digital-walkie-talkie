@@ -25,7 +25,7 @@ void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_
     // start a task to read samples from the ADC
     TaskHandle_t readerTaskHandle;
     memset(m_frames, 0, sizeof(m_frames));
-    xTaskCreatePinnedToCore(i2sReaderTask, "i2s Reader Task", 4096, this, 1, &readerTaskHandle, 0);
+    xTaskCreate(i2sReaderTask, "i2s Reader Task", 4096, this, 1, &readerTaskHandle);
 }
 
 void i2sReaderTask(void *param)

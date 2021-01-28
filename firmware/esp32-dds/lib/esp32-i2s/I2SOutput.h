@@ -22,8 +22,13 @@ private:
 protected:
     void start(i2s_config_t i2sConfig, QueueHandle_t samplesQueue);
     void startTask();
+    virtual void configureI2S() = 0;
+    i2s_port_t getI2SPort()
+    {
+        return m_i2sPort;
+    }
 
 public:
-    void start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize);
+    void start(i2s_port_t i2sPort, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize);
     friend void i2sWriterTask(void *param);
 };

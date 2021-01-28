@@ -43,15 +43,21 @@ void i2sWriterTask(void *param)
     }
 }
 
-void I2SOutput::start(i2s_port_t i2sPort, i2s_pin_config_t &i2sPins, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize)
+void I2SOutput::start(i2s_port_t i2sPort, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize)
 {
     m_samplesQueue = samplesQueue;
     m_i2sPort = i2sPort;
     m_packetSize = pktSize;
     //install and start i2s driver
-    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
-    // set up the i2s pins
-    i2s_set_pin(m_i2sPort, &i2sPins);
+    esp_err_t err = i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
+    if (err != ESP_OK)
+    {
+        Serial.printf("Failed installing driver: %d\n", err);
+        while (true)
+            ;
+    }
+    // set up the I2S configuration from the subclass
+    configureI2S();
     startTask();
 }
 
