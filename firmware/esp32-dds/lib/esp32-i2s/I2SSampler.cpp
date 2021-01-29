@@ -5,11 +5,12 @@
 
 void i2sReaderTask(void *param);
 
-void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_t samplesQueue)
+void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_t samplesQueue, int pktSize)
 {
     m_i2sPort = i2sPort;
     m_samplesQueue = samplesQueue;
-
+    m_packetSize = pktSize;
+    m_frames = (int16_t*)calloc(m_packetSize, sizeof(int16_t));
     //install and start i2s driver
     esp_err_t err = i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
     if (err != ESP_OK)
@@ -24,7 +25,6 @@ void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_
     i2s_zero_dma_buffer(m_i2sPort);
     // start a task to read samples from the ADC
     TaskHandle_t readerTaskHandle;
-    memset(m_frames, 0, sizeof(m_frames));
     xTaskCreate(i2sReaderTask, "i2s Reader Task", 4096, this, 1, &readerTaskHandle);
 }
 
@@ -82,7 +82,7 @@ void I2SSampler::addSample(int16_t sample)
     // add the sample to the current i2s_in_ buffer
     m_frames[m_i2s_in_BufferPos++] = sample;
     // have we filled the buffer with data?
-    if (m_i2s_in_BufferPos == FRAMESIZE)
+    if (m_i2s_in_BufferPos == m_packetSize)
     {
         //reset the buffer position
         m_i2s_in_BufferPos = 0;

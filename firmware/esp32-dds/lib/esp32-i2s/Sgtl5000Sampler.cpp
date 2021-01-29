@@ -26,7 +26,7 @@ void Sgtl5000Sampler::configureI2S()
 	}
 }
 
-void Sgtl5000Sampler::start(QueueHandle_t samplesQueue)
+void Sgtl5000Sampler::start(QueueHandle_t samplesQueue, int packetSize)
 {
 	i2s_config_t i2s_config = {
 		.mode = i2s_mode_t(I2S_MODE_MASTER | I2S_MODE_RX),
@@ -43,7 +43,7 @@ void Sgtl5000Sampler::start(QueueHandle_t samplesQueue)
 		.tx_desc_auto_clear = true,
 		.fixed_mclk = _sampleRate * 256};
 
-	I2SSampler::start(_i2s_port, i2s_config, samplesQueue);
+	I2SSampler::start(_i2s_port, i2s_config, samplesQueue, packetSize);
 
 	// Enable MCLK output
 	WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);

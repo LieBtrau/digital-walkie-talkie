@@ -45,8 +45,8 @@ void i2sWriterTask(void *param)
 
 void I2SOutput::start(i2s_port_t i2sPort, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize)
 {
-    m_samplesQueue = samplesQueue;
     m_i2sPort = i2sPort;
+    m_samplesQueue = samplesQueue;
     m_packetSize = pktSize;
     //install and start i2s driver
     esp_err_t err = i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);

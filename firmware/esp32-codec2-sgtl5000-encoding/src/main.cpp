@@ -8,6 +8,9 @@
  * 		c2dec 1200 lookdave.bit lookdave.raw
  * The raw file can then be converted to audio using: 
  * 		sox -e signed-integer -b 16 -r 8000 -c 1 lookdave.raw lookdave.wav
+ * 
+ * Minicom is too slow for printing in the hex data in real time
+ * 	1200bps = 150bytes/s -> 300bytes/s hex print 
  *
  * 
  * Maybe helpful for debugging:
@@ -107,7 +110,7 @@ void setup()
 
 	Serial.println("Starting I2S Output");
 	input = new Sgtl5000Sampler(I2S_NUM_0, 26, 25, 33);
-	input->start(xQueue);
+	input->start(xQueue, codec2_samples_per_frame(codec2));
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	xTaskCreate(vEncoderTask, "Codec2Encoder", 24576, NULL, 2, NULL);

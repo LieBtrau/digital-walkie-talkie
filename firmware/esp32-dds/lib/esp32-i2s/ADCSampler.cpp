@@ -69,7 +69,7 @@ void ADCSampler::start(QueueHandle_t samplesQueue)
         .fixed_mclk = 0*/
     };
     //Only works on I2S port 0
-    I2SSampler::start(I2S_NUM_0, adcI2SConfig, samplesQueue);
+    I2SSampler::start(I2S_NUM_0, adcI2SConfig, samplesQueue, 100);
 }
 
     //// Also need to mask upper 4 bits which contain channel info (see gitter chat between me-no-dev and bzeeman)

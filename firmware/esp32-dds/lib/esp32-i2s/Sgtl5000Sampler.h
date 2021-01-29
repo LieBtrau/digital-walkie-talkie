@@ -16,6 +16,6 @@ protected:
 
 public:
     Sgtl5000Sampler(i2s_port_t i2sPort, byte pin_SCK, byte pin_WS, byte pin_DIN);
-    void start(QueueHandle_t samplesQueue);
+    void start(QueueHandle_t samplesQueue, int packetSize);
 
 };
