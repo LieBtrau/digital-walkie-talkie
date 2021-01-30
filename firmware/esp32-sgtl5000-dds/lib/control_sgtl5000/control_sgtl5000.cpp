@@ -548,7 +548,7 @@ bool AudioControlSGTL5000::enable(void)
 	this->write(CHIP_SSS_CTRL, 0x0010) &&  		// ADC->I2S, I2S->DAC
 	this->write(CHIP_ADCDAC_CTRL, 0x0000) &&   	// disable dac mute
 	this->write(CHIP_DAC_VOL, 0x3C3C) &&   		// digital gain, 0dB
-	//this->write(CHIP_ANA_HP_CTRL, 0x7F7F) &&  // set volume (lowest level)
+	this->write(CHIP_ANA_HP_CTRL, 0x7F7F) &&  	// set volume (lowest level)
 	//this->write(CHIP_ANA_ADC_CTRL, 0xFF) && 
 	this->write(CHIP_ANA_CTRL, 0x0026);  		// Line-in -> ADC, enable zero cross detectors and unmute
 	muted = false;

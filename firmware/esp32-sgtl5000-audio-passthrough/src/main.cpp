@@ -2,6 +2,9 @@
  * Laptop     -> SGTL5000 -> ESP32 -> SGTL5000 -> head phones
  *          Analog out    I2S      I2S      Analog out                  
  * 
+ * I2S peripheral works at full-duplex mode here, while ESP32-documentation mentions that only half-duplex is supported.
+ * In this full duplex mode, it's not clear how and if the DMA-buffers are used.
+ * 
  * Source code from : https://github.com/Jeija/esp32-lyrat-passthrough/blob/master/main/main.c
  * 
  * Signal name                              Adafruit 1780                   NodeMCU-32S
@@ -41,7 +44,6 @@ int bufCtr=0;
 void setup()
 {
   Serial.begin(115200);
-  esp_err_t err;
   int samplerate = 8000;
 
   // The I2S config as per the example
@@ -70,27 +72,16 @@ void setup()
 
   // Configuring the I2S driver and pins.
   // This function must be called before any I2S driver read/write operations.
-  err = i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL);
-  if (err != ESP_OK)
-  {
-    Serial.printf("Failed installing driver: %d\n", err);
-    while (true)
-      ;
-  }
-  err = i2s_set_pin(I2S_PORT, &pin_config);
-  if (err != ESP_OK)
-  {
-    Serial.printf("Failed setting pin: %d\n", err);
-    while (true)
-      ;
-  }
+  ESP_ERROR_CHECK(i2s_driver_install(I2S_PORT, &i2s_config, 0, NULL));
+  ESP_ERROR_CHECK(i2s_set_pin(I2S_PORT, &pin_config));
   Serial.println("I2S driver installed.");
   // Enable MCLK output
   WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
   PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
   delay(5);
-  Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+  Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
   audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
+  audioShield.volume(0.2,0.2);
   delay(200); //to skip the junk samples
 }
 
@@ -103,26 +94,6 @@ void loop()
   size_t i2s_bytes_written = 0;
 
   /* continuously read data over I2S, pass it through and write it back */
-  i2s_read(I2S_PORT, sample, I2S_READLEN, &i2s_bytes_read, portMAX_DELAY);
-
-    for (int i = 0; i < I2S_READLEN / 2; i++)
-    {
-      if (bufCtr < BUFLEN)
-      {
-        buffer[bufCtr++] = sample[i];
-      }
-      else
-      {
-        //Comport logging to file: minicom -D /dev/ttyUSB0 -C log.me
-        for (int j = 0; j < BUFLEN; j++)
-        {
-          //Serial.printf("%d, %d\n\r", j, buffer[j]);
-          Serial.println(buffer[j]);
-        }
-        // while (true)
-        //   ;
-      }
-    }
-
-  i2s_write(I2S_PORT, sample, i2s_bytes_read, &i2s_bytes_written, portMAX_DELAY);
+  ESP_ERROR_CHECK(i2s_read(I2S_PORT, sample, I2S_READLEN, &i2s_bytes_read, portMAX_DELAY));
+  ESP_ERROR_CHECK(i2s_write(I2S_PORT, sample, i2s_bytes_read, &i2s_bytes_written, portMAX_DELAY));
 }
