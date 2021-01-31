@@ -32,12 +32,12 @@ void i2sWriterTask(void *param)
                     if (availableBytes > 0)
                     {
                         // write data to the i2s peripheral
-                        i2s_write(output->m_i2sPort, buffer_position + (uint8_t *)frames,
-                                  availableBytes, &bytesWritten, portMAX_DELAY);
+                        ESP_ERROR_CHECK(i2s_write(output->m_i2sPort, buffer_position + (uint8_t *)frames,
+                                                  availableBytes, &bytesWritten, portMAX_DELAY));
                         availableBytes -= bytesWritten;
                         buffer_position += bytesWritten;
                     }
-               } while (bytesWritten > 0);
+                } while (bytesWritten > 0);
             }
         }
     }
@@ -49,13 +49,7 @@ void I2SOutput::start(i2s_port_t i2sPort, i2s_config_t i2sConfig, QueueHandle_t 
     m_samplesQueue = samplesQueue;
     m_packetSize = pktSize;
     //install and start i2s driver
-    esp_err_t err = i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
-    if (err != ESP_OK)
-    {
-        Serial.printf("Failed installing driver: %d\n", err);
-        while (true)
-            ;
-    }
+    ESP_ERROR_CHECK(i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue));
     // set up the I2S configuration from the subclass
     configureI2S();
     startTask();
@@ -67,16 +61,16 @@ void I2SOutput::start(i2s_config_t i2sConfig, QueueHandle_t samplesQueue)
     m_samplesQueue = samplesQueue;
     m_i2sPort = I2S_NUM_0;
     //install and start i2s driver
-    i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
+    ESP_ERROR_CHECK(i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue));
     // set up the i2s pins
-    i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN);
+    ESP_ERROR_CHECK(i2s_set_dac_mode(I2S_DAC_CHANNEL_LEFT_EN));
     startTask();
 }
 
 void I2SOutput::startTask()
 {
     // clear the DMA buffers
-    i2s_zero_dma_buffer(m_i2sPort);
+    ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));
     // start a task to write samples to the i2s peripheral
     TaskHandle_t writerTaskHandle;
     xTaskCreate(i2sWriterTask, "i2s Writer Task", 4096, this, 1, &writerTaskHandle);

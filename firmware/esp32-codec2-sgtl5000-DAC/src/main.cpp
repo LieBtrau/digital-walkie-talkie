@@ -80,6 +80,7 @@ void setup()
 	output->start(sampleSource, xQueue);
 
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+	audioShield.volume(0.5);
 	TaskHandle_t writerTaskHandle;
 	xTaskCreate(vSenderTask, "Sender1", 24576, (void *)sampleSource, 2, &writerTaskHandle);
 }

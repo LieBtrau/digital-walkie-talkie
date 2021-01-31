@@ -12,17 +12,11 @@ void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_
     m_packetSize = pktSize;
     m_frames = (int16_t*)calloc(m_packetSize, sizeof(int16_t));
     //install and start i2s driver
-    esp_err_t err = i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue);
-    if (err != ESP_OK)
-    {
-        Serial.printf("Failed installing driver: %d\n", err);
-        while (true)
-            ;
-    }
+    ESP_ERROR_CHECK(i2s_driver_install(m_i2sPort, &i2sConfig, 4, &m_i2sEventQueue));
     // set up the I2S configuration from the subclass
     configureI2S();
     // clear the DMA buffers
-    i2s_zero_dma_buffer(m_i2sPort);
+    ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));
     // start a task to read samples from the ADC
     TaskHandle_t readerTaskHandle;
     xTaskCreate(i2sReaderTask, "i2s Reader Task", 4096, this, 1, &readerTaskHandle);
