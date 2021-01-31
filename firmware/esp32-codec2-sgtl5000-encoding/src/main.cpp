@@ -51,6 +51,7 @@ unsigned char *bits;
 const int CODEC2_PACKET_COUNT = 200; // 200 * 40ms = 8s
 int codec2_packetCtr = 0;
 int nbyte;
+SemaphoreHandle_t xSemaphoreCodec2 = NULL;
 
 void vEncoderTask(void *pvParameters)
 {
@@ -60,27 +61,37 @@ void vEncoderTask(void *pvParameters)
 	{
 		if (xQueueReceive(xQueue, samples, portMAX_DELAY) == pdTRUE)
 		{
-			if (codec2_packetCtr <= nbyte * (CODEC2_PACKET_COUNT - 1))
+			if (xSemaphoreCodec2 != NULL)
 			{
-				codec2_encode(codec2, bits + codec2_packetCtr, samples);
-				codec2_packetCtr += nbyte;
-			}
-			else
-			{
-				//all packets received, print them
-				int linectr = 0;
-				Serial.println();
-				for (int i = 0; i < nbyte * CODEC2_PACKET_COUNT; i++)
+				/* See if we can obtain the semaphore.  If the semaphore is not available wait 10 ticks to see if it becomes free. */
+				if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)
 				{
-					Serial.printf("%02x", bits[i]);
-					if ((++linectr) % 30 == 0)
+					/* We were able to obtain the semaphore and can now access the shared resource. */
+					if (codec2_packetCtr <= nbyte * (CODEC2_PACKET_COUNT - 1))
 					{
-						Serial.println();
+						codec2_encode(codec2, bits + codec2_packetCtr, samples);
+						codec2_packetCtr += nbyte;
 					}
+					else
+					{
+						//all packets received, print them
+						int linectr = 0;
+						Serial.println();
+						for (int i = 0; i < nbyte * CODEC2_PACKET_COUNT; i++)
+						{
+							Serial.printf("%02x", bits[i]);
+							if ((++linectr) % 30 == 0)
+							{
+								Serial.println();
+							}
+						}
+						Serial.println();
+						while (true)
+							;
+					}
+					/* We have finished accessing the shared resource.  Release the semaphore. */
+					xSemaphoreGive(xSemaphoreCodec2);
 				}
-				Serial.println();
-				while (true)
-					;
 			}
 		}
 	}
@@ -102,6 +113,13 @@ void setup()
 	if (xQueue == NULL)
 	{
 		Serial.println("Can't create queue");
+		while (true)
+			;
+	}
+	xSemaphoreCodec2 = xSemaphoreCreateMutex();
+	if (xSemaphoreCodec2 == NULL)
+	{
+		Serial.println("Can't create semaphore");
 		while (true)
 			;
 	}
