@@ -22,13 +22,12 @@ void Sgtl5000_Output::start(SampleSource *sample_generator, QueueHandle_t xQueue
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,        // 2-channels
         .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
         .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, //Interrupt level 1
-        .dma_buf_count = 8,
-        .dma_buf_len = 1024, //
+        .dma_buf_count = 2,
+        .dma_buf_len = 256,
         .use_apll = true,
         .tx_desc_auto_clear = true,
         .fixed_mclk = sample_generator->sampleRate() * 256
         };
-
 
     I2SOutput::start(I2S_NUM_0, i2sConfig, xQueue, sample_generator->getFrameSize());
 
@@ -47,11 +46,5 @@ void Sgtl5000_Output::configureI2S()
         .data_in_num = I2S_PIN_NO_CHANGE
         };
 
-	esp_err_t err = i2s_set_pin(getI2SPort(), &pin_config);
-	if (err != ESP_OK)
-	{
-		Serial.printf("Failed setting pin: %d\n", err);
-		while (true)
-			;
-	}
+	ESP_ERROR_CHECK(i2s_set_pin(getI2SPort(), &pin_config));
 }

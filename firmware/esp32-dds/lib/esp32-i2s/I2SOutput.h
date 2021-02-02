@@ -13,12 +13,14 @@ private:
     // I2S write task
     TaskHandle_t m_i2sWriterTaskHandle;
     // i2s writer queue
-    QueueHandle_t m_i2sEventQueue;
+    //QueueHandle_t m_i2sEventQueue;
     // i2s port
     i2s_port_t m_i2sPort;
     // src of samples for us to play
     QueueHandle_t m_samplesQueue;
     int m_packetSize;
+    TaskHandle_t m_i2s_writerTaskHandle = NULL;
+
 protected:
     void start(i2s_config_t i2sConfig, QueueHandle_t samplesQueue);
     void startTask();
@@ -30,5 +32,6 @@ protected:
 
 public:
     void start(i2s_port_t i2sPort, i2s_config_t i2sConfig, QueueHandle_t samplesQueue, int pktSize);
+    void stop();
     friend void i2sWriterTask(void *param);
 };

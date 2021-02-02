@@ -1,6 +1,18 @@
 /**
  * Output decoded codec2 packets to SGTL5000 headphone and line out.
  * 
+ * The on-off functionality in the audio stream simulates the PTT-behaviour.
+ * 
+ * A trade-off must be made between fast response on PTT-release (start I2S-RX task) and buffering.
+ * Upon stopping the I2S-TX task (push PTT), audio stops immediately.
+ * 
+ * Remember that one codec2 1200bps packets contains 640bytes.
+ * 
+ * DMA-buf count		DMA-buf len			Delay from start output to I2S out (includes codec2 encoding)
+ * 2					256					64ms
+ * 2					1024				256ms
+ * 4					1024				511ms
+ * 
  * Maybe helpful for debugging:
  *  http://www.iotsharing.com/2017/07/how-to-use-arduino-esp32-i2s-to-play-wav-music-from-sdcard.html
  *  https://diyi0t.com/i2s-sound-tutorial-for-esp32/
@@ -33,12 +45,16 @@
 #include "lookdave.h"
 #include "Sgtl5000_Output.h"
 #include "control_sgtl5000.h"
+#include "AsyncDelay.h"
 
 CODEC2 *codec2;
 Sgtl5000_Output *output;
 SampleSource *sampleSource;
 AudioControlSGTL5000 audioShield;
 QueueHandle_t xQueue;
+AsyncDelay delay_1s;
+bool isPlaying = true;
+const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
 
 void vSenderTask(void *pvParameters)
 {
@@ -50,6 +66,7 @@ void vSenderTask(void *pvParameters)
 		do
 		{
 			source->getFrames(samples, source->getFrameSize());
+			Serial.print(".");
 		} while (xQueueSendToBack(xQueue, samples, portMAX_DELAY) == pdTRUE);
 		taskYIELD();
 	}
@@ -58,9 +75,10 @@ void vSenderTask(void *pvParameters)
 void setup()
 {
 	Serial.begin(115200);
-
+	delay_1s.start(1000, AsyncDelay::MILLIS);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__);
 	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
+	pinMode(iopin, OUTPUT);
 
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
@@ -77,8 +95,7 @@ void setup()
 
 	Serial.println("Starting I2S Output");
 	output = new Sgtl5000_Output(26, 25, 23);
-	output->start(sampleSource, xQueue);
-
+	output->start(sampleSource, xQueue);	//init needed here to generate MCLK, needed for SGTL5000 init.
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
 	audioShield.volume(0.5);
 	TaskHandle_t writerTaskHandle;
@@ -88,4 +105,18 @@ void setup()
 void loop()
 {
 	// nothing to do here - everything is taken care of by tasks
+	if (delay_1s.isExpired())
+	{
+		delay_1s.repeat(); // Count from when the delay expired, not now
+		if (isPlaying)
+		{
+			output->stop();
+		}
+		else
+		{
+			output->start(sampleSource, xQueue);
+		}
+		digitalWrite(iopin, isPlaying ? HIGH : LOW);
+		isPlaying = !isPlaying;
+	}
 }
