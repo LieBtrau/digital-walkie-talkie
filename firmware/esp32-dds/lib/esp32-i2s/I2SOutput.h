@@ -10,10 +10,6 @@
 class I2SOutput
 {
 private:
-    // I2S write task
-    TaskHandle_t m_i2sWriterTaskHandle;
-    // i2s writer queue
-    //QueueHandle_t m_i2sEventQueue;
     // i2s port
     i2s_port_t m_i2sPort;
     // src of samples for us to play

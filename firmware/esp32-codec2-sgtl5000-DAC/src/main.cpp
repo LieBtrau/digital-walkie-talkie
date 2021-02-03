@@ -66,7 +66,6 @@ void vSenderTask(void *pvParameters)
 		do
 		{
 			source->getFrames(samples, source->getFrameSize());
-			Serial.print(".");
 		} while (xQueueSendToBack(xQueue, samples, portMAX_DELAY) == pdTRUE);
 		taskYIELD();
 	}
