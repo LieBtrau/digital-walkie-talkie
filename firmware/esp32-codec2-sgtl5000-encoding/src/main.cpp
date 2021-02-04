@@ -1,9 +1,9 @@
 /**
- * This function will export 200 codec2 packets to the serial port, which is worth 8s of sound.
- * The concatenated packets will be base16-encoded.
- * Copy these lines of hex data and paste them into a file (e.g. lookdave.hex)
- * You can convert that file to a binary format (e.g. lookdave.bit) using xxd:
- *    	xxd -r -p lookdave.hex lookdave.bit
+ * This function will export codec2 packets to the serial port,
+ * The concatenated packets are be base64-encoded.
+ * Copy these lines of data and paste them into a file (e.g. lookdave.b64)
+ * You can convert that file to a binary format (e.g. lookdave.bit) using base64:
+ *    	base64 -d lookdave.b64 > lookdave.bit
  * This bit-file can then be decoded back to raw audio using :
  * 		c2dec 1200 lookdave.bit lookdave.raw
  * The raw file can then be converted to audio using: 
@@ -42,56 +42,41 @@
 #include "codec2.h"
 #include "Sgtl5000Sampler.h"
 #include "control_sgtl5000.h"
+#include "base64.hpp"
 
 CODEC2 *codec2;
 Sgtl5000Sampler *input;
 AudioControlSGTL5000 audioShield;
 QueueHandle_t xQueue;
 unsigned char *bits;
-const int CODEC2_PACKET_COUNT = 200; // 200 * 40ms = 8s
-int codec2_packetCtr = 0;
 int nbyte;
+int lineLength = 0;
 SemaphoreHandle_t xSemaphoreCodec2 = NULL;
 
 void vEncoderTask(void *pvParameters)
 {
 	short samples[codec2_samples_per_frame(codec2)];
+	char *b64 = (char *)malloc(nbyte * 2);
 
 	for (;;)
 	{
-		if (xQueueReceive(xQueue, samples, portMAX_DELAY) == pdTRUE)
+		if (xQueueReceive(xQueue, samples, portMAX_DELAY) == pdTRUE && xSemaphoreCodec2 != NULL)
 		{
-			if (xSemaphoreCodec2 != NULL)
+			/* See if we can obtain the semaphore.  If the semaphore is not available wait 10 ticks to see if it becomes free. */
+			if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)
 			{
-				/* See if we can obtain the semaphore.  If the semaphore is not available wait 10 ticks to see if it becomes free. */
-				if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)
+				/* We were able to obtain the semaphore and can now access the shared resource. */
+				codec2_encode(codec2, bits, samples);
+				encode_base64(bits, nbyte, (byte *)b64);
+				Serial.print(b64);
+				lineLength += strlen(b64);
+				if (lineLength > 80)
 				{
-					/* We were able to obtain the semaphore and can now access the shared resource. */
-					if (codec2_packetCtr <= nbyte * (CODEC2_PACKET_COUNT - 1))
-					{
-						codec2_encode(codec2, bits + codec2_packetCtr, samples);
-						codec2_packetCtr += nbyte;
-					}
-					else
-					{
-						//all packets received, print them
-						int linectr = 0;
-						Serial.println();
-						for (int i = 0; i < nbyte * CODEC2_PACKET_COUNT; i++)
-						{
-							Serial.printf("%02x", bits[i]);
-							if ((++linectr) % 30 == 0)
-							{
-								Serial.println();
-							}
-						}
-						Serial.println();
-						while (true)
-							;
-					}
-					/* We have finished accessing the shared resource.  Release the semaphore. */
-					xSemaphoreGive(xSemaphoreCodec2);
+					Serial.println();
+					lineLength = 0;
 				}
+				/* We have finished accessing the shared resource.  Release the semaphore. */
+				xSemaphoreGive(xSemaphoreCodec2);
 			}
 		}
 	}
@@ -107,7 +92,7 @@ void setup()
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
 	nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
-	bits = (unsigned char *)calloc(nbyte * CODEC2_PACKET_COUNT, sizeof(unsigned char));
+	bits = (unsigned char *)calloc(nbyte, sizeof(unsigned char));
 
 	xQueue = xQueueCreate(3, sizeof(uint16_t) * codec2_samples_per_frame(codec2));
 	if (xQueue == NULL)
@@ -126,7 +111,7 @@ void setup()
 
 	//  codec2_destroy(codec2);
 
-	Serial.println("Starting I2S Output");
+	Serial.println("Starting I2S Input");
 	input = new Sgtl5000Sampler(I2S_NUM_0, 26, 25, 33);
 	input->start(xQueue, codec2_samples_per_frame(codec2));
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
