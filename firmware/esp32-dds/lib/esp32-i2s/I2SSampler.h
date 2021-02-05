@@ -25,7 +25,7 @@ protected:
 
 private:
     // I2S reader task
-    TaskHandle_t m_readerTaskHandle;
+    TaskHandle_t m_i2s_readerTaskHandle = NULL;
     // queue that will hold frames of captured samples
     QueueHandle_t m_samplesQueue;
     // the number of samples in one frame
