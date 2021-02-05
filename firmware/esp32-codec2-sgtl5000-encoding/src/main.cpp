@@ -53,7 +53,7 @@ unsigned char *bits;
 int nbyte;
 int lineLength = 0;
 SemaphoreHandle_t xSemaphoreCodec2 = NULL;
-AsyncDelay delay_1s;
+AsyncDelay delay_3s;
 bool isPlaying = true;
 const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
 
@@ -89,7 +89,7 @@ void vEncoderTask(void *pvParameters)
 void setup()
 {
 	Serial.begin(115200);
-	delay_1s.start(1000, AsyncDelay::MILLIS);
+	delay_3s.start(3000, AsyncDelay::MILLIS);
 	pinMode(iopin, OUTPUT);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__);
 	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
@@ -126,18 +126,18 @@ void setup()
 
 void loop()
 {
-	// if (delay_1s.isExpired())
-	// {
-	// 	delay_1s.repeat(); // Count from when the delay expired, not now
-	// 	if (isPlaying)
-	// 	{
-	// 		input->stop();
-	// 	}
-	// 	else
-	// 	{
-	// 		input->start(xQueue, codec2_samples_per_frame(codec2));
-	// 	}
-	// 	digitalWrite(iopin, isPlaying ? HIGH : LOW);
-	// 	isPlaying = !isPlaying;
-	// }
+	if (delay_3s.isExpired())
+	{
+		delay_3s.repeat(); // Count from when the delay expired, not now
+		if (isPlaying)
+		{
+			input->stop();
+		}
+		else
+		{
+			input->start(xQueue, codec2_samples_per_frame(codec2));
+		}
+		digitalWrite(iopin, isPlaying ? HIGH : LOW);
+		isPlaying = !isPlaying;
+	}
 }
