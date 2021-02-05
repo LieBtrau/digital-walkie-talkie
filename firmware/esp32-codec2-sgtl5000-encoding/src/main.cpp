@@ -43,6 +43,7 @@
 #include "Sgtl5000Sampler.h"
 #include "control_sgtl5000.h"
 #include "base64.hpp"
+#include "AsyncDelay.h"
 
 CODEC2 *codec2;
 Sgtl5000Sampler *input;
@@ -52,6 +53,9 @@ unsigned char *bits;
 int nbyte;
 int lineLength = 0;
 SemaphoreHandle_t xSemaphoreCodec2 = NULL;
+AsyncDelay delay_1s;
+bool isPlaying = true;
+const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
 
 void vEncoderTask(void *pvParameters)
 {
@@ -85,7 +89,8 @@ void vEncoderTask(void *pvParameters)
 void setup()
 {
 	Serial.begin(115200);
-
+	delay_1s.start(1000, AsyncDelay::MILLIS);
+	pinMode(iopin, OUTPUT);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__);
 	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
 
@@ -114,12 +119,25 @@ void setup()
 	Serial.println("Starting I2S Input");
 	input = new Sgtl5000Sampler(I2S_NUM_0, 26, 25, 33);
 	input->start(xQueue, codec2_samples_per_frame(codec2));
-	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
+	Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	xTaskCreate(vEncoderTask, "Codec2Encoder", 24576, NULL, 2, NULL);
 }
 
 void loop()
 {
-	// nothing to do here - everything is taken care of by tasks
+	// if (delay_1s.isExpired())
+	// {
+	// 	delay_1s.repeat(); // Count from when the delay expired, not now
+	// 	if (isPlaying)
+	// 	{
+	// 		input->stop();
+	// 	}
+	// 	else
+	// 	{
+	// 		input->start(xQueue, codec2_samples_per_frame(codec2));
+	// 	}
+	// 	digitalWrite(iopin, isPlaying ? HIGH : LOW);
+	// 	isPlaying = !isPlaying;
+	// }
 }
