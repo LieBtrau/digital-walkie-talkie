@@ -3,16 +3,11 @@
 #include <math.h>
 #include "Codec2Generator.h"
 
-int nsam, nbit, nbyte;
-short *buf;
-unsigned char *bits;
-int nbit_ctr = 0;
 
-Codec2Generator::Codec2Generator(CODEC2 *codec2, byte *bitSource, unsigned int sourceByteCount, byte magnitude) : SampleSource(codec2_samples_per_frame(codec2)),
+
+Codec2Generator::Codec2Generator(CODEC2 *codec2, QueueHandle_t xCodec2DataQueue) : SampleSource(codec2_samples_per_frame(codec2)),
                                                                                     m_codec2(codec2),
-                                                                                    m_bitSource(bitSource),
-                                                                                    m_bitSourceByteCount(sourceByteCount),
-                                                                                    m_magnitude(magnitude)
+                                                                                    m_xCodec2DataQueue(xCodec2DataQueue)
 {
     nsam = codec2_samples_per_frame(codec2);
     nbit = codec2_bits_per_frame(codec2);
@@ -26,9 +21,8 @@ Codec2Generator::Codec2Generator(CODEC2 *codec2, byte *bitSource, unsigned int s
  */
 void Codec2Generator::getFrames(Frame_t *frames, int number_frames)
 {
-    if (nbit_ctr + nbyte < m_bitSourceByteCount)
+    if(xQueueReceive(m_xCodec2DataQueue, bits, portMAX_DELAY) == pdTRUE)
     {
-        memcpy(bits, m_bitSource + nbit_ctr, nbyte);
         codec2_decode(m_codec2, buf, bits);
         for (int i = 0; i < nsam; i++)
         {
@@ -39,13 +33,8 @@ void Codec2Generator::getFrames(Frame_t *frames, int number_frames)
 
             //For external audio DAC
             frames[i].left = buf[i];
-            
+        
             frames[i].right = 0;
         }
-        nbit_ctr += nbyte;
-    }
-    else
-    {
-        nbit_ctr = 0;
     }
 }

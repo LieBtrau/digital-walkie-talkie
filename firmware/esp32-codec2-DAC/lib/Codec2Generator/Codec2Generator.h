@@ -5,13 +5,15 @@
 class Codec2Generator : public SampleSource
 {
 private:
-    int m_sample_rate = 8000;       // Codec2 uses a fixed 8kHz sampling frequency
-    CODEC2* m_codec2;
-    byte* m_bitSource;
-    unsigned int m_bitSourceByteCount;
-    byte m_magnitude;
+    int m_sample_rate = 8000; // Codec2 uses a fixed 8kHz sampling frequency
+    CODEC2 *m_codec2;
+    QueueHandle_t m_xCodec2DataQueue;
+    int nsam, nbit, nbyte;
+    short *buf;
+    unsigned char *bits;
+
 public:
-    Codec2Generator(CODEC2* codec2, byte* bitSource, unsigned int sourceByteCount, byte magnitude);
+    Codec2Generator(CODEC2 *codec2, QueueHandle_t xCodec2DataQueue);
     virtual int sampleRate() { return m_sample_rate; }
     virtual void getFrames(Frame_t *frames, int number_frames);
 };

@@ -13,7 +13,7 @@ Sgtl5000_Output::Sgtl5000_Output(byte pin_SCK, byte pin_WS, byte pin_DOUT) : _pi
 {
 }
 
-void Sgtl5000_Output::start(SampleSource *sample_generator, QueueHandle_t xQueue)
+void Sgtl5000_Output::start(SampleSource *sample_generator, QueueHandle_t xAudioSamplesQueue)
 {
     i2s_config_t i2sConfig = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX), // Only TX
@@ -29,7 +29,7 @@ void Sgtl5000_Output::start(SampleSource *sample_generator, QueueHandle_t xQueue
         .fixed_mclk = sample_generator->sampleRate() * 256
         };
 
-    I2SOutput::start(I2S_NUM_0, i2sConfig, xQueue, sample_generator->getFrameSize());
+    I2SOutput::start(I2S_NUM_0, i2sConfig, xAudioSamplesQueue, sample_generator->getFrameSize());
 
     // Enable MCLK output
     WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL)&0xFFFFFFF0);
