@@ -4,7 +4,7 @@
 #include "I2SOutput.h"
 #include "SampleSource.h"
 
-bool wanttoStop = false;
+bool wanttoStopEncoding = false;
 static TaskHandle_t xTaskToNotify = NULL;
 
 void i2sWriterTask(void *param)
@@ -16,7 +16,7 @@ void i2sWriterTask(void *param)
     size_t bytesWritten = 0;
     for (;;)
     {
-        if (wanttoStop)
+        if (wanttoStopEncoding)
         {
             xTaskNotifyGive(xTaskToNotify);
             vTaskSuspend(NULL);
@@ -82,12 +82,12 @@ void I2SOutput::startTask()
     vTaskDelay(1);
     vTaskResume(m_i2s_writerTaskHandle);
     xTaskToNotify = xTaskGetCurrentTaskHandle();
-    wanttoStop = false;
+    wanttoStopEncoding = false;
 }
 
 void I2SOutput::stop()
 {
-    wanttoStop = true;
+    wanttoStopEncoding = true;
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     ESP_ERROR_CHECK(i2s_stop(m_i2sPort));
     ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));

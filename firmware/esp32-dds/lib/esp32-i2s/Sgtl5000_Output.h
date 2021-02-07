@@ -5,14 +5,12 @@
 class Sgtl5000_Output : public I2SOutput
 {
 public:
-    Sgtl5000_Output(byte pin_SCK, byte pin_WS, byte pin_DOUT);
+    Sgtl5000_Output(i2s_pin_config_t pin_config);
     void start(SampleSource *sample_generator, QueueHandle_t xAudioSamplesQueue);
 
 protected:
     void configureI2S();
 
 private:
-    byte _pin_SCK;
-    byte _pin_WS;
-    byte _pin_DOUT;
+    i2s_pin_config_t m_pin_config;
 };

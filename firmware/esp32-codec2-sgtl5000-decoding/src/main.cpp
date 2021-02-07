@@ -136,7 +136,14 @@ void setup()
 	//  codec2_destroy(codec2);
 
 	Serial.println("Starting I2S Output");
-	output = new Sgtl5000_Output(26, 25, 23);
+	// The pin config as per the setup
+	i2s_pin_config_t i2s_pin_config = {
+		.bck_io_num = 26,	// Serial Clock (SCK)
+		.ws_io_num = 25,	// Word Select (WS)
+		.data_out_num = 23, // data out to audio codec
+		.data_in_num = 33	// data from audio codec
+	};
+	output = new Sgtl5000_Output(i2s_pin_config);
 	output->start(sampleSource, xAudioSamplesQueue); //init needed here to generate MCLK, needed for SGTL5000 init.
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
 	audioShield.volume(0.5);
