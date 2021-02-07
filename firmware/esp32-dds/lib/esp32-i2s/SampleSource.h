@@ -20,7 +20,7 @@ public:
     // This should fill the samples buffer with the specified number of frames
     // A frame contains a LEFT and a RIGHT sample.
     // This function should take no longer than m_frameSize / sampleRate
-    virtual void getFrames(Frame_t *frames, int number_frames) = 0;
+    virtual void getFrames(Frame_t *frames, int number_frames, SemaphoreHandle_t xSemaphoreCodec2) = 0;
     int getFrameSize(){return m_frameSize;};
 private:
     int m_frameSize = 128;

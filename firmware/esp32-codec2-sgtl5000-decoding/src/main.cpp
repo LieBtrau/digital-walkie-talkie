@@ -51,12 +51,16 @@ CODEC2 *codec2;
 Sgtl5000_Output *output;
 SampleSource *sampleSource;
 AudioControlSGTL5000 audioShield;
-QueueHandle_t xQueue;
+QueueHandle_t xAudioSamplesQueue;
+QueueHandle_t xCodec2DataQueue;
 AsyncDelay delay_1s;
 bool isPlaying = true;
 const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
+int nbyte = 0;
+int nbit_ctr = 0;
+SemaphoreHandle_t xSemaphoreCodec2 = NULL;
 
-void vSenderTask(void *pvParameters)
+void vCodec2DecoderTask(void *pvParameters)
 {
 	SampleSource *source = (SampleSource *)pvParameters;
 	Frame_t samples[source->getFrameSize()];
@@ -65,8 +69,31 @@ void vSenderTask(void *pvParameters)
 	{
 		do
 		{
-			source->getFrames(samples, source->getFrameSize());
-		} while (xQueueSendToBack(xQueue, samples, portMAX_DELAY) == pdTRUE);
+			source->getFrames(samples, source->getFrameSize(), xSemaphoreCodec2);
+		} while (xQueueSendToBack(xAudioSamplesQueue, samples, portMAX_DELAY) == pdTRUE);
+		taskYIELD();
+	}
+}
+
+/**
+ *	This task should normally get its samples from the wireless connection, not from some fix buffer 
+ *	as is the case here.
+ */ 
+void vCodec2SampleSource(void *pvParameters)
+{
+	byte bits[nbyte];
+	for (;;)
+	{
+		if (nbit_ctr + nbyte < lookdave_bit_len)
+		{
+			memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
+			xQueueSendToBack(xCodec2DataQueue, bits, portMAX_DELAY);
+			nbit_ctr += nbyte;
+		}
+		else
+		{
+			nbit_ctr = 0;
+		}
 		taskYIELD();
 	}
 }
@@ -79,11 +106,27 @@ void setup()
 	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
 	pinMode(iopin, OUTPUT);
 
+	xSemaphoreCodec2 = xSemaphoreCreateMutex();
+	if (xSemaphoreCodec2 == NULL)
+	{
+		Serial.println("Can't create semaphore");
+		while (true)
+			;
+	}
+
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
-	sampleSource = new Codec2Generator(codec2, lookdave_bit, lookdave_bit_len, 1);
-	xQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
-	if (xQueue == NULL)
+	nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
+	xCodec2DataQueue = xQueueCreate(3, nbyte);
+	if (xCodec2DataQueue == NULL)
+	{
+		Serial.println("Can't create queue");
+		while (true)
+			;
+	}
+	sampleSource = new Codec2Generator(codec2, xCodec2DataQueue);
+	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
+	if (xAudioSamplesQueue == NULL)
 	{
 		Serial.println("Can't create queue");
 		while (true)
@@ -94,11 +137,11 @@ void setup()
 
 	Serial.println("Starting I2S Output");
 	output = new Sgtl5000_Output(26, 25, 23);
-	output->start(sampleSource, xQueue);	//init needed here to generate MCLK, needed for SGTL5000 init.
+	output->start(sampleSource, xAudioSamplesQueue); //init needed here to generate MCLK, needed for SGTL5000 init.
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
 	audioShield.volume(0.5);
-	TaskHandle_t writerTaskHandle;
-	xTaskCreate(vSenderTask, "Sender1", 24576, (void *)sampleSource, 2, &writerTaskHandle);
+	xTaskCreate(vCodec2SampleSource, "SampleSource", 2048, NULL, 2, NULL);
+	xTaskCreate(vCodec2DecoderTask, "Codec2Decoder", 24576, (void *)sampleSource, 2, NULL);
 }
 
 void loop()
@@ -113,7 +156,7 @@ void loop()
 		}
 		else
 		{
-			output->start(sampleSource, xQueue);
+			output->start(sampleSource, xAudioSamplesQueue);
 		}
 		digitalWrite(iopin, isPlaying ? HIGH : LOW);
 		isPlaying = !isPlaying;

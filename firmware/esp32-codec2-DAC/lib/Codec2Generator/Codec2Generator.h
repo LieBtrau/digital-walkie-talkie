@@ -15,5 +15,5 @@ private:
 public:
     Codec2Generator(CODEC2 *codec2, QueueHandle_t xCodec2DataQueue);
     virtual int sampleRate() { return m_sample_rate; }
-    virtual void getFrames(Frame_t *frames, int number_frames);
+    virtual void getFrames(Frame_t *frames, int number_frames, SemaphoreHandle_t xSemaphoreCodec2);
 };
