@@ -1,29 +1,17 @@
 #include "Sgtl5000Sampler.h"
 
-Sgtl5000Sampler::Sgtl5000Sampler(i2s_port_t i2sPort, byte pin_SCK, byte pin_WS, byte pin_DIN) : _i2s_port(i2sPort),
-																								_pin_SCK(pin_SCK),
-																								_pin_WS(pin_WS),
-																								_pin_DIN(pin_DIN)
+Sgtl5000Sampler::Sgtl5000Sampler(i2s_port_t i2sPort, i2s_pin_config_t pin_config) : _i2s_port(i2sPort),
+																					m_pin_config(pin_config)
 {
 }
 
 void Sgtl5000Sampler::configureI2S()
 {
-	// The pin config as per the setup
-	i2s_pin_config_t pin_config = {
-		.bck_io_num = 26,	// Serial Clock (SCK)
-		.ws_io_num = 25,	// Word Select (WS)
-		.data_out_num = 23, // data out to audio codec
-		.data_in_num = 33	// data from audio codec
-	};
-
-	esp_err_t err = i2s_set_pin(_i2s_port, &pin_config);
-	if (err != ESP_OK)
-	{
-		Serial.printf("Failed setting pin: %d\n", err);
-		while (true)
-			;
-	}
+	ESP_ERROR_CHECK(i2s_set_pin(getI2SPort(), &m_pin_config));
+	// Enable MCLK output
+	WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
+	delay(5);
 }
 
 void Sgtl5000Sampler::start(QueueHandle_t samplesQueue, int packetSize)
@@ -44,9 +32,4 @@ void Sgtl5000Sampler::start(QueueHandle_t samplesQueue, int packetSize)
 		.fixed_mclk = _sampleRate * 256};
 
 	I2SSampler::start(_i2s_port, i2s_config, samplesQueue, packetSize);
-
-	// Enable MCLK output
-	WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
-	delay(5);
 }

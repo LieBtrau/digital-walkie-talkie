@@ -117,7 +117,14 @@ void setup()
 	//  codec2_destroy(codec2);
 
 	Serial.println("Starting I2S Input");
-	input = new Sgtl5000Sampler(I2S_NUM_0, 26, 25, 33);
+	// The pin config as per the setup
+	i2s_pin_config_t i2s_pin_config = {
+		.bck_io_num = 26,	// Serial Clock (SCK)
+		.ws_io_num = 25,	// Word Select (WS)
+		.data_out_num = 23, // data out to audio codec
+		.data_in_num = 33	// data from audio codec
+	};
+	input = new Sgtl5000Sampler(I2S_NUM_0, i2s_pin_config);
 	input->start(xQueue, codec2_samples_per_frame(codec2));
 	Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.

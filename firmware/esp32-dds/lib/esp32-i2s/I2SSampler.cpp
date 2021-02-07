@@ -3,7 +3,7 @@
 #include "I2SSampler.h"
 #include "driver/i2s.h"
 
-bool wanttoStop = false;
+static bool wanttoStopSampling = false;
 static TaskHandle_t xTaskToNotify = NULL;
 
 void i2sReaderTask(void *param)
@@ -13,7 +13,7 @@ void i2sReaderTask(void *param)
     size_t bytesRead = 0;
     for (;;)
     {
-        if (wanttoStop)
+        if (wanttoStopSampling)
         {
             xTaskNotifyGive(xTaskToNotify);
             vTaskSuspend(NULL);
@@ -57,12 +57,12 @@ void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_
     vTaskDelay(1);
     vTaskResume(m_i2s_readerTaskHandle);
     xTaskToNotify = xTaskGetCurrentTaskHandle();
-    wanttoStop = false;
+    wanttoStopSampling = false;
 }
 
 void I2SSampler::stop()
 {
-    wanttoStop = true;
+    wanttoStopSampling = true;
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     ESP_ERROR_CHECK(i2s_stop(m_i2sPort));
     ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));
