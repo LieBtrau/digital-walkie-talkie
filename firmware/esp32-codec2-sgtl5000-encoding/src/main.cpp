@@ -46,6 +46,7 @@
 #include "AsyncDelay.h"
 
 CODEC2 *codec2;
+const int SAMPLE_RATE = 8000;
 Sgtl5000Sampler *input;
 AudioControlSGTL5000 audioShield;
 QueueHandle_t xQueue;
@@ -56,6 +57,14 @@ SemaphoreHandle_t xSemaphoreCodec2 = NULL;
 AsyncDelay delay_3s;
 bool isPlaying = true;
 const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
+
+static i2s_pin_config_t i2s_pin_config = 
+{
+	.bck_io_num = 26,	// Serial Clock (SCK)
+	.ws_io_num = 25,	// Word Select (WS)
+	.data_out_num = 23, // data out to audio codec
+	.data_in_num = 33	// data from audio codec
+};
 
 void vEncoderTask(void *pvParameters)
 {
@@ -118,13 +127,8 @@ void setup()
 
 	Serial.println("Starting I2S Input");
 	// The pin config as per the setup
-	i2s_pin_config_t i2s_pin_config = {
-		.bck_io_num = 26,	// Serial Clock (SCK)
-		.ws_io_num = 25,	// Word Select (WS)
-		.data_out_num = 23, // data out to audio codec
-		.data_in_num = 33	// data from audio codec
-	};
-	input = new Sgtl5000Sampler(I2S_NUM_0, i2s_pin_config);
+
+	input = new Sgtl5000Sampler(I2S_NUM_0, &i2s_pin_config);
 	input->start(xQueue, codec2_samples_per_frame(codec2));
 	Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.

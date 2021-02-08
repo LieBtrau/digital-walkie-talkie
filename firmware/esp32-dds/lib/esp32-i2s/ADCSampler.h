@@ -8,6 +8,7 @@ class ADCSampler : public I2SSampler
 private:
     adc_unit_t m_adcUnit;
     adc1_channel_t m_adcChannel;
+    i2s_config_t adcI2SConfig;
 
 protected:
     void configureI2S();

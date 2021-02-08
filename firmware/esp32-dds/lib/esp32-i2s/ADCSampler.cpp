@@ -7,7 +7,7 @@
 #include "ADCSampler.h"
 #include "esp_adc_cal.h"
 
-ADCSampler::ADCSampler(adc_unit_t adcUnit, adc1_channel_t adcChannel)
+ADCSampler::ADCSampler(adc_unit_t adcUnit, adc1_channel_t adcChannel): I2SSampler(I2S_NUM_0, nullptr)
 {
     m_adcUnit = adcUnit;
     m_adcChannel = adcChannel;
@@ -49,13 +49,13 @@ void ADCSampler::configureI2S()
     //init ADC pad
     i2s_set_adc_mode(m_adcUnit, m_adcChannel);
     // enable the adc
-    i2s_adc_enable(getI2SPort());
+    i2s_adc_enable(I2S_NUM_0);
 }
 
 void ADCSampler::start(QueueHandle_t samplesQueue)
 {
     // i2s config for using the internal ADC
-    i2s_config_t adcI2SConfig = {
+    adcI2SConfig = {
         .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN),
         .sample_rate = 8000,
         .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
@@ -69,7 +69,7 @@ void ADCSampler::start(QueueHandle_t samplesQueue)
         .fixed_mclk = 0*/
     };
     //Only works on I2S port 0
-    I2SSampler::start(I2S_NUM_0, adcI2SConfig, samplesQueue, 100);
+    I2SSampler::start(&adcI2SConfig, samplesQueue, 100);
 }
 
     //// Also need to mask upper 4 bits which contain channel info (see gitter chat between me-no-dev and bzeeman)

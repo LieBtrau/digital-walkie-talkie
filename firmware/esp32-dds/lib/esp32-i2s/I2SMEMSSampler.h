@@ -13,6 +13,6 @@ protected:
     void configureI2S();
 
 public:
-    I2SMEMSSampler(i2s_pin_config_t &i2sPins, bool fixSPH0645 = false);
+    I2SMEMSSampler(i2s_pin_config_t* i2sPins, bool fixSPH0645 = false);
     void start(TaskHandle_t writerTaskHandle);
 };

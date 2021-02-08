@@ -5,14 +5,14 @@
 
 #include "I2SMEMSSampler.h"
 
-I2SMEMSSampler::I2SMEMSSampler(i2s_pin_config_t &i2sPins, bool fixSPH0645)
+I2SMEMSSampler::I2SMEMSSampler(i2s_pin_config_t* i2sPins, bool fixSPH0645): I2SSampler(I2S_NUM_0, i2sPins)
 {
-    m_i2sPins = i2sPins;
     m_fixSPH0645 = fixSPH0645;
 }
 
 void I2SMEMSSampler::configureI2S()
 {
+    /*
     if (m_fixSPH0645)
     {
         // FIXES for SPH0645
@@ -21,4 +21,5 @@ void I2SMEMSSampler::configureI2S()
     }
 
     i2s_set_pin(getI2SPort(), &m_i2sPins);
+    */
 }

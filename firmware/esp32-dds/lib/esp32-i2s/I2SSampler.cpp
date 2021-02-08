@@ -20,7 +20,7 @@ void i2sReaderTask(void *param)
         }
         else
         {
-            if (i2s_read(sampler->getI2SPort(), i2sData, sizeof(i2sData), &bytesRead, portMAX_DELAY) == ESP_OK)
+            if (i2s_read(sampler->m_i2sPort, i2sData, sizeof(i2sData), &bytesRead, portMAX_DELAY) == ESP_OK)
             {
                 // process the raw data
                 //https://github.com/rkinnett/ESP32-2-Way-Audio-Relay/blob/master/esp32_vban_2way_test/esp32_vban_2way_test.ino
@@ -37,13 +37,12 @@ void i2sReaderTask(void *param)
     }
 }
 
-void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_t samplesQueue, int pktSize)
+void I2SSampler::start(i2s_config_t *i2sConfig, QueueHandle_t samplesQueue, int pktSize)
 {
-    m_i2sPort = i2sPort;
     m_samplesQueue = samplesQueue;
     m_packetSize = pktSize;
     //install and start i2s driver
-    ESP_ERROR_CHECK(i2s_driver_install(m_i2sPort, &i2sConfig, 0, NULL));
+    ESP_ERROR_CHECK(i2s_driver_install(m_i2sPort, i2sConfig, 0, NULL));
     // clear the DMA buffers
     ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));
     // start a task to read samples from the ADC
@@ -51,6 +50,10 @@ void I2SSampler::start(i2s_port_t i2sPort, i2s_config_t &i2sConfig, QueueHandle_
     {
         m_frames = (int16_t *)calloc(m_packetSize, sizeof(int16_t));
         // set up the I2S configuration from the subclass
+        if (m_pin_config != nullptr)
+        {
+            ESP_ERROR_CHECK(i2s_set_pin(m_i2sPort, m_pin_config));
+        }
         configureI2S();
         xTaskCreate(i2sReaderTask, "i2s Reader Task", 4096, this, 1, &m_i2s_readerTaskHandle);
     }
@@ -82,4 +85,3 @@ void I2SSampler::addSample(int16_t sample)
         xQueueSendToBack(m_samplesQueue, m_frames, portMAX_DELAY);
     }
 }
-
