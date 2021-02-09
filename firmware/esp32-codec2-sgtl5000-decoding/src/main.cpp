@@ -52,7 +52,7 @@ Sgtl5000_Output *output;
 SampleSource *sampleSource;
 AudioControlSGTL5000 audioShield;
 QueueHandle_t xAudioSamplesQueue;
-QueueHandle_t xCodec2DataQueue;
+QueueHandle_t xCodec2BitsQueue;
 AsyncDelay delay_1s;
 bool isPlaying = true;
 const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
@@ -87,7 +87,7 @@ void vCodec2SampleSource(void *pvParameters)
 		if (nbit_ctr + nbyte < lookdave_bit_len)
 		{
 			memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
-			xQueueSendToBack(xCodec2DataQueue, bits, portMAX_DELAY);
+			xQueueSendToBack(xCodec2BitsQueue, bits, portMAX_DELAY);
 			nbit_ctr += nbyte;
 		}
 		else
@@ -117,14 +117,14 @@ void setup()
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
 	nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
-	xCodec2DataQueue = xQueueCreate(3, nbyte);
-	if (xCodec2DataQueue == NULL)
+	xCodec2BitsQueue = xQueueCreate(3, nbyte);
+	if (xCodec2BitsQueue == NULL)
 	{
 		Serial.println("Can't create queue");
 		while (true)
 			;
 	}
-	sampleSource = new Codec2Generator(codec2, xCodec2DataQueue);
+	sampleSource = new Codec2Generator(codec2, xCodec2BitsQueue);
 	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
 	if (xAudioSamplesQueue == NULL)
 	{
@@ -143,7 +143,7 @@ void setup()
 		.data_out_num = 23, // data out to audio codec
 		.data_in_num = 33	// data from audio codec
 	};
-	output = new Sgtl5000_Output(i2s_pin_config);
+	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
 	output->start(sampleSource, xAudioSamplesQueue); //init needed here to generate MCLK, needed for SGTL5000 init.
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
 	audioShield.volume(0.5);

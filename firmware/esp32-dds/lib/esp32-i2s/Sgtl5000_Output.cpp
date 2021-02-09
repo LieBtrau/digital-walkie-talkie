@@ -9,34 +9,30 @@
 #include "Sgtl5000_Output.h"
 #include "SampleSource.h"
 
-Sgtl5000_Output::Sgtl5000_Output(i2s_pin_config_t pin_config) : m_pin_config(pin_config)
+Sgtl5000_Output::Sgtl5000_Output(i2s_port_t i2sPort, i2s_pin_config_t* pin_config) : I2SOutput(i2sPort, pin_config)
 {
 }
 
 void Sgtl5000_Output::start(SampleSource *sample_generator, QueueHandle_t xAudioSamplesQueue)
 {
-    i2s_config_t i2sConfig = {
-        .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX), // Only TX
-        .sample_rate = sample_generator->sampleRate(),       // Default: 48kHz
-        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,        // 16-bit per channel
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,        // 2-channels
-        .communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
-        .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, //Interrupt level 1
-        .dma_buf_count = 2,
-        .dma_buf_len = 256,
-        .use_apll = true,
-        .tx_desc_auto_clear = true,
-        .fixed_mclk = sample_generator->sampleRate() * 256
-        };
-
-    I2SOutput::start(I2S_NUM_0, i2sConfig, xAudioSamplesQueue, sample_generator->getFrameSize());
-
+	i2s_config_t m_i2sConfig = {
+		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX), // Only TX
+		.sample_rate = sample_generator->sampleRate(),
+		.bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // 16-bit per channel
+		.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT, // 2-channels
+		.communication_format = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB),
+		.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, //Interrupt level 1
+		.dma_buf_count = 2,
+		.dma_buf_len = 256,
+		.use_apll = true,
+		.tx_desc_auto_clear = true,
+		.fixed_mclk = sample_generator->sampleRate() * 256};
+    I2SOutput::start(&m_i2sConfig, xAudioSamplesQueue, sample_generator->getFrameSize());
 }
 
 void Sgtl5000_Output::configureI2S()
 {
-	ESP_ERROR_CHECK(i2s_set_pin(getI2SPort(), &m_pin_config));
     // Enable MCLK output
-    WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL)&0xFFFFFFF0);
-    PIN_FUNC_SELECT (PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
+    WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
+    PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
 }

@@ -5,7 +5,7 @@
 class Sgtl5000_Output : public I2SOutput
 {
 public:
-    Sgtl5000_Output(i2s_pin_config_t pin_config);
+    Sgtl5000_Output(i2s_port_t i2sPort, i2s_pin_config_t* pin_config);
     void start(SampleSource *sample_generator, QueueHandle_t xAudioSamplesQueue);
 
 protected:
