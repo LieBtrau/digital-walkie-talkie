@@ -3,9 +3,9 @@
 #include <math.h>
 #include "Codec2Generator.h"
 
-Codec2Generator::Codec2Generator(CODEC2 *codec2, QueueHandle_t xCodec2DataQueue) : SampleSource(codec2_samples_per_frame(codec2)),
+Codec2Generator::Codec2Generator(CODEC2 *codec2, QueueHandle_t xCodec2BitsQueue) : SampleSource(codec2_samples_per_frame(codec2)),
                                                                                    m_codec2(codec2),
-                                                                                   m_xCodec2DataQueue(xCodec2DataQueue)
+                                                                                   m_xCodec2BitsQueue(xCodec2BitsQueue)
 {
     nsam = codec2_samples_per_frame(codec2);
     nbit = codec2_bits_per_frame(codec2);
@@ -19,7 +19,7 @@ Codec2Generator::Codec2Generator(CODEC2 *codec2, QueueHandle_t xCodec2DataQueue)
  */
 void Codec2Generator::getFrames(Frame_t *frames, int number_frames, SemaphoreHandle_t xSemaphoreCodec2)
 {
-    if (xQueueReceive(m_xCodec2DataQueue, bits, portMAX_DELAY) == pdTRUE)
+    if (xQueueReceive(m_xCodec2BitsQueue, bits, portMAX_DELAY) == pdTRUE)
     {
         if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)
         {
