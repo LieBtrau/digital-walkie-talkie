@@ -44,53 +44,44 @@
 #include "control_sgtl5000.h"
 #include "base64.hpp"
 #include "AsyncDelay.h"
+#include "Codec2Encoder.h"
 
 CODEC2 *codec2;
-const int SAMPLE_RATE = 8000;
 Sgtl5000Sampler *input;
 AudioControlSGTL5000 audioShield;
 QueueHandle_t xQueue;
-unsigned char *bits;
-int nbyte;
 int lineLength = 0;
 SemaphoreHandle_t xSemaphoreCodec2 = NULL;
 AsyncDelay delay_3s;
 bool isPlaying = true;
 const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
+SampleSink *sampleSink;
 
-static i2s_pin_config_t i2s_pin_config = 
-{
-	.bck_io_num = 26,	// Serial Clock (SCK)
-	.ws_io_num = 25,	// Word Select (WS)
-	.data_out_num = 23, // data out to audio codec
-	.data_in_num = 33	// data from audio codec
+static i2s_pin_config_t i2s_pin_config =
+	{
+		.bck_io_num = 26,	// Serial Clock (SCK)
+		.ws_io_num = 25,	// Word Select (WS)
+		.data_out_num = 23, // data out to audio codec
+		.data_in_num = 33	// data from audio codec
 };
 
 void vEncoderTask(void *pvParameters)
 {
-	short samples[codec2_samples_per_frame(codec2)];
+	int nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
+	unsigned char *bits = (unsigned char *)calloc(nbyte, sizeof(unsigned char));
 	char *b64 = (char *)malloc(nbyte * 2);
 
 	for (;;)
 	{
-		if (xQueueReceive(xQueue, samples, portMAX_DELAY) == pdTRUE && xSemaphoreCodec2 != NULL)
+		sampleSink->setFrames(xQueue, bits, xSemaphoreCodec2);
+
+		encode_base64(bits, nbyte, (byte *)b64);
+		Serial.print(b64);
+		lineLength += strlen(b64);
+		if (lineLength > 80)
 		{
-			/* See if we can obtain the semaphore.  If the semaphore is not available wait 10 ticks to see if it becomes free. */
-			if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)
-			{
-				/* We were able to obtain the semaphore and can now access the shared resource. */
-				codec2_encode(codec2, bits, samples);
-				encode_base64(bits, nbyte, (byte *)b64);
-				Serial.print(b64);
-				lineLength += strlen(b64);
-				if (lineLength > 80)
-				{
-					Serial.println();
-					lineLength = 0;
-				}
-				/* We have finished accessing the shared resource.  Release the semaphore. */
-				xSemaphoreGive(xSemaphoreCodec2);
-			}
+			Serial.println();
+			lineLength = 0;
 		}
 	}
 }
@@ -105,8 +96,7 @@ void setup()
 
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
-	nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
-	bits = (unsigned char *)calloc(nbyte, sizeof(unsigned char));
+	sampleSink = new Codec2Encoder(codec2);
 
 	xQueue = xQueueCreate(3, sizeof(uint16_t) * codec2_samples_per_frame(codec2));
 	if (xQueue == NULL)
@@ -129,7 +119,7 @@ void setup()
 	// The pin config as per the setup
 
 	input = new Sgtl5000Sampler(I2S_NUM_0, &i2s_pin_config);
-	input->start(xQueue, codec2_samples_per_frame(codec2));
+	input->start(sampleSink, xQueue);
 	Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	xTaskCreate(vEncoderTask, "Codec2Encoder", 24576, NULL, 2, NULL);
@@ -146,7 +136,7 @@ void loop()
 		}
 		else
 		{
-			input->start(xQueue, codec2_samples_per_frame(codec2));
+			input->start(sampleSink, xQueue);
 		}
 		digitalWrite(iopin, isPlaying ? HIGH : LOW);
 		isPlaying = !isPlaying;

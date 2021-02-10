@@ -22,3 +22,19 @@ public:
 private:
     int m_frameSize = 128;
 };
+
+/**
+ * Base class for our sample generators
+ **/
+class SampleSink
+{
+public:
+    SampleSink(){};
+    SampleSink(int frameSize) : m_frameSize(frameSize){};
+    virtual int sampleRate() = 0;
+    virtual void setFrames(QueueHandle_t inputQueue, byte* data, SemaphoreHandle_t xSemaphoreCodec2) = 0;
+    int getFrameSize(){return m_frameSize;};
+private:
+    int m_frameSize = 128;
+};
+
