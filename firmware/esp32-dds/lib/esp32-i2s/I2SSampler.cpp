@@ -46,15 +46,15 @@ void I2SSampler::start(i2s_config_t *i2sConfig, QueueHandle_t samplesQueue, int 
     // clear the DMA buffers
     ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));
     // start a task to read samples from the ADC
+    if (m_pin_config != nullptr)
+    {
+        ESP_ERROR_CHECK(i2s_set_pin(m_i2sPort, m_pin_config));
+    }
+    configureI2S();
     if (m_i2s_readerTaskHandle == NULL)
     {
         m_frames = (int16_t *)calloc(m_packetSize, sizeof(int16_t));
         // set up the I2S configuration from the subclass
-        if (m_pin_config != nullptr)
-        {
-            ESP_ERROR_CHECK(i2s_set_pin(m_i2sPort, m_pin_config));
-        }
-        configureI2S();
         xTaskCreate(i2sReaderTask, "i2s Reader Task", 4096, this, 1, &m_i2s_readerTaskHandle);
     }
     vTaskDelay(1);

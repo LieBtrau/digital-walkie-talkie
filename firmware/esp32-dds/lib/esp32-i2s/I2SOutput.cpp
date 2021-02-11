@@ -44,7 +44,7 @@ void i2sWriterTask(void *param)
     }
 }
 
-void I2SOutput::start(i2s_config_t* i2sConfig, QueueHandle_t samplesQueue, int pktSize)
+void I2SOutput::start(i2s_config_t *i2sConfig, QueueHandle_t samplesQueue, int pktSize)
 {
     m_samplesQueue = samplesQueue;
     //xQueueReset(m_samplesQueue);
@@ -73,10 +73,10 @@ void I2SOutput::startTask()
     // clear the DMA buffers
     ESP_ERROR_CHECK(i2s_zero_dma_buffer(m_i2sPort));
     // start a task to write samples to the i2s peripheral
+    ESP_ERROR_CHECK(i2s_set_pin(m_i2sPort, m_pin_config));
+    configureI2S();
     if (m_i2s_writerTaskHandle == NULL)
     {
-        ESP_ERROR_CHECK(i2s_set_pin(m_i2sPort, m_pin_config));
-        configureI2S();
         xTaskCreate(i2sWriterTask, "i2s Writer Task", 4096, this, 1, &m_i2s_writerTaskHandle);
     }
     vTaskDelay(1);
