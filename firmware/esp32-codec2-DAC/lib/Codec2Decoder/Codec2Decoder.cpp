@@ -3,7 +3,7 @@
 #include <math.h>
 #include "Codec2Decoder.h"
 
-Codec2Generator::Codec2Generator(CODEC2 *codec2) : SampleSource(codec2_samples_per_frame(codec2)),
+Codec2Decoder::Codec2Decoder(CODEC2 *codec2) : SampleSource(codec2_samples_per_frame(codec2)),
                                                                               m_codec2(codec2)
 {
     nsam = getFrameSampleCount();
@@ -15,7 +15,7 @@ Codec2Generator::Codec2Generator(CODEC2 *codec2) : SampleSource(codec2_samples_p
 /* This function should not take longer than codec2_samples_per_frame / sample rate
  * e.g. for codec2 1200bps: 320 / 8000 = 40ms
  */
-void Codec2Generator::getFrames(byte *bits, QueueHandle_t outputQueue, SemaphoreHandle_t xSemaphoreCodec2)
+void Codec2Decoder::getFrames(byte *bits, QueueHandle_t outputQueue, SemaphoreHandle_t xSemaphoreCodec2)
 {
     Frame_t samples[getFrameSampleCount()];
     if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)

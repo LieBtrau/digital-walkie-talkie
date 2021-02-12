@@ -39,7 +39,7 @@
  * SCL                                      19                              GPIO22
  */
 
-#include "Codec2Generator.h"
+#include "Codec2Decoder.h"
 #include "DacOutput.h"
 #include "codec2.h"
 #include "lookdave.h"
@@ -58,6 +58,14 @@ const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
 
 int nbit_ctr = 0;
 SemaphoreHandle_t xSemaphoreCodec2 = NULL;
+
+// The pin config as per the setup
+static i2s_pin_config_t i2s_pin_config = {
+	.bck_io_num = 26,	// Serial Clock (SCK)
+	.ws_io_num = 25,	// Word Select (WS)
+	.data_out_num = 23, // data out to audio codec
+	.data_in_num = 33	// data from audio codec
+};
 
 /**
  *	This task should normally get its samples from the wireless connection, not from some fix buffer 
@@ -98,8 +106,8 @@ void setup()
 	}
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
-	sampleSource = new Codec2Generator(codec2);
-	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
+	sampleSource = new Codec2Decoder(codec2);
+	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSampleCount());
 	if (xAudioSamplesQueue == NULL)
 	{
 		Serial.println("Can't create queue");
@@ -110,13 +118,6 @@ void setup()
 	//  codec2_destroy(codec2);
 
 	Serial.println("Starting I2S Output");
-	// The pin config as per the setup
-	i2s_pin_config_t i2s_pin_config = {
-		.bck_io_num = 26,	// Serial Clock (SCK)
-		.ws_io_num = 25,	// Word Select (WS)
-		.data_out_num = 23, // data out to audio codec
-		.data_in_num = 33	// data from audio codec
-	};
 	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
 	output->start(sampleSource, xAudioSamplesQueue); //init needed here to generate MCLK, needed for SGTL5000 init.
 	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
