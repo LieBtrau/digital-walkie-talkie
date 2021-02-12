@@ -124,7 +124,7 @@ void setup()
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
 
-	sampleSource = new Codec2Generator(codec2);
+	sampleSource = new Codec2Decoder(codec2);
 	sampleSink = new Codec2Encoder(codec2);
 
 	xCodec2BitsQueue = xQueueCreate(3, sizeof(uint16_t) * sampleSink->getFrameSampleCount());
