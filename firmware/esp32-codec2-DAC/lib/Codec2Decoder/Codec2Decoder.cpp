@@ -1,12 +1,12 @@
 /* 
  */
 #include <math.h>
-#include "Codec2Generator.h"
+#include "Codec2Decoder.h"
 
 Codec2Generator::Codec2Generator(CODEC2 *codec2) : SampleSource(codec2_samples_per_frame(codec2)),
                                                                               m_codec2(codec2)
 {
-    nsam = getFrameSize();
+    nsam = getFrameSampleCount();
     nbit = codec2_bits_per_frame(codec2);
     buf = (short *)malloc(nsam * sizeof(short));
     nbyte = (nbit + 7) / 8;
@@ -17,7 +17,7 @@ Codec2Generator::Codec2Generator(CODEC2 *codec2) : SampleSource(codec2_samples_p
  */
 void Codec2Generator::getFrames(byte *bits, QueueHandle_t outputQueue, SemaphoreHandle_t xSemaphoreCodec2)
 {
-    Frame_t samples[getFrameSize()];
+    Frame_t samples[getFrameSampleCount()];
     if (xSemaphoreTake(xSemaphoreCodec2, (TickType_t)10) == pdTRUE)
     {
         codec2_decode(m_codec2, buf, bits);

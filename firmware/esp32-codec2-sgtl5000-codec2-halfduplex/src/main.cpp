@@ -39,7 +39,7 @@
  * SCL                                      19                              GPIO22
  */
 
-#include "Codec2Generator.h"
+#include "Codec2Decoder.h"
 #include "Codec2Encoder.h"
 #include "DacOutput.h"
 #include "codec2.h"
@@ -57,7 +57,7 @@ SampleSource *sampleSource;
 SampleSink *sampleSink;
 AudioControlSGTL5000 audioShield;
 QueueHandle_t xAudioSamplesQueue;
-QueueHandle_t xCodec2DataQueue;
+QueueHandle_t xCodec2BitsQueue;
 AsyncDelay delay_1s;
 bool isPlaying = true;
 const int iopin = 4; //maximum 3.3MHz digitalWrite toggle frequency.
@@ -81,7 +81,7 @@ void vEncoderTask(void *pvParameters)
 
 	for (;;)
 	{
-		sampleSink->setFrames(xCodec2DataQueue, bits, xSemaphoreCodec2);
+		sampleSink->setFrames(xCodec2BitsQueue, bits, xSemaphoreCodec2);
 
 		encode_base64(bits, nbyte, (byte *)b64);
 		Serial.print(b64);
@@ -127,14 +127,14 @@ void setup()
 	sampleSource = new Codec2Generator(codec2);
 	sampleSink = new Codec2Encoder(codec2);
 
-	xCodec2DataQueue = xQueueCreate(3, sizeof(uint16_t) * sampleSink->getFrameSize());
-	if (xCodec2DataQueue == NULL)
+	xCodec2BitsQueue = xQueueCreate(3, sizeof(uint16_t) * sampleSink->getFrameSampleCount());
+	if (xCodec2BitsQueue == NULL)
 	{
 		Serial.println("Can't create queue");
 		while (true)
 			;
 	}
-	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSize());
+	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSampleCount());
 	if (xAudioSamplesQueue == NULL)
 	{
 		Serial.println("Can't create queue");
@@ -152,12 +152,7 @@ void setup()
 	//  codec2_destroy(codec2);
 
 	Serial.println("Starting I2S Output");
-	// The pin config as per the setup
-
 	input = new Sgtl5000Sampler(I2S_NUM_0, &i2s_pin_config);
-	//	input->start(sampleSink, xCodec2DataQueue);
-	// vTaskDelay(1);
-
 	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
 	output->start(sampleSource, xAudioSamplesQueue); //init needed here to generate MCLK, needed for SGTL5000 init.
 
@@ -165,7 +160,7 @@ void setup()
 	audioShield.volume(0.5);
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	xTaskCreate(vEncoderTask, "Codec2Encoder", 24576, NULL, 2, NULL);
-	xTaskCreate(vCodec2SampleSource, "SampleSource", 24576, NULL, 2, NULL);
+	xTaskCreate(vCodec2SampleSource, "Codec2Decoder", 24576, NULL, 2, NULL);
 }
 
 void loop()
@@ -177,7 +172,7 @@ void loop()
 		{
 			output->stop();
 			vTaskDelay(1);
-			input->start(sampleSink, xCodec2DataQueue);
+			input->start(sampleSink, xCodec2BitsQueue);
 		}
 		else
 		{

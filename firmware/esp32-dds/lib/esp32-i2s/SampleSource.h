@@ -15,12 +15,12 @@ class SampleSource
 {
 public:
     SampleSource(){};
-    SampleSource(int frameSize) : m_frameSize(frameSize){};
+    SampleSource(int frameSize) : m_frameSampleCount(frameSize){};
     virtual int sampleRate() = 0;
     virtual void getFrames(byte* data, QueueHandle_t outputQueue, SemaphoreHandle_t xSemaphoreCodec2) = 0;
-    int getFrameSize(){return m_frameSize;};
+    int getFrameSampleCount(){return m_frameSampleCount;};
 private:
-    int m_frameSize = 128;
+    int m_frameSampleCount = 128;
 };
 
 /**
@@ -30,11 +30,11 @@ class SampleSink
 {
 public:
     SampleSink(){};
-    SampleSink(int frameSize) : m_frameSize(frameSize){};
+    SampleSink(int frameSize) : m_frameSampleCount(frameSize){};
     virtual int sampleRate() = 0;
     virtual void setFrames(QueueHandle_t inputQueue, byte* data, SemaphoreHandle_t xSemaphoreCodec2) = 0;
-    int getFrameSize(){return m_frameSize;};
+    int getFrameSampleCount(){return m_frameSampleCount;};
 private:
-    int m_frameSize = 128;
+    int m_frameSampleCount = 128;
 };
 

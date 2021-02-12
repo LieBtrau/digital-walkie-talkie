@@ -21,7 +21,7 @@ void Sgtl5000Sampler::start(SampleSink* sampleSink, QueueHandle_t xAudioSamplesQ
 		.use_apll = true,
 		.tx_desc_auto_clear = true,
 		.fixed_mclk = sampleSink->sampleRate() * 256};
-	I2SSampler::start(&i2s_config, xAudioSamplesQueue, sampleSink->getFrameSize());
+	I2SSampler::start(&i2s_config, xAudioSamplesQueue, sampleSink->getFrameSampleCount());
 }
 
 void Sgtl5000Sampler::configureI2S()
