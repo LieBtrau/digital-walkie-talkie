@@ -68,6 +68,7 @@ static i2s_pin_config_t i2s_pin_config =
 void vEncoderTask(void *pvParameters)
 {
 	int nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
+	Serial.printf("Codec2 packet length: %d bytes.\n", nbyte);
 	unsigned char *bits = (unsigned char *)calloc(nbyte, sizeof(unsigned char));
 	char *b64 = (char *)malloc(nbyte * 2);
 
