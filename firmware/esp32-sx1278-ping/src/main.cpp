@@ -1,6 +1,7 @@
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
+#include "AsyncDelay.h"
 
 // SX1278 has the following connections:
 // 3V3        ESP32.3V3
@@ -31,9 +32,7 @@ RH_RF95 driver(5, 39);
 
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
-
-// Need this on Arduino Zero with SerialUSB port (eg RocketScream Mini Ultra Pro)
-//#define Serial SerialUSB
+AsyncDelay wperfTimer;
 
 void setup()
 {
@@ -49,7 +48,8 @@ void setup()
 	if (!manager.init())
 	{
 		Serial.println("init failed");
-		while (true);
+		while (true)
+			;
 	}
 	pinMode(CLIENT_SERVER_PIN, INPUT_PULLUP);
 	// Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
@@ -63,20 +63,27 @@ void setup()
 	// then you can configure the power transmitter power for 0 to 15 dBm and with useRFO true.
 	// Failure to do that will result in extremely low transmit powers.
 	//  driver.setTxPower(14, true);
+	driver.setModemConfig(driver.Bw125Cr45Sf128);
 
 	// You can optionally require this module to wait until Channel Activity
 	// Detection shows no activity on the channel before transmitting by setting
 	// the CAD timeout to non-zero:
 	//  driver.setCADTimeout(10000);
+	wperfTimer.start(10000, AsyncDelay::MILLIS);
 	Serial.println("All setup");
-	isClientMode = digitalRead(CLIENT_SERVER_PIN)==HIGH ? true : false;
+	isClientMode = digitalRead(CLIENT_SERVER_PIN) == HIGH ? true : false;
 	Serial.printf("Mode is %s\n", isClientMode ? "client" : "server");
+	Serial.printf("Maximum message length : %d\r\n", driver.maxMessageLength());
 }
 
-uint8_t serverdata[] = "And hello back to you";
-uint8_t clientdata[] = "Hello World!";
+uint8_t clientdata[10];
 // Dont put this on the stack:
 uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+
+int packetCount = 0;
+float averageRssi = 0;
+float averageSNR = 0;
+int totalBytes = 0;
 
 void serverloop()
 {
@@ -87,51 +94,41 @@ void serverloop()
 		uint8_t from;
 		if (manager.recvfromAck(buf, &len, &from))
 		{
-			Serial.print("got request from : 0x");
-			Serial.print(from, HEX);
-			Serial.print(": ");
-			Serial.println((char *)buf);
-
-			// Send a reply back to the originator client
-			if (!manager.sendtoWait(serverdata, sizeof(serverdata), from))
-				Serial.println("sendtoWait failed");
+			totalBytes += len;
+			packetCount++;
+			averageRssi += driver.lastRssi();
+			averageSNR += driver.lastSNR();
+		}
+		if (wperfTimer.isExpired())
+		{
+			wperfTimer.repeat();
+			Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f", totalBytes, packetCount, totalBytes*8/10.0f);
+			Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi/packetCount, averageSNR/packetCount);
+			packetCount = 0;
+			averageRssi = 0;
+			averageSNR = 0;
+			totalBytes = 0;
 		}
 	}
 }
 
 void clientloop()
 {
-	Serial.println("Sending to rf95_reliable_datagram_server");
-
 	// Send a message to manager_server
 	if (manager.sendtoWait(clientdata, sizeof(clientdata), SERVER_ADDRESS))
 	{
-		// Now wait for a reply from the server
-		uint8_t len = sizeof(buf);
-		uint8_t from;
-		if (manager.recvfromAckTimeout(buf, &len, 2000, &from))
-		{
-			Serial.print("got reply from : 0x");
-			Serial.print(from, HEX);
-			Serial.print(": ");
-			Serial.println((char *)buf);
-		}
-		else
-		{
-			Serial.println("No reply, is rf95_reliable_datagram_server running?");
-		}
 	}
 	else
 		Serial.println("sendtoWait failed");
-	delay(500);
 }
 
 void loop()
 {
-	if(isClientMode)
+	if (isClientMode)
 	{
 		clientloop();
-	}else
+	}
+	else
 	{
 		serverloop();
 	}
