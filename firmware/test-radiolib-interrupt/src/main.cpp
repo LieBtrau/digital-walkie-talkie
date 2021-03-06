@@ -24,7 +24,7 @@ const int CLIENT_SERVER_PIN = 32;
 #error Unsupported platform
 #endif
 
-#ifdef ARDUINO_NodeMCU_32S//ARDUINO_NUCLEO_F303K8
+#ifdef ARDUINO_NUCLEO_F303K8
 // flag to indicate that a packet was received
 volatile bool receivedFlag = false;
 
@@ -211,6 +211,11 @@ void setup()
 	// set the function that will be called
 	// when packet transmission is finished
 	radio.setDio0Action(setFlag);
+	/*	Using the frequency error indication (FEI), we can adjust the frequency of this module to get it close to the 
+	 *	frequency of the other module.
+	 *	Multiple modules need to be synced, then we better sync them to a reference clock.
+	 */
+	radio.setFrequency(434.00356);
 
 	// start transmitting the first packet
 	Serial.print(F("[SX1278] Sending first packet ... "));
