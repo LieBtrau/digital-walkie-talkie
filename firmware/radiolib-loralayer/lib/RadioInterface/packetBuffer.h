@@ -3,7 +3,7 @@
 #pragma once
 #include "Arduino.h"
 
-#define BUFFERSIZE 16
+#define BUFFERSIZE 4        //Reducing size for the limited RAM of the Nucleo32 F303K
 #define MAX_PACKET_SIZE 255
 
 struct BufferEntry {

@@ -18,19 +18,16 @@
 
 #ifdef ARDUINO_NUCLEO_F303K8
 SX1278 radio = new Module(A3, D2, D6, D3);
-const int CLIENT_SERVER_PIN = D7;
 #elif defined(ARDUINO_NodeMCU_32S)
 SX1278 radio = new Module(5, 39, 36, 34);
-const int CLIENT_SERVER_PIN = 32;
 #endif
 
 AsyncDelay wperfTimer;
 uint8_t RECEIVER[ADDR_LENGTH] = {0xc0, 0xd3, 0xca, 0xfe};
 int counter = 0;
 const int DATAGRAM_HEADER = 5;
-bool isClientMode;
-Layer1Class *Layer1;
-Layer2 *layer2;
+Layer1Class Layer1(&radio, 0);
+Layer2 layer2(&Layer1);
 
 void setup()
 {
@@ -39,11 +36,9 @@ void setup()
 
 	Serial.println("* Initializing LoRa...");
 
-	Layer1 = new Layer1Class(&radio, 0);
-	if (Layer1->init())
+	if (Layer1.init())
 	{
 		Serial.println(" --> LoRa initialized");
-		//layer2 = new Layer2(Layer1);
 	}
 	else
 	{
@@ -52,9 +47,6 @@ void setup()
 			;
 	}
 	wperfTimer.start(1000, AsyncDelay::MILLIS);
-	pinMode(CLIENT_SERVER_PIN, INPUT_PULLUP);
-	isClientMode = digitalRead(CLIENT_SERVER_PIN) == HIGH ? true : false;
-	Serial.printf("Mode is %s\n", isClientMode ? "client" : "server");
 }
 
 void clientloop()
@@ -62,41 +54,39 @@ void clientloop()
 	if (wperfTimer.isExpired())
 	{
 		wperfTimer.repeat();
-		BufferEntry entry;
-		char s[] = "Hallo";
-		memcpy(entry.data, s, sizeof(s));
-		entry.length = sizeof(s);
-		Layer1->txBuffer->write(entry);
-		Layer1->transmit();
-		// 	msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);
-		// 	memcpy(datagram.destination, RECEIVER, ADDR_LENGTH);
-		// 	datagram.type = 's'; // can be anything, but 's' for 'sensor'
-		// 	datagramsize = msglen + DATAGRAM_HEADER;
-
-		// 	// Send packet
-		// 	layer2->writeData(datagram, datagramsize);
-		// 	counter++;
-		// 	Serial.println((char *)datagram.message);
+		// BufferEntry entry;
+		// char s[] = "Hallo";
+		// memcpy(entry.data, s, sizeof(s));
+		// entry.length = sizeof(s);
+		// Layer1.txBuffer->write(entry);
+		// Layer1.transmit();
+		struct Datagram datagram; 
+		int msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);
+		memcpy(datagram.destination, RECEIVER, ADDR_LENGTH);
+		datagram.type = 's'; // can be anything, but 's' for 'sensor'
+	
+		// Send packet
+		layer2.writeData(datagram, msglen + DATAGRAM_HEADER);
+		counter++;
+		Serial.println((char *)datagram.message);
 	}
 }
 
 void serverloop()
 {
-	if (Layer1->receive() > 0)
-	{
-		BufferEntry entry = Layer1->rxBuffer->read();
-		Serial.println(entry.data);
-	}
+	layer2.daemon();
+	// if (Layer1.receive() > 0)
+	// {
+	// 	BufferEntry entry = Layer1.rxBuffer->read();
+	// 	Serial.println(entry.data);
+	// }
 }
 
 void loop()
 {
-	if (isClientMode)
-	{
-		clientloop();
-	}
-	else
-	{
-		serverloop();
-	}
+#ifdef ARDUINO_NUCLEO_F303K8
+	clientloop();
+#elif defined(ARDUINO_NodeMCU_32S)
+	serverloop();
+#endif
 }

@@ -16,7 +16,7 @@ Layer2::~Layer2()
 int Layer2::writeData(Datagram datagram, size_t length)
 {
 #ifdef LL2_DEBUG
-    Serial.printf("LoRaLayer2::writeData(): datagram.message = ");
+    Serial.printf("LL2::writeData(): datagram.message = ");
     for (int i = 0; i < length - 5; i++)
     {
         Serial.printf("%c", datagram.message[i]);
@@ -33,7 +33,7 @@ Packet Layer2::readData()
 #ifdef LL2_DEBUG
     if (packet.totalLength > 0)
     {
-        Serial.printf("LoRaLayer2::readData(): packet.datagram.message = ");
+        Serial.printf("LL2::readData(): packet.datagram.message = ");
         for (int i = 0; i < packet.totalLength - HEADER_LENGTH - 5; i++)
         {
             Serial.printf("%c", packet.datagram.message[i]);
@@ -90,7 +90,7 @@ int Layer2::daemon()
     if (_radio->receive() > 0)
     {
 #ifdef LL2_DEBUG
-        Serial.printf("LL2Class::daemon: received packet\r\n");
+        Serial.printf("LL2::daemon: received packet\r\n");
 #endif
         receive();
     }
@@ -106,7 +106,7 @@ void Layer2::receive()
     //memcpy(&packet, entry.data, entry.length);
 
 #ifdef LL2_DEBUG
-    Serial.printf("LoRaLayer2::receive(): packet.datagram.message = ");
+    Serial.printf("LL2::receive(): packet.datagram.message = ");
     for (int i = 0; i < packet.totalLength - HEADER_LENGTH - 5; i++)
     {
         Serial.printf("%c", packet.datagram.message[i]);
