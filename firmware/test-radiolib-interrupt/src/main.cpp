@@ -20,6 +20,8 @@ const int CLIENT_SERVER_PIN = D7;
 #elif defined(ARDUINO_NodeMCU_32S)
 SX1278 radio = new Module(5, 39, 36, 34);
 const int CLIENT_SERVER_PIN = 32;
+#else
+#error Unsupported platform
 #endif
 
 #ifdef ARDUINO_NodeMCU_32S//ARDUINO_NUCLEO_F303K8
