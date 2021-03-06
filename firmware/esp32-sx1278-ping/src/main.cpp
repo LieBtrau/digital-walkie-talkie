@@ -27,7 +27,11 @@ bool isClientMode;
 #define SERVER_ADDRESS 2
 
 // Singleton instance of the radio driver
+#ifdef ARDUINO_NUCLEO_F303K8
+RH_RF95 driver(A3, D2);
+#else
 RH_RF95 driver(5, 39);
+#endif
 //RH_RF95 driver(5, 2); // Rocket Scream Mini Ultra Pro with the RFM95W
 
 // Class to manage message delivery and receipt, using the driver declared above
@@ -72,7 +76,7 @@ void setup()
 	wperfTimer.start(10000, AsyncDelay::MILLIS);
 	Serial.println("All setup");
 	isClientMode = digitalRead(CLIENT_SERVER_PIN) == HIGH ? true : false;
-	Serial.printf("Mode is %s\n", isClientMode ? "client" : "server");
+	Serial.printf("Mode is %s\r\n", isClientMode ? "client" : "server");
 	Serial.printf("Maximum message length : %d\r\n", driver.maxMessageLength());
 }
 
@@ -102,8 +106,15 @@ void serverloop()
 		if (wperfTimer.isExpired())
 		{
 			wperfTimer.repeat();
-			Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f", totalBytes, packetCount, totalBytes*8/10.0f);
-			Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi/packetCount, averageSNR/packetCount);
+			Serial.println(".");
+			// Serial.printf("Total bytes : %d", totalBytes);
+			// Serial.printf("\tTotal packets : %d", packetCount);
+			//Serial.printf("\tBitrate : %f\r\n", totalBytes * 8 / 10.0f);
+			delay(200);
+			if (packetCount > 0)
+			{
+				Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
+			}
 			packetCount = 0;
 			averageRssi = 0;
 			averageSNR = 0;
