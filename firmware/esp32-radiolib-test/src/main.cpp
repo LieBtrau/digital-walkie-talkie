@@ -18,9 +18,11 @@
 
 #ifdef ARDUINO_NUCLEO_F303K8
 bool useTxInterrtupt = true;
+bool useRxInterrupt = false;
 SX1278 radio = new Module(A3, D2, D6, D3);
 #elif defined(ARDUINO_NodeMCU_32S)
 bool useTxInterrtupt = false;
+bool useRxInterrupt = true;
 SX1278 radio = new Module(5, 39, 36, 34);
 #endif
 
@@ -29,6 +31,9 @@ AsyncDelay wperfTimer;
 int transmissionState = ERR_NONE;
 // flag to indicate that a packet was sent
 volatile bool transmittedFlag = false;
+
+// flag to indicate that a packet was received
+volatile bool receivedFlag = false;
 
 // disable interrupt when it's not needed
 volatile bool enableInterrupt = true;
@@ -45,8 +50,16 @@ void setFlag(void)
 		return;
 	}
 
-	// we sent a packet, set the flag
-	transmittedFlag = true;
+	if (useTxInterrtupt)
+	{
+		// we sent a packet, set the flag
+		transmittedFlag = true;
+	}
+	if (useRxInterrupt)
+	{
+		// we got a packet, set the flag
+		receivedFlag = true;
+	}
 }
 
 void setup()
@@ -79,6 +92,27 @@ void setup()
 		// you can transmit C-string or Arduino string up to
 		// 256 characters long
 		transmissionState = radio.startTransmit("Hello World!");
+	}
+	if (useRxInterrupt)
+	{
+		// set the function that will be called
+		// when new packet is received
+		radio.setDio0Action(setFlag);
+
+		// start listening for LoRa packets
+		Serial.print(F("[SX1278] Starting to listen ... "));
+		state = radio.startReceive();
+		if (state == ERR_NONE)
+		{
+			Serial.println(F("success!"));
+		}
+		else
+		{
+			Serial.print(F("failed, code "));
+			Serial.println(state);
+			while (true)
+				;
+		}
 	}
 }
 
@@ -141,6 +175,73 @@ void serverloop()
 		// some other error occurred
 		Serial.print(F("failed, code "));
 		Serial.println(state);
+	}
+}
+
+void serverInterruptloop()
+{
+	// check if the flag is set
+	if (receivedFlag)
+	{
+		// disable the interrupt service routine while
+		// processing the data
+		enableInterrupt = false;
+
+		// reset flag
+		receivedFlag = false;
+
+		// you can read received data as an Arduino String
+		String str;
+		int state = radio.readData(str);
+
+		// you can also read received data as byte array
+		/*
+      byte byteArr[8];
+      int state = radio.readData(byteArr, 8);
+    */
+
+		if (state == ERR_NONE)
+		{
+			// packet was successfully received
+			Serial.println(F("[SX1278] Received packet!"));
+
+			// print data of the packet
+			Serial.print(F("[SX1278] Data:\t\t"));
+			Serial.println(str);
+
+			// print RSSI (Received Signal Strength Indicator)
+			Serial.print(F("[SX1278] RSSI:\t\t"));
+			Serial.print(radio.getRSSI());
+			Serial.println(F(" dBm"));
+
+			// print SNR (Signal-to-Noise Ratio)
+			Serial.print(F("[SX1278] SNR:\t\t"));
+			Serial.print(radio.getSNR());
+			Serial.println(F(" dB"));
+
+			// print frequency error
+			Serial.print(F("[SX1278] Frequency error:\t"));
+			Serial.print(radio.getFrequencyError());
+			Serial.println(F(" Hz"));
+		}
+		else if (state == ERR_CRC_MISMATCH)
+		{
+			// packet was received, but is malformed
+			Serial.println(F("[SX1278] CRC error!"));
+		}
+		else
+		{
+			// some other error occurred
+			Serial.print(F("[SX1278] Failed, code "));
+			Serial.println(state);
+		}
+
+		// put module back to listen mode
+		radio.startReceive();
+
+		// we're ready to receive more packets,
+		// enable interrupt service routine
+		enableInterrupt = true;
 	}
 }
 
@@ -254,6 +355,13 @@ void loop()
 		clientloop();
 	}
 #elif defined(ARDUINO_NodeMCU_32S)
-	serverloop();
+	if (useRxInterrupt)
+	{
+		serverInterruptloop();
+	}
+	else
+	{
+		serverloop();
+	}
 #endif
 }
