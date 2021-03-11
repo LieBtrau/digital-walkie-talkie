@@ -17,12 +17,37 @@
 // DIO1 pin:  	ESP32.34  D3				//Clock pin in continuous mode (RadioHead: not used)
 
 #ifdef ARDUINO_NUCLEO_F303K8
+bool useTxInterrtupt = true;
 SX1278 radio = new Module(A3, D2, D6, D3);
 #elif defined(ARDUINO_NodeMCU_32S)
+bool useTxInterrtupt = false;
 SX1278 radio = new Module(5, 39, 36, 34);
 #endif
 
 AsyncDelay wperfTimer;
+// save transmission state between loops
+int transmissionState = ERR_NONE;
+// flag to indicate that a packet was sent
+volatile bool transmittedFlag = false;
+
+// disable interrupt when it's not needed
+volatile bool enableInterrupt = true;
+
+// this function is called when a complete packet
+// is transmitted by the module
+// IMPORTANT: this function MUST be 'void' type
+//            and MUST NOT have any arguments!
+void setFlag(void)
+{
+	// check if the interrupt is enabled
+	if (!enableInterrupt)
+	{
+		return;
+	}
+
+	// we sent a packet, set the flag
+	transmittedFlag = true;
+}
 
 void setup()
 {
@@ -40,6 +65,20 @@ void setup()
 		Serial.println(state);
 		while (true)
 			;
+	}
+
+	if (useTxInterrtupt)
+	{
+		// set the function that will be called
+		// when packet transmission is finished
+		radio.setDio0Action(setFlag);
+
+		// start transmitting the first packet
+		Serial.print(F("[SX1278] Sending first packet ... "));
+
+		// you can transmit C-string or Arduino string up to
+		// 256 characters long
+		transmissionState = radio.startTransmit("Hello World!");
 	}
 }
 
@@ -153,11 +192,67 @@ void clientloop()
 	delay(1000);
 }
 
+void clientInterruptloop()
+{
+	// check if the previous transmission finished
+	if (transmittedFlag)
+	{
+		// disable the interrupt service routine while
+		// processing the data
+		enableInterrupt = false;
+
+		// reset flag
+		transmittedFlag = false;
+
+		if (transmissionState == ERR_NONE)
+		{
+			// packet was successfully sent
+			Serial.println(F("transmission finished!"));
+
+			// NOTE: when using interrupt-driven transmit method,
+			//       it is not possible to automatically measure
+			//       transmission data rate using getDataRate()
+		}
+		else
+		{
+			Serial.print(F("failed, code "));
+			Serial.println(transmissionState);
+		}
+
+		// wait a second before transmitting again
+		delay(1000);
+
+		// send another one
+		Serial.print(F("[SX1278] Sending another packet ... "));
+
+		// you can transmit C-string or Arduino string up to
+		// 256 characters long
+		transmissionState = radio.startTransmit("Hello World!");
+
+		// you can also transmit byte array up to 256 bytes long
+		/*
+      byte byteArr[] = {0x01, 0x23, 0x45, 0x67,
+                        0x89, 0xAB, 0xCD, 0xEF};
+      int state = radio.startTransmit(byteArr, 8);
+    */
+
+		// we're ready to send more packets,
+		// enable interrupt service routine
+		enableInterrupt = true;
+	}
+}
 
 void loop()
 {
 #ifdef ARDUINO_NUCLEO_F303K8
-	clientloop();
+	if (useTxInterrtupt)
+	{
+		clientInterruptloop();
+	}
+	else
+	{
+		clientloop();
+	}
 #elif defined(ARDUINO_NodeMCU_32S)
 	serverloop();
 #endif
