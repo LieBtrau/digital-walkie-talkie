@@ -14,8 +14,6 @@
 // DIO0 pin:  ESP32.39
 // DIO1 pin:  ESP32.34  //Clock pin in continuous mode (RadioHead: not used)
 // DIO2 pin:  ESP32.16  //Data pin in continuous mode (RadioHead: not used)
-const int CLIENT_SERVER_PIN = 32;
-bool isClientMode;
 // rf95_reliable_datagram_server.pde
 // -*- mode: C++ -*-
 // Example sketch showing how to create a simple addressed, reliable messaging server
@@ -55,7 +53,6 @@ void setup()
 		while (true)
 			;
 	}
-	pinMode(CLIENT_SERVER_PIN, INPUT_PULLUP);
 	// Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
 	// The default transmitter power is 13dBm, using PA_BOOST.
@@ -75,9 +72,6 @@ void setup()
 	//  driver.setCADTimeout(10000);
 	wperfTimer.start(10000, AsyncDelay::MILLIS);
 	Serial.println("All setup");
-	isClientMode = digitalRead(CLIENT_SERVER_PIN) == HIGH ? true : false;
-	Serial.printf("Mode is %s\r\n", isClientMode ? "client" : "server");
-	Serial.printf("Maximum message length : %d\r\n", driver.maxMessageLength());
 }
 
 uint8_t clientdata[10];
@@ -135,12 +129,9 @@ void clientloop()
 
 void loop()
 {
-	if (isClientMode)
-	{
-		clientloop();
-	}
-	else
-	{
-		serverloop();
-	}
+#ifdef ARDUINO_NUCLEO_F303K8
+	clientloop();
+#elif defined(ARDUINO_NodeMCU_32S)
+	serverloop();
+#endif
 }
