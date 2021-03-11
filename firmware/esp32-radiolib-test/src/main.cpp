@@ -12,14 +12,14 @@
 // MISO pin:  	ESP32.19	D12
 // SCK pin :  	ESP32.18	D13
 // NSS pin:   	ESP32.5		A3
-// DIO0 pin:  	ESP32.39	D2				//Rising edge triggers interrupt
+// DIO0 pin:  	ESP32.39	D7				//Rising edge triggers interrupt, D2 doesn't work for Nucleo32!
 // RESET pin: 	ESP32.36	D6
-// DIO1 pin:  	ESP32.34  D3				//Clock pin in continuous mode (RadioHead: not used)
+// DIO1 pin:  	ESP32.34  	D3				//Clock pin in continuous mode (RadioHead: not used)
 
 #ifdef ARDUINO_NUCLEO_F303K8
 bool useTxInterrtupt = true;
 bool useRxInterrupt = false;
-SX1278 radio = new Module(A3, D2, D6, D3);
+SX1278 radio = new Module(A3, D7, D6, D3);
 #elif defined(ARDUINO_NodeMCU_32S)
 bool useTxInterrtupt = false;
 bool useRxInterrupt = true;
@@ -54,6 +54,7 @@ void setFlag(void)
 	{
 		// we sent a packet, set the flag
 		transmittedFlag = true;
+		radio.standby();//power off to save power
 	}
 	if (useRxInterrupt)
 	{
@@ -67,7 +68,7 @@ void setup()
 	Serial.begin(115200);
 	// initialize SX1278 with default settings
 	Serial.print(F("[SX1278] Initializing ... "));
-	int state = radio.begin();
+	int state = radio.beginFSK();
 	if (state == ERR_NONE)
 	{
 		Serial.println(F("success!"));
