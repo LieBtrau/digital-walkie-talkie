@@ -122,6 +122,7 @@ void clientloop()
 	// Send a message to manager_server
 	if (manager.sendtoWait(clientdata, sizeof(clientdata), SERVER_ADDRESS))
 	{
+		Serial.println("ack Received");
 	}
 	else
 		Serial.println("sendtoWait failed");
