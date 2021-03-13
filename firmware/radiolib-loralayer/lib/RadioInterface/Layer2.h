@@ -3,7 +3,7 @@
 #pragma once
 #include <packetBuffer.h>
 #include "Arduino.h"
-#include "Layer1_SX1278.h"
+#include "Layer1.h"
 
 #define ADDR_LENGTH 4
 #define MESSAGE_LENGTH 233
@@ -32,13 +32,13 @@ private:
     Packet readFromBuffer(packetBuffer *buffer);
     Packet buildPacket(Datagram datagram, size_t length);
     void receive();
-    Layer1Class *_radio;
+    Layer1 *_radio;
     packetBuffer *_rxBuffer; // L2 sending to L3
     uint8_t _messageCount=0;
     uint8_t _localAddress[ADDR_LENGTH];
 
 public:
-    Layer2(Layer1Class *radio);
+    Layer2(Layer1 *radio);
     ~Layer2();
     // Layer 3 tx/rx wrappers
     int writeData(Datagram datagram, size_t length);

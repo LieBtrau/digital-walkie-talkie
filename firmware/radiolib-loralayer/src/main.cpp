@@ -12,12 +12,12 @@
 // MISO pin:  	ESP32.19	D12
 // SCK pin :  	ESP32.18	D13
 // NSS pin:   	ESP32.5		A3
-// DIO0 pin:  	ESP32.39	D2
+// DIO0 pin:  	ESP32.39	D7
 // RESET pin: 	ESP32.36	D6
 // DIO1 pin:  	ESP32.34  	D3				//Clock pin in continuous mode (RadioHead: not used)
 
 #ifdef ARDUINO_NUCLEO_F303K8
-SX1278 radio = new Module(A3, D2, D6, D3);
+SX1278 radio = new Module(A3, D7, D6, D3);
 #elif defined(ARDUINO_NodeMCU_32S)
 SX1278 radio = new Module(5, 39, 36, 34);
 #endif
@@ -26,9 +26,9 @@ AsyncDelay wperfTimer;
 uint8_t RECEIVER[ADDR_LENGTH] = {0xc0, 0xd3, 0xca, 0xfe};
 int counter = 0;
 const int DATAGRAM_HEADER = 5;
-Layer1Class Layer1(&radio, 0,7);
+Layer1 *layer1;
 //Layer2 layer2(&Layer1);
-BufferEntry entry;
+
 const int MEASURE_INTERVAL_ms = 10000;
 int packetCount = 0;
 float averageRssi = 0;
@@ -38,33 +38,49 @@ int totalBytes = 0;
 void setup()
 {
 	Serial.begin(115200);
-	delay(200);
+	delay(1000);
 
-	Serial.println("* Initializing LoRa...");
-
-	if (Layer1.init())
+	Serial.println("* Initializing radio...");
+	layer1 = new Layer1_SX1278(&radio, 0, 7);
+	int state = layer1->init();
+	if (state == ERR_NONE)
 	{
-		Serial.println(" --> LoRa initialized");
+		Serial.println(" --> radio initialized");
 	}
 	else
 	{
-		Serial.println(" --> Failed to initialize LoRa");
+		Serial.printf(" --> Failed to initialize radio: %d\r\n", state);
 		while (true)
 			;
 	}
+	// if(radio.fixedPacketLengthMode(40)!=ERR_NONE || radio.setCRC(true)!=ERR_NONE)
+	// {
+	// 	Serial.println("Can't set fix packet mode.");
+	// 	while (true)
+	// 	{
+	// 		/* code */
+	// 	}
+
+	// }
 	wperfTimer.start(MEASURE_INTERVAL_ms, AsyncDelay::MILLIS);
 	//Layer1 actions
-	byte s[10] = {0};
-	memcpy(entry.data, s, sizeof(s));
-	entry.length = sizeof(s);
 }
 
 void clientloop()
 {
+	BufferEntry entry;
+	byte s[20] = {0};
+	memcpy(entry.data, s, sizeof(s));
+	entry.length = sizeof(s);
 
-	Layer1.txBuffer->write(entry);
-	Layer1.transmit();
-	delay(20);
+	layer1->txBuffer->write(entry);
+	int state = layer1->transmit();
+	if (state < 0)
+	{
+		Serial.printf("TX error: %d\r\n", state);
+	}
+	//layer1->receive();
+	delay(200);
 	//Layer2 actions
 	// struct Datagram datagram;
 	// int msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);
@@ -82,6 +98,9 @@ void serverloop()
 	if (wperfTimer.isExpired())
 	{
 		wperfTimer.repeat();
+#ifdef ARDUINO_NUCLEO_F303K8
+		Serial.println(packetCount, DEC);
+#elif defined(ARDUINO_NodeMCU_32S)
 		Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f bps", totalBytes, packetCount, totalBytes * 8.0e3f / MEASURE_INTERVAL_ms);
 		if (packetCount > 0)
 		{
@@ -91,6 +110,7 @@ void serverloop()
 		{
 			Serial.println();
 		}
+#endif
 		packetCount = 0;
 		averageRssi = 0;
 		averageSNR = 0;
@@ -98,9 +118,9 @@ void serverloop()
 	}
 
 	//Layer1 actions
-	if (Layer1.receive() > 0)
+	if (layer1->receive() > 0)
 	{
-		BufferEntry entry = Layer1.rxBuffer->read();
+		BufferEntry entry = layer1->rxBuffer->read();
 		//Serial.println(entry.data);
 		totalBytes += entry.length;
 		packetCount++;
@@ -115,8 +135,10 @@ void serverloop()
 void loop()
 {
 #ifdef ARDUINO_NUCLEO_F303K8
-	clientloop();
-#elif defined(ARDUINO_NodeMCU_32S)
+	//clientloop();
 	serverloop();
+#elif defined(ARDUINO_NodeMCU_32S)
+	//serverloop();
+	clientloop();
 #endif
 }

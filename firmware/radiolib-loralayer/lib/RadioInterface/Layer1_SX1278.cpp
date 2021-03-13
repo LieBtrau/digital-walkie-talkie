@@ -5,13 +5,12 @@
 static bool _dioFlag;
 static bool _enableInterrupt;
 
-Layer1Class::Layer1Class(SX1278 *lora, int mode, uint8_t sf, uint32_t frequency, int power)
-	: _LoRa(lora),
+Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, uint32_t frequency, int power)
+	: _radio(lora),
 	  _mode(mode),
 	  _spreadingFactor(sf),
-	  _loraFrequency(frequency),
+	  _frequency(frequency),
 	  _txPower(power),
-	  _loraInitialized(0),
 	  _spiFrequency(100E3),
 	  _bandwidth(125.0),
 	  _codingRate(5),
@@ -26,24 +25,11 @@ Layer1Class::Layer1Class(SX1278 *lora, int mode, uint8_t sf, uint32_t frequency,
 	_enableInterrupt = true;
 };
 
-/* Public access to local variables
- */
-int Layer1Class::getTime()
-{
-	return millis();
-}
-
-int Layer1Class::spreadingFactor()
-{
-	return _spreadingFactor;
-}
-
 /* Private functions
 */
 // Send packet function
-int Layer1Class::sendPacket(char *data, size_t len)
+int Layer1_SX1278::sendPacket(char *data, size_t len)
 {
-	int ret = 0;
 #ifdef LL2_DEBUG
 	Serial.printf("Layer1::sendPacket(): data = ");
 	for (int i = 0; i < len; i++)
@@ -53,7 +39,7 @@ int Layer1Class::sendPacket(char *data, size_t len)
 	Serial.printf("\r\n");
 #endif
 	//data[len] = '\0';
-	int state = _LoRa->startTransmit((uint8_t *)data, len);
+	int state = _radio->startTransmit((uint8_t *)data, len);
 #ifdef LL2_DEBUG
 	Serial.printf("Layer1::sendPacket(): state = %d\r\n", state);
 #endif
@@ -61,26 +47,11 @@ int Layer1Class::sendPacket(char *data, size_t len)
 	{
 		_transmitFlag = true;
 	}
-	else if (state == ERR_PACKET_TOO_LONG)
-	{
-		// packet longer than 256 bytes
-		ret = 1;
-	}
-	else if (state == ERR_TX_TIMEOUT)
-	{
-		// timeout occurred while transmitting packet
-		ret = 2;
-	}
-	else
-	{
-		// some other error occurred
-		ret = 3;
-	}
-	return ret;
+	return state;
 }
 
 // Receive packet callback
-void Layer1Class::setFlag(void)
+void Layer1_SX1278::setFlag(void)
 {
 	// check if the interrupt is enabled
 	if (!_enableInterrupt)
@@ -94,46 +65,51 @@ void Layer1Class::setFlag(void)
 /*Main public functions
 */
 // Initialization
-int Layer1Class::init()
+int Layer1_SX1278::init()
 {
+	int state = ERR_NONE;
+	switch (_mode)
+	{
+	case 0:
+		state = _radio->begin(_frequency, _bandwidth, _spreadingFactor, _codingRate, SX127X_SYNC_WORD, _txPower, _preambleLength, _gain);
+		break;
+	case 1:
+		state = _radio->beginFSK(_frequency, 48.0F, 50.0F, _bandwidth, _txPower, _preambleLength);
+		break;
+	default:
+		break;
+	}
 
-	int state = _LoRa->begin(_loraFrequency, _bandwidth, _spreadingFactor, _codingRate, SX127X_SYNC_WORD, _txPower, _preambleLength, _gain);
 #ifdef LL2_DEBUG
 	Serial.printf("Layer1::init(): state = %d\r\n", state);
 #endif
 	if (state != ERR_NONE)
 	{
-		return _loraInitialized;
+		return state;
 	}
 
-	_LoRa->setDio0Action(Layer1Class::setFlag);
+	_radio->setDio0Action(Layer1_SX1278::setFlag);
 
-	state = _LoRa->startReceive();
-	if (state != ERR_NONE)
-	{
-		return _loraInitialized;
-	}
-
-	_loraInitialized = 1;
-	return _loraInitialized;
+	return _radio->startReceive();
 }
 
 // Transmit polling function
-int Layer1Class::transmit()
+int Layer1_SX1278::transmit()
 {
 	BufferEntry entry = txBuffer->read();
+	int state = ERR_INVALID_ADDRESS_WIDTH;
 	if (entry.length > 0)
 	{
 #ifdef LL2_DEBUG
 		Serial.printf("Layer1::transmit(): entry.length: %d\r\n", entry.length);
 #endif
-		sendPacket(entry.data, entry.length);
+		state = sendPacket(entry.data, entry.length);
 	}
-	return entry.length;
+	return state == ERR_NONE ? entry.length : state;
 }
 
 // Receive polling function
-int Layer1Class::receive()
+int Layer1_SX1278::receive()
 {
 	int ret = 0;
 	int state = 0;
@@ -147,18 +123,18 @@ int Layer1Class::receive()
 #endif
 			_transmitFlag = false;
 			_dioFlag = false;
-			_LoRa->startReceive();
+			_radio->startReceive();
 		}
 		else
 		{
 			// interrupt caused by reception
 			_enableInterrupt = false;
 			_dioFlag = false;
-			size_t len = _LoRa->getPacketLength();
+			size_t len = _radio->getPacketLength();
 			if (len > 0)
 			{
 				byte data[len];
-				state = _LoRa->readData(data, len);
+				state = _radio->readData(data, len);
 				if (state == ERR_NONE)
 				{
 					BufferEntry entry;
@@ -187,7 +163,7 @@ int Layer1Class::receive()
 				// some other error occurred
 				ret = -2;
 			}
-			_LoRa->startReceive();
+			_radio->startReceive();
 			_enableInterrupt = true;
 		}
 	}

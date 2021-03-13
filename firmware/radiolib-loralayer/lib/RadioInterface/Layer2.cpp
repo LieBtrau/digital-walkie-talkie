@@ -2,7 +2,7 @@
 
 #include "Layer2.h"
 
-Layer2::Layer2(Layer1Class *radio) : _radio(radio)
+Layer2::Layer2(Layer1 *radio) : _radio(radio)
 {
     _rxBuffer = new packetBuffer;
 }
