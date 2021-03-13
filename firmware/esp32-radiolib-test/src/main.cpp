@@ -69,7 +69,7 @@ void setFlag(void)
 	{
 		// we sent a packet, set the flag
 		transmittedFlag = true;
-		radio.standby();//power off to save power
+		radio.standby(); //power off to save power
 	}
 	if (useRxInterrupt)
 	{
@@ -140,14 +140,12 @@ void serverloop()
 	// NOTE: receive() is a blocking method!
 	//       See example ReceiveInterrupt for details
 	//       on non-blocking reception method.
-	String str;
-	int state = radio.receive(str);
+	// String str;
+	// int state = radio.receive(str);
 
 	// you can also receive data as byte array
-	/*
-    byte byteArr[8];
-    int state = radio.receive(byteArr, 8);
-  */
+	byte byteArr[8];
+	int state = radio.receive(byteArr, 8);
 
 	if (state == ERR_NONE)
 	{
@@ -156,7 +154,7 @@ void serverloop()
 
 		// print the data of the packet
 		Serial.print(F("[SX1278] Data:\t\t\t"));
-		Serial.println(str);
+		//Serial.println(str);
 
 		// print the RSSI (Received Signal Strength Indicator)
 		// of the last received packet
@@ -207,14 +205,12 @@ void serverInterruptloop()
 		receivedFlag = false;
 
 		// you can read received data as an Arduino String
-		String str;
-		int state = radio.readData(str);
+		// String str;
+		// int state = radio.readData(str);
 
 		// you can also read received data as byte array
-		/*
-      byte byteArr[8];
-      int state = radio.readData(byteArr, 8);
-    */
+		byte byteArr[20];
+		int state = radio.readData(byteArr, 20); //works also if expected length is longer than expected length
 
 		if (state == ERR_NONE)
 		{
@@ -223,7 +219,7 @@ void serverInterruptloop()
 
 			// print data of the packet
 			Serial.print(F("[SX1278] Data:\t\t"));
-			Serial.println(str);
+			//Serial.println(str);
 
 			// print RSSI (Received Signal Strength Indicator)
 			Serial.print(F("[SX1278] RSSI:\t\t"));
