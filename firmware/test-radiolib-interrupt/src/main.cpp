@@ -10,26 +10,27 @@
 // MISO pin:  	ESP32.19	D12
 // SCK pin :  	ESP32.18	D13
 // NSS pin:   	ESP32.5		A3
-// DIO0 pin:  	ESP32.39	D2
+// DIO0 pin:  	ESP32.39	D7
 // RESET pin: 	ESP32.36	D6
 // DIO1 pin:  	ESP32.34  	D3				//Clock pin in continuous mode (RadioHead: not used)
 
 #ifdef ARDUINO_NUCLEO_F303K8
-SX1278 radio = new Module(A3, D2, D6, D3);
-const int CLIENT_SERVER_PIN = D7;
+SX1278 radio = new Module(A3, D7, D6);
 #elif defined(ARDUINO_NodeMCU_32S)
-SX1278 radio = new Module(5, 39, 36, 34);
+SX1278 radio = new Module(5, 39, 36);
 const int CLIENT_SERVER_PIN = 32;
 #else
 #error Unsupported platform
 #endif
-
-#ifdef ARDUINO_NUCLEO_F303K8
+float frequency=434.0F;
+#ifdef ARDUINO_NodeMCU_32S
 // flag to indicate that a packet was received
 volatile bool receivedFlag = false;
 
 // disable interrupt when it's not needed
 volatile bool enableInterrupt = true;
+
+
 
 // this function is called when a complete packet
 // is received by the module
@@ -52,7 +53,7 @@ void setup()
 	Serial.begin(115200);
 	// initialize SX1278 with default settings
 	Serial.print(F("[SX1278] Initializing ... "));
-	int state = radio.begin();
+	int state = radio.begin(frequency);
 	if (state == ERR_NONE)
 	{
 		Serial.println(F("success!"));
@@ -138,8 +139,13 @@ void loop()
 
 			// print frequency error
 			Serial.print(F("[SX1278] Frequency error:\t"));
-			Serial.print(radio.getFrequencyError());
+			float ferror=radio.getFrequencyError();
+			Serial.print(ferror);
 			Serial.println(F(" Hz"));
+
+			frequency-=ferror/2e6;
+			radio.setFrequency(frequency);
+			Serial.printf("%fMHz\r\n",frequency);
 		}
 		else if (state == ERR_CRC_MISMATCH)
 		{
@@ -195,7 +201,7 @@ void setup()
 
 	// initialize SX1278 with default settings
 	Serial.print(F("[SX1278] Initializing ... "));
-	int state = radio.begin();
+	int state = radio.begin(frequency);
 	if (state == ERR_NONE)
 	{
 		Serial.println(F("success!"));
@@ -215,7 +221,6 @@ void setup()
 	 *	frequency of the other module.
 	 *	Multiple modules need to be synced, then we better sync them to a reference clock.
 	 */
-	radio.setFrequency(434.00356);
 
 	// start transmitting the first packet
 	Serial.print(F("[SX1278] Sending first packet ... "));
