@@ -2,8 +2,8 @@
 //derived from sudomesh/LoRaLayer2 @ ^1.0.1
 #include "Layer1_SX1278.h"
 
-static bool _dioFlag;
-static bool _enableInterrupt;
+static volatile bool dioFlag;
+static volatile bool enableInterrupt;
 
 Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, uint32_t frequency, int power)
 	: _radio(lora),
@@ -21,8 +21,8 @@ Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, uint32_t freque
 {
 	txBuffer = new packetBuffer();
 	rxBuffer = new packetBuffer();
-	_dioFlag = false;
-	_enableInterrupt = true;
+	dioFlag = false;
+	enableInterrupt = true;
 };
 
 /* Private functions
@@ -32,7 +32,7 @@ int Layer1_SX1278::sendPacket(char *data, size_t len)
 {
 #ifdef LL2_DEBUG
 	Serial.printf("Layer1::sendPacket(): data = ");
-	for (int i = 0; i < len; i++)
+	for (size_t i = 0; i < len; i++)
 	{
 		Serial.printf("%c", data[i]);
 	}
@@ -54,12 +54,12 @@ int Layer1_SX1278::sendPacket(char *data, size_t len)
 void Layer1_SX1278::setFlag(void)
 {
 	// check if the interrupt is enabled
-	if (!_enableInterrupt)
+	if (!enableInterrupt)
 	{
 		return;
 	}
 	// we got a packet, set the flag
-	_dioFlag = true;
+	dioFlag = true;
 }
 
 /*Main public functions
@@ -111,61 +111,62 @@ int Layer1_SX1278::transmit()
 // Receive polling function
 int Layer1_SX1278::receive()
 {
-	int ret = 0;
+	int ret = ERR_NONE;
 	int state = 0;
-	if (_dioFlag)
+	if (!dioFlag)
 	{
-		if (_transmitFlag)
-		{
+		return ERR_NONE;
+	}
+	if (_transmitFlag)
+	{
 // interrupt caused by transmit, clear flags and return 0
 #ifdef LL2_DEBUG
-			Serial.printf("Layer1::receive(): transmit complete\r\n");
+		Serial.printf("Layer1::receive(): transmit complete\r\n");
 #endif
-			_transmitFlag = false;
-			_dioFlag = false;
-			_radio->startReceive();
+		_transmitFlag = false;
+		dioFlag = false;
+		_radio->startReceive();
+	}
+	else
+	{
+		// interrupt caused by reception
+		enableInterrupt = false;
+		dioFlag = false;
+		size_t len = _radio->getPacketLength();
+		if (len > 0)
+		{
+			byte data[len];
+			state = _radio->readData(data, len);
+			if (state == ERR_NONE)
+			{
+				BufferEntry entry;
+				memcpy(&entry.data[0], &data[0], len); // copy data to buffer, excluding null terminator
+				entry.length = len;
+				rxBuffer->write(entry);
+#ifdef LL2_DEBUG
+				Serial.printf("Data length: %d\r\n", len);
+				Serial.printf("Layer1::receive(): data = ");
+				for (size_t i = 0; i < len; i++)
+				{
+					Serial.printf("%c", data[i]);
+				}
+				Serial.printf("\r\n");
+#endif
+				ret = len;
+			}
+		}
+		else if (state == ERR_CRC_MISMATCH)
+		{
+			// packet was received, but is malformed
+			ret = -1;
 		}
 		else
 		{
-			// interrupt caused by reception
-			_enableInterrupt = false;
-			_dioFlag = false;
-			size_t len = _radio->getPacketLength();
-			if (len > 0)
-			{
-				byte data[len];
-				state = _radio->readData(data, len);
-				if (state == ERR_NONE)
-				{
-					BufferEntry entry;
-					memcpy(&entry.data[0], &data[0], len); // copy data to buffer, excluding null terminator
-					entry.length = len;
-					rxBuffer->write(entry);
-#ifdef LL2_DEBUG
-					Serial.printf("Data length: %d\r\n", len);
-					Serial.printf("Layer1::receive(): data = ");
-					for (int i = 0; i < len; i++)
-					{
-						Serial.printf("%c", data[i]);
-					}
-					Serial.printf("\r\n");
-#endif
-					ret = len;
-				}
-			}
-			else if (state == ERR_CRC_MISMATCH)
-			{
-				// packet was received, but is malformed
-				ret = -1;
-			}
-			else
-			{
-				// some other error occurred
-				ret = -2;
-			}
-			_radio->startReceive();
-			_enableInterrupt = true;
+			// some other error occurred
+			ret = -2;
 		}
+		_radio->startReceive();
+		enableInterrupt = true;
 	}
 	return ret;
 }
