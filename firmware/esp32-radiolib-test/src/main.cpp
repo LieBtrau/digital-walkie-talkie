@@ -45,20 +45,6 @@ volatile uint16_t irqFlags;
 //            and MUST NOT have any arguments!
 void setFlag(void)
 {
-	irqFlags = radio.getIRQFlags();
-	//bit 14 : Fifo empty
-	//bit 11 : PacketSent
-	//bit 10 : RX payload ready
-	//bit 9 : CRC ok
-	//bit 7 : mode ready
-	//bit 6 : rx ready
-	//bit 5 : TX ready
-	//bit 4 : PLL locked
-	//bit 3 : RSSI threshold exceeded
-	//bit 1 : preamble detected
-	//bit 0 : syncaddress match
-
-	Serial.println(irqFlags, HEX);
 	// check if the interrupt is enabled
 	if (!enableInterrupt)
 	{
@@ -69,7 +55,6 @@ void setFlag(void)
 	{
 		// we sent a packet, set the flag
 		transmittedFlag = true;
-		radio.standby(); //power off to save power
 	}
 	if (useRxInterrupt)
 	{
@@ -144,8 +129,8 @@ void serverloop()
 	// int state = radio.receive(str);
 
 	// you can also receive data as byte array
-	byte byteArr[8];
-	int state = radio.receive(byteArr, 8);
+	byte byteArr[20];
+	int state = radio.receive(byteArr, 20);
 
 	if (state == ERR_NONE)
 	{
@@ -313,7 +298,22 @@ void clientInterruptloop()
 		// disable the interrupt service routine while
 		// processing the data
 		enableInterrupt = false;
+		radio.standby(); //power off to save power
 
+		irqFlags = radio.getIRQFlags();
+		//bit 14 : Fifo empty
+		//bit 11 : PacketSent
+		//bit 10 : RX payload ready
+		//bit 9 : CRC ok
+		//bit 7 : mode ready
+		//bit 6 : rx ready
+		//bit 5 : TX ready
+		//bit 4 : PLL locked
+		//bit 3 : RSSI threshold exceeded
+		//bit 1 : preamble detected
+		//bit 0 : syncaddress match
+
+		Serial.println(irqFlags, HEX);
 		// reset flag
 		transmittedFlag = false;
 
