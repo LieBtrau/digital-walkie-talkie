@@ -13,6 +13,7 @@ BufferEntry packetBuffer::read()
     if (head == tail)
     {
         // if buffer empty, return empty entry
+        //Serial.println("empty");
         return entry;
     }
     // otherwise return entry from tail
@@ -20,7 +21,7 @@ BufferEntry packetBuffer::read()
     memcpy(&entry, &buffer[tail], sizeof(entry));
     // clear data stored in tail of buffer
     buffer[tail].length = 0;
-    memset(buffer[tail].data,0,MAX_PACKET_SIZE);
+    memset(buffer[tail].data, 0, MAX_PACKET_SIZE);
     return entry;
 }
 
@@ -36,7 +37,7 @@ int packetBuffer::write(BufferEntry entry)
         // clear any previous data stored in buffer
         buffer[head] = empty;
         // copy new data into buffer
-        buffer[head] = entry;
+        memcpy(&buffer[head], &entry, sizeof(entry));
         ret = head - tail; // and return the packet's place in line
     }
     // if full, return the size of the buffer

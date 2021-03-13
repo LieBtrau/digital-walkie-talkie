@@ -15,6 +15,8 @@ public:
     int init();
     int transmit();
     int receive();
+    float getRSSI() { return _rssi; };
+    float getSNR() { return _snr; };
 
 private:
     // Main private functions

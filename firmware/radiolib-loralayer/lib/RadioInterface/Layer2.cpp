@@ -17,7 +17,7 @@ int Layer2::writeData(Datagram datagram, size_t length)
 {
 #ifdef LL2_DEBUG
     Serial.printf("LL2::writeData(): datagram.message = ");
-    for (int i = 0; i < length - 5; i++)
+    for (size_t i = 0; i < length - 5; i++)
     {
         Serial.printf("%c", datagram.message[i]);
     }

@@ -41,7 +41,7 @@ void setup()
 	delay(1000);
 
 	Serial.println("* Initializing radio...");
-	layer1 = new Layer1_SX1278(&radio, 0, 7);
+	layer1 = new Layer1_SX1278(&radio, 1, 7);
 	int state = layer1->init();
 	if (state == ERR_NONE)
 	{
@@ -80,7 +80,7 @@ void clientloop()
 		Serial.printf("TX error: %d\r\n", state);
 	}
 	//layer1->receive();
-	delay(200);
+	delay(1000);
 	//Layer2 actions
 	// struct Datagram datagram;
 	// int msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);
@@ -121,11 +121,10 @@ void serverloop()
 	if (layer1->receive() > 0)
 	{
 		BufferEntry entry = layer1->rxBuffer->read();
-		//Serial.println(entry.data);
 		totalBytes += entry.length;
 		packetCount++;
-		averageRssi += radio.getRSSI();
-		averageSNR += radio.getSNR();
+		averageRssi += layer1->getRSSI();
+		averageSNR += layer1->getSNR();
 	}
 
 	//Layer2 actions
@@ -135,10 +134,10 @@ void serverloop()
 void loop()
 {
 #ifdef ARDUINO_NUCLEO_F303K8
-	//clientloop();
-	serverloop();
-#elif defined(ARDUINO_NodeMCU_32S)
-	//serverloop();
 	clientloop();
+	//serverloop();
+#elif defined(ARDUINO_NodeMCU_32S)
+	serverloop();
+	//clientloop();
 #endif
 }

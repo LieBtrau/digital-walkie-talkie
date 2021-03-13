@@ -3,7 +3,7 @@
 #include "Layer1_SX1278.h"
 
 static volatile bool dioFlag;
-static volatile bool enableInterrupt;
+static volatile bool enableInterrupt = true;
 
 Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, uint32_t frequency, int power)
 	: _radio(lora),
@@ -25,32 +25,6 @@ Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, uint32_t freque
 	enableInterrupt = true;
 };
 
-/* Private functions
-*/
-// Send packet function
-int Layer1_SX1278::sendPacket(char *data, size_t len)
-{
-#ifdef LL2_DEBUG
-	Serial.printf("Layer1::sendPacket(): data = ");
-	for (size_t i = 0; i < len; i++)
-	{
-		Serial.printf("%c", data[i]);
-	}
-	Serial.printf("\r\n");
-#endif
-	//data[len] = '\0';
-	int state = _radio->startTransmit((uint8_t *)data, len);
-#ifdef LL2_DEBUG
-	Serial.printf("Layer1::sendPacket(): state = %d\r\n", state);
-#endif
-	if (state == ERR_NONE)
-	{
-		_transmitFlag = true;
-	}
-	return state;
-}
-
-// Receive packet callback
 void Layer1_SX1278::setFlag(void)
 {
 	// check if the interrupt is enabled
@@ -62,9 +36,6 @@ void Layer1_SX1278::setFlag(void)
 	dioFlag = true;
 }
 
-/*Main public functions
-*/
-// Initialization
 int Layer1_SX1278::init()
 {
 	int state = ERR_NONE;
@@ -74,26 +45,23 @@ int Layer1_SX1278::init()
 		state = _radio->begin(_frequency, _bandwidth, _spreadingFactor, _codingRate, SX127X_SYNC_WORD, _txPower, _preambleLength, _gain);
 		break;
 	case 1:
-		state = _radio->beginFSK(_frequency, 48.0F, 50.0F, _bandwidth, _txPower, _preambleLength);
+		state = _radio->beginFSK(/*_frequency, 48.0F, 50.0F, _bandwidth, _txPower, _preambleLength*/);
 		break;
 	default:
-		break;
+		return ERR_INVALID_CALLSIGN;
 	}
-
-#ifdef LL2_DEBUG
-	Serial.printf("Layer1::init(): state = %d\r\n", state);
-#endif
 	if (state != ERR_NONE)
 	{
 		return state;
 	}
-
 	_radio->setDio0Action(Layer1_SX1278::setFlag);
-
-	return _radio->startReceive();
+	state = _radio->startReceive();
+#ifdef LL2_DEBUG
+	Serial.printf("Layer1::init(): state = %d\r\n", state);
+#endif
+	return state;
 }
 
-// Transmit polling function
 int Layer1_SX1278::transmit()
 {
 	BufferEntry entry = txBuffer->read();
@@ -108,65 +76,72 @@ int Layer1_SX1278::transmit()
 	return state == ERR_NONE ? entry.length : state;
 }
 
-// Receive polling function
 int Layer1_SX1278::receive()
 {
-	int ret = ERR_NONE;
-	int state = 0;
 	if (!dioFlag)
 	{
 		return ERR_NONE;
 	}
-	if (_transmitFlag)
+	dioFlag = false;
+	enableInterrupt = false;
+	size_t len = _radio->getPacketLength();
+	byte data[len];
+	int state = _radio->readData(data, len);
+
+	if (state == ERR_NONE)
 	{
-// interrupt caused by transmit, clear flags and return 0
+		BufferEntry entry;
+		memcpy(&entry.data[0], &data[0], len); // copy data to buffer, excluding null terminator
+		entry.length = len;
+		rxBuffer->write(entry);
+		_rssi = _radio->getRSSI();
+		_snr = _radio->getSNR();
 #ifdef LL2_DEBUG
-		Serial.printf("Layer1::receive(): transmit complete\r\n");
+		Serial.printf("Data length: %d\r\n", len);
+		Serial.printf("Layer1::receive(): data = ");
+		for (size_t i = 0; i < len; i++)
+		{
+			Serial.printf("%x ", data[i]);
+		}
+		Serial.printf("\r\n");
 #endif
-		_transmitFlag = false;
-		dioFlag = false;
-		_radio->startReceive();
+	}
+	else if (state == ERR_RX_TIMEOUT)
+	{
+		// timeout occurred while waiting for a packet
+		Serial.println(F("timeout!"));
+	}
+	else if (state == ERR_CRC_MISMATCH)
+	{
+		// packet was received, but is malformed
+		Serial.println(F("CRC error!"));
 	}
 	else
 	{
-		// interrupt caused by reception
-		enableInterrupt = false;
-		dioFlag = false;
-		size_t len = _radio->getPacketLength();
-		if (len > 0)
-		{
-			byte data[len];
-			state = _radio->readData(data, len);
-			if (state == ERR_NONE)
-			{
-				BufferEntry entry;
-				memcpy(&entry.data[0], &data[0], len); // copy data to buffer, excluding null terminator
-				entry.length = len;
-				rxBuffer->write(entry);
-#ifdef LL2_DEBUG
-				Serial.printf("Data length: %d\r\n", len);
-				Serial.printf("Layer1::receive(): data = ");
-				for (size_t i = 0; i < len; i++)
-				{
-					Serial.printf("%c", data[i]);
-				}
-				Serial.printf("\r\n");
-#endif
-				ret = len;
-			}
-		}
-		else if (state == ERR_CRC_MISMATCH)
-		{
-			// packet was received, but is malformed
-			ret = -1;
-		}
-		else
-		{
-			// some other error occurred
-			ret = -2;
-		}
-		_radio->startReceive();
-		enableInterrupt = true;
+		// some other error occurred
+		Serial.print(F("failed, code "));
+		Serial.println(state);
 	}
-	return ret;
+	// put module back to listen mode
+	_radio->startReceive();
+
+	enableInterrupt = true;
+	return state == ERR_NONE ? len : state;
+}
+
+int Layer1_SX1278::sendPacket(char *data, size_t len)
+{
+#ifdef LL2_DEBUG
+	Serial.printf("Layer1::sendPacket(): data = ");
+	for (size_t i = 0; i < len; i++)
+	{
+		Serial.printf("%x ", data[i]);
+	}
+	Serial.printf("\r\n");
+#endif
+	int state = _radio->transmit((uint8_t *)data, len);
+#ifdef LL2_DEBUG
+	Serial.printf("Layer1::sendPacket(): state = %d\r\n", state);
+#endif
+	return state;
 }
