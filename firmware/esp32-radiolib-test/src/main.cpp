@@ -37,6 +37,7 @@ volatile bool receivedFlag = false;
 
 // disable interrupt when it's not needed
 volatile bool enableInterrupt = true;
+volatile uint16_t irqFlags;
 
 // this function is called when a complete packet
 // is transmitted by the module
@@ -44,6 +45,20 @@ volatile bool enableInterrupt = true;
 //            and MUST NOT have any arguments!
 void setFlag(void)
 {
+	irqFlags = radio.getIRQFlags();
+	//bit 14 : Fifo empty
+	//bit 11 : PacketSent
+	//bit 10 : RX payload ready
+	//bit 9 : CRC ok
+	//bit 7 : mode ready
+	//bit 6 : rx ready
+	//bit 5 : TX ready
+	//bit 4 : PLL locked
+	//bit 3 : RSSI threshold exceeded
+	//bit 1 : preamble detected
+	//bit 0 : syncaddress match
+
+	Serial.println(irqFlags, HEX);
 	// check if the interrupt is enabled
 	if (!enableInterrupt)
 	{
