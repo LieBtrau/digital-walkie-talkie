@@ -5,7 +5,7 @@
 static volatile bool dioFlag;
 static volatile bool enableInterrupt = true;
 
-Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, uint32_t frequency, int power)
+Layer1_SX1278::Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf, float frequency, int power)
 	: _radio(lora),
 	  _mode(mode),
 	  _spreadingFactor(sf),
@@ -45,7 +45,9 @@ int Layer1_SX1278::init()
 		state = _radio->begin(_frequency, _bandwidth, _spreadingFactor, _codingRate, SX127X_SYNC_WORD, _txPower, _preambleLength, _gain);
 		break;
 	case 1:
-		state = _radio->beginFSK(/*_frequency, 48.0F, 50.0F, _bandwidth, _txPower, _preambleLength*/);
+		//FDEV = BR/4 to BR*5 and FDEV < 250 - BR/2
+		//BW = BR+2*FDEV
+		state = _radio->beginFSK(_frequency,4.8F, 4.8F, 12.5F);//Total bytes : 2400      Total packets : 40      Bitrate : 1920 bps      Average RSSI : -113.09  Average SNR : 0.00
 		break;
 	default:
 		return ERR_INVALID_CALLSIGN;
@@ -104,6 +106,7 @@ int Layer1_SX1278::receive()
 			Serial.printf("%x ", data[i]);
 		}
 		Serial.printf("\r\n");
+		Serial.printf("Frequency error: %fHz\r\n", _radio->getFrequencyError());
 #endif
 	}
 	else if (state == ERR_RX_TIMEOUT)

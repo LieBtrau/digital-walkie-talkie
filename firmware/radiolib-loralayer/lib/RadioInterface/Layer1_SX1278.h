@@ -9,7 +9,7 @@ class Layer1_SX1278 : public Layer1
 {
 
 public:
-    Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf = 9, uint32_t frequency = 434, int power = 17);
+    Layer1_SX1278(SX1278 *lora, int mode, uint8_t sf = 9, float frequency = 434.0F, int power = 17);
 
     // Main public functions
     int init();
@@ -27,7 +27,7 @@ private:
     SX1278 *_radio;
     int _mode;
     uint8_t _spreadingFactor;
-    uint32_t _frequency;
+    float _frequency;
     int _txPower;
     uint32_t _spiFrequency;
     float _bandwidth;

@@ -12,14 +12,14 @@
 // MISO pin:  	ESP32.19	D12
 // SCK pin :  	ESP32.18	D13
 // NSS pin:   	ESP32.5		A3
-// DIO0 pin:  	ESP32.39	D7
+// DIO0 pin:  	ESP32.39	D7				//pull up needed on pin 39 of ESP32
 // RESET pin: 	ESP32.36	D6
 // DIO1 pin:  	ESP32.34  	D3				//Clock pin in continuous mode (RadioHead: not used)
 
 #ifdef ARDUINO_NUCLEO_F303K8
-SX1278 radio = new Module(A3, D7, D6, D3);
+SX1278 radio = new Module(A3, D7, D6);
 #elif defined(ARDUINO_NodeMCU_32S)
-SX1278 radio = new Module(5, 39, 36, 34);
+SX1278 radio = new Module(5, 39, 36);
 #endif
 
 AsyncDelay wperfTimer;
@@ -41,7 +41,11 @@ void setup()
 	delay(1000);
 
 	Serial.println("* Initializing radio...");
+#ifdef ARDUINO_NUCLEO_F303K8
 	layer1 = new Layer1_SX1278(&radio, 1, 7);
+#elif defined(ARDUINO_NodeMCU_32S)
+	layer1 = new Layer1_SX1278(&radio, 1, 7);//, 434.003448); //frequency adjustments
+#endif
 	int state = layer1->init();
 	if (state == ERR_NONE)
 	{
@@ -69,7 +73,7 @@ void setup()
 void clientloop()
 {
 	BufferEntry entry;
-	byte s[20] = {0};
+	byte s[60] = {0};
 	memcpy(entry.data, s, sizeof(s));
 	entry.length = sizeof(s);
 
@@ -80,7 +84,7 @@ void clientloop()
 		Serial.printf("TX error: %d\r\n", state);
 	}
 	//layer1->receive();
-	delay(1000);
+	delay(1);
 	//Layer2 actions
 	// struct Datagram datagram;
 	// int msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);
