@@ -42,9 +42,9 @@ void setup()
 
 	Serial.println("* Initializing radio...");
 #ifdef ARDUINO_NUCLEO_F303K8
-	layer1 = new Layer1_SX1278(&radio, 1, 7);
+	layer1 = new Layer1_SX1278(&radio, 2, 7);
 #elif defined(ARDUINO_NodeMCU_32S)
-	layer1 = new Layer1_SX1278(&radio, 1, 7);//, 434.003448); //frequency adjustments
+	layer1 = new Layer1_SX1278(&radio, 2, 7);//, 434.003448); //frequency adjustments
 #endif
 	int state = layer1->init();
 	if (state == ERR_NONE)
@@ -73,7 +73,8 @@ void setup()
 void clientloop()
 {
 	BufferEntry entry;
-	byte s[60] = {0};
+	byte s[60]={0};
+	//memset(s, 0xAA, 60);
 	memcpy(entry.data, s, sizeof(s));
 	entry.length = sizeof(s);
 
@@ -84,7 +85,7 @@ void clientloop()
 		Serial.printf("TX error: %d\r\n", state);
 	}
 	//layer1->receive();
-	delay(1);
+	delay(100);
 	//Layer2 actions
 	// struct Datagram datagram;
 	// int msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);

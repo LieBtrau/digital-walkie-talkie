@@ -47,7 +47,16 @@ int Layer1_SX1278::init()
 	case 1:
 		//FDEV = BR/4 to BR*5 and FDEV < 250 - BR/2
 		//BW = BR+2*FDEV
-		state = _radio->beginFSK(_frequency,4.8F, 4.8F, 12.5F);//Total bytes : 2400      Total packets : 40      Bitrate : 1920 bps      Average RSSI : -113.09  Average SNR : 0.00
+		state = _radio->beginFSK(_frequency, 4.8F, 4.8F, 12.5F); //Total bytes : 2400      Total packets : 40      Bitrate : 1920 bps      Average RSSI : -113.09  Average SNR : 0.00
+		break;
+	case 2:
+		if (_radio->beginFSK(_frequency, 4.8F, 0, 6.3) != ERR_NONE ||
+			_radio->setOOK(true) != ERR_NONE ||
+			_radio->setEncoding(RADIOLIB_ENCODING_WHITENING) != ERR_NONE)
+		{
+			return state;
+		}
+		state = _radio->setDataShapingOOK(1);
 		break;
 	default:
 		return ERR_INVALID_CALLSIGN;
