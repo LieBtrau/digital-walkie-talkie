@@ -42,9 +42,9 @@ void setup()
 
 	Serial.println("* Initializing radio...");
 #ifdef ARDUINO_NUCLEO_F303K8
-	layer1 = new Layer1_SX1278(&radio, 2, 7);
+	layer1 = new Layer1_SX1278(&radio, 1, 7);
 #elif defined(ARDUINO_NodeMCU_32S)
-	layer1 = new Layer1_SX1278(&radio, 2, 7);//, 434.003448); //frequency adjustments
+	layer1 = new Layer1_SX1278(&radio, 1, 7);//, 434.003448); //frequency adjustments
 #endif
 	int state = layer1->init();
 	if (state == ERR_NONE)

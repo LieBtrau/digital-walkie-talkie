@@ -42,12 +42,19 @@ int Layer1_SX1278::init()
 	switch (_mode)
 	{
 	case 0:
-		state = _radio->begin(_frequency, _bandwidth, _spreadingFactor, _codingRate, SX127X_SYNC_WORD, _txPower, _preambleLength, _gain);
+		if (_radio->begin(_frequency, _bandwidth, _spreadingFactor, _codingRate, SX127X_SYNC_WORD, _txPower, _preambleLength, _gain) != ERR_NONE)
+		{
+			return state;
+		}
 		break;
 	case 1:
 		//FDEV = BR/4 to BR*5 and FDEV < 250 - BR/2
 		//BW = BR+2*FDEV
-		state = _radio->beginFSK(_frequency, 4.8F, 4.8F, 12.5F); //Total bytes : 2400      Total packets : 40      Bitrate : 1920 bps      Average RSSI : -113.09  Average SNR : 0.00
+		if (_radio->beginFSK(_frequency, 4.8F, 4.8F, 12.5F) != ERR_NONE || //Total bytes : 2400      Total packets : 40      Bitrate : 1920 bps      Average RSSI : -113.09  Average SNR : 0.00
+			_radio->setEncoding(RADIOLIB_ENCODING_WHITENING) != ERR_NONE)
+		{
+			return state;
+		}
 		break;
 	case 2:
 		if (_radio->beginFSK(_frequency, 4.8F, 0, 6.3) != ERR_NONE ||
