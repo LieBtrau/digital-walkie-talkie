@@ -30,10 +30,13 @@ Layer1 *layer1;
 //Layer2 layer2(&Layer1);
 
 const int MEASURE_INTERVAL_ms = 10000;
+const int PACKET_INTERVAL_ms = 40; //in ms
+const int PACKET_SIZE = 6;		   //in bytes
 int packetCount = 0;
 float averageRssi = 0;
 float averageSNR = 0;
 int totalBytes = 0;
+BufferEntry entry;
 
 void setup()
 {
@@ -43,8 +46,13 @@ void setup()
 	Serial.println("* Initializing radio...");
 #ifdef ARDUINO_NUCLEO_F303K8
 	layer1 = new Layer1_SX1278(&radio, 1, 7);
+	byte s[PACKET_SIZE] = {0};
+	entry.length = sizeof(s);
+	memcpy(entry.data, s, sizeof(s));
+	wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
 #elif defined(ARDUINO_NodeMCU_32S)
-	layer1 = new Layer1_SX1278(&radio, 1, 7);//, 434.003448); //frequency adjustments
+	layer1 = new Layer1_SX1278(&radio, 1, 7); //, 434.003448); //frequency adjustments
+	wperfTimer.start(MEASURE_INTERVAL_ms, AsyncDelay::MILLIS);
 #endif
 	int state = layer1->init();
 	if (state == ERR_NONE)
@@ -66,26 +74,27 @@ void setup()
 	// 	}
 
 	// }
-	wperfTimer.start(MEASURE_INTERVAL_ms, AsyncDelay::MILLIS);
 	//Layer1 actions
 }
 
 void clientloop()
 {
-	BufferEntry entry;
-	byte s[60]={0};
-	//memset(s, 0xAA, 60);
-	memcpy(entry.data, s, sizeof(s));
-	entry.length = sizeof(s);
-
-	layer1->txBuffer->write(entry);
-	int state = layer1->transmit();
-	if (state < 0)
+	if (wperfTimer.isExpired())
 	{
-		Serial.printf("TX error: %d\r\n", state);
+		wperfTimer.repeat();
+		entry.data[0] = packetCount++;
+		if (packetCount == 250)
+		{
+			packetCount = 0;
+		}
+		layer1->txBuffer->write(entry);
+		int state = layer1->transmit();
+		if (state < 0)
+		{
+			Serial.printf("TX error: %d\r\n", state);
+		}
 	}
 	//layer1->receive();
-	delay(100);
 	//Layer2 actions
 	// struct Datagram datagram;
 	// int msglen = sprintf((char *)datagram.message, "%s,%i", "hello", counter);
@@ -100,27 +109,6 @@ void clientloop()
 
 void serverloop()
 {
-	if (wperfTimer.isExpired())
-	{
-		wperfTimer.repeat();
-#ifdef ARDUINO_NUCLEO_F303K8
-		Serial.println(packetCount, DEC);
-#elif defined(ARDUINO_NodeMCU_32S)
-		Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f bps", totalBytes, packetCount, totalBytes * 8.0e3f / MEASURE_INTERVAL_ms);
-		if (packetCount > 0)
-		{
-			Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
-		}
-		else
-		{
-			Serial.println();
-		}
-#endif
-		packetCount = 0;
-		averageRssi = 0;
-		averageSNR = 0;
-		totalBytes = 0;
-	}
 
 	//Layer1 actions
 	if (layer1->receive() > 0)
@@ -130,6 +118,26 @@ void serverloop()
 		packetCount++;
 		averageRssi += layer1->getRSSI();
 		averageSNR += layer1->getSNR();
+		if (entry.data[0]==0)
+		{
+#ifdef ARDUINO_NUCLEO_F303K8
+			Serial.println(packetCount, DEC);
+#elif defined(ARDUINO_NodeMCU_32S)
+			Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f bps", totalBytes, packetCount, totalBytes * 8.0e3f / MEASURE_INTERVAL_ms);
+			if (packetCount > 0)
+			{
+				Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
+			}
+			else
+			{
+				Serial.println();
+			}
+#endif
+			packetCount = 0;
+			averageRssi = 0;
+			averageSNR = 0;
+			totalBytes = 0;
+		}
 	}
 
 	//Layer2 actions
