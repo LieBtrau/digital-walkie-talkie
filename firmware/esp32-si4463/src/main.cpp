@@ -42,6 +42,7 @@
 
 #include <SPI.h>
 #include <RH_RF24.h>
+#include "AsyncDelay.h"
 
 // Singleton instance of the radio driver
 #ifdef ARDUINO_NUCLEO_F303K8
@@ -51,12 +52,31 @@ RH_RF24 rf24(5, 4, 16);
 const int MODE_SELECT_PIN = 25;
 #endif
 
+AsyncDelay wperfTimer;
+const int MEASURE_INTERVAL_ms = 10000;
+const int PACKET_INTERVAL_ms = 40; //in ms
+const int PACKET_SIZE = 6;		   //in bytes
+int packetCount = 0;
+float averageRssi = 0;
+float averageSNR = 0;
+int totalBytes = 0;
+bool isClient = false;
+
 void setup()
 {
 	Serial.begin(115200);
 	delay(1000);
+	Serial.printf("Build %s\r\n", __TIMESTAMP__);
 	pinMode(MODE_SELECT_PIN, INPUT_PULLUP);
-
+	isClient = digitalRead(MODE_SELECT_PIN) == HIGH ? true : false;
+	if (isClient)
+	{
+		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
+	}
+	else
+	{
+		wperfTimer.start(MEASURE_INTERVAL_ms, AsyncDelay::MILLIS);
+	}
 	Serial.println("* Initializing radio...");
 	if (!rf24.init())
 		Serial.println("init failed");
@@ -72,35 +92,20 @@ void setup()
 
 void clientloop()
 {
-	Serial.println("Sending to rf24_server");
-	// Send a message to rf24_server
-	uint8_t data[] = "Hello World!";
-	if (!rf24.send(data, sizeof(data)) || !rf24.waitPacketSent())
+	uint8_t data[PACKET_SIZE];
+	if (wperfTimer.isExpired())
 	{
-		Serial.println("Packet TX error.");
-	}
-	// Now wait for a reply
-	uint8_t buf[RH_RF24_MAX_MESSAGE_LEN];
-	uint8_t len = sizeof(buf);
-
-	if (rf24.waitAvailableTimeout(500))
-	{
-		// Should be a reply message for us now
-		if (rf24.recv(buf, &len))
+		wperfTimer.repeat();
+		data[0] = packetCount++;
+		if (packetCount == 250)
 		{
-			Serial.print("got reply: ");
-			Serial.println((char *)buf);
+			packetCount = 0;
 		}
-		else
+		if (!rf24.send(data, sizeof(data)) || !rf24.waitPacketSent())
 		{
-			Serial.println("recv failed");
+			Serial.println("Packet TX error.");
 		}
 	}
-	else
-	{
-		Serial.println("No reply, is rf24_server running?");
-	}
-	delay(400);
 }
 
 void serverloop()
@@ -112,17 +117,25 @@ void serverloop()
 		uint8_t len = sizeof(buf);
 		if (rf24.recv(buf, &len))
 		{
-			//      RF24::printBuffer("request: ", buf, len);
-			Serial.print("got request: ");
-			Serial.println((char *)buf);
-			//      Serial.print("RSSI: ");
-			//      Serial.println((uint8_t)rf24.lastRssi(), DEC);
-
-			// Send a reply
-			uint8_t data[] = "And hello back to you";
-			rf24.send(data, sizeof(data));
-			rf24.waitPacketSent();
-			Serial.println("Sent a reply");
+			totalBytes += len;
+			packetCount++;
+			averageRssi += rf24.lastRssi();
+			if (buf[0] == 0)
+			{
+				Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f bps", totalBytes, packetCount, totalBytes * 8.0e3f / MEASURE_INTERVAL_ms);
+				if (packetCount > 0)
+				{
+					Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
+				}
+				else
+				{
+					Serial.println();
+				}
+				packetCount = 0;
+				averageRssi = 0;
+				averageSNR = 0;
+				totalBytes = 0;
+			}
 		}
 		else
 		{
@@ -137,7 +150,7 @@ void loop()
 	serverloop();
 	//clientloop();
 #elif defined(ARDUINO_NodeMCU_32S)
-	if (digitalRead(MODE_SELECT_PIN))
+	if (!isClient)
 	{
 		serverloop();
 	}
