@@ -9,12 +9,19 @@
 // You can use other WDS generated sample configs accorinding to your needs
 // or generate a custom one with WDS and include it here
 // See RF24configs/README for file name encoding standard
-//#include "RF24configs/radio_config_Si4464_27_434_2GFSK_5_10.h"
-//#include "RF24configs/radio_config_Si4464_30_434_2GFSK_5_10.h"
-//#include "RF24configs/radio_config_Si4464_30_434_2GFSK_10_20.h"
-//#include "RF24configs/radio_config_Si4464_30_915_2GFSK_5_10.h"
-//#include "RF24configs/radio_config_Si4464_30_915_2GFSK_10_20.h"
-#include "RF24configs/radio_config_Si4463_26_434_2GFSK_5_10.h"
+//#include "RF24configs/4fsk_2.4_4.h" : no reception
+//#include "RF24configs/4gfsk_2.4_4.h" : no recepction
+//#include "RF24configs/4gfsk_5_5.h"//no reception
+
+//#include "RF24configs/4fsk_1_2.h" //no reception
+#include "RF24configs/radio_config_Si4463_26_434_2GFSK_5_10.h"          // 1200bps
+//#include "RF24configs/radio_config_Si4463_26_434_2FSK_2.4_4.8.h"      // 656bps
+//#include "RF24configs/4gfsk_5_10.h"//no TX output
+//#include "RF24configs/2fsk_2.0_4.0.h"//perfect reception : 11kHz wide band
+//#include "RF24configs/2gfsk_2.4_4.8.h"//perfect reception : 10kHz wide band
+//#include "RF24configs/2fsk_1.8_4.0.h" //perfect reception : 12kHz wide RX-band
+//#include "RF24configs/2fsk_1.6_4.0.h"//perfect reception : 12kHz wide RX-band
+//#include "RF24configs/2fsk_1.4_4.0.h"
 
 // Interrupt vectors for the 3 Arduino interrupt pins
 // Each interrupt can be handled by a different instance of RH_RF24, allowing you to have

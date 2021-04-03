@@ -1,23 +1,3 @@
-/*
-   RadioLib Si443x Settings Example
-
-   This example shows how to change all the properties of RF69 radio.
-   RadioLib currently supports the following settings:
-    - pins (SPI slave select, nIRQ, shutdown)
-    - carrier frequency
-    - bit rate
-    - receiver bandwidth
-    - frequency deviation
-    - output power during transmission
-    - sync word
-
-   For default module settings, see the wiki page
-   https://github.com/jgromes/RadioLib/wiki/Default-configuration#si443xrfm2x
-
-   For full API reference, see the GitHub Pages
-   https://jgromes.github.io/RadioLib/
-*/
-
 /** 
  * Connections
  *  SI4463   	ESP32	Nucleo32
@@ -53,7 +33,7 @@ const int MODE_SELECT_PIN = 25;
 #endif
 
 AsyncDelay wperfTimer;
-const int MEASURE_INTERVAL_ms = 10000;
+unsigned long startInterval=0;
 const int PACKET_INTERVAL_ms = 40; //in ms
 const int PACKET_SIZE = 6;		   //in bytes
 int packetCount = 0;
@@ -72,10 +52,6 @@ void setup()
 	if (isClient)
 	{
 		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
-	}
-	else
-	{
-		wperfTimer.start(MEASURE_INTERVAL_ms, AsyncDelay::MILLIS);
 	}
 	Serial.println("* Initializing radio...");
 	if (!rf24.init())
@@ -122,7 +98,8 @@ void serverloop()
 			averageRssi += rf24.lastRssi();
 			if (buf[0] == 0)
 			{
-				Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %.0f bps", totalBytes, packetCount, totalBytes * 8.0e3f / MEASURE_INTERVAL_ms);
+				int bitrate = (totalBytes<<3) * 1000/(millis()-startInterval);
+				Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %d bps", totalBytes, packetCount, bitrate);
 				if (packetCount > 0)
 				{
 					Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
@@ -135,6 +112,7 @@ void serverloop()
 				averageRssi = 0;
 				averageSNR = 0;
 				totalBytes = 0;
+				startInterval = millis();
 			}
 		}
 		else
