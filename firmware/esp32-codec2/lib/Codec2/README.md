@@ -21,10 +21,11 @@ The default main.cpp in the Arduino framework only gives the main loop about 8KB
 
 
 ## Performance
-On ESP32, mode 1200bps (40ms audio packet)
-* Encoding : 16.8ms/packet
-* Decoding : 15.2ms/packet
-
+### mode 1200bps (40ms audio packet)
+|  | Encoding [ms]| Decoding [ms]|
+|--|--|--|
+|ESP32  | 16.8 | 15.2|
+|Adafruit Metro M4 | 22 | 22 |
 
 ## Contributing
 
@@ -42,4 +43,5 @@ Codec2 is licensed under the LGPL v2.1 license
 
 
 ## Acknowledgments
+
 

@@ -1,11 +1,3 @@
-/*
- * Test to see how well codec2 performs on ESP32.
- * To solve the stack overflow problem: 
- *    triple stack size from 8192 to 3*8192: ~/.platformio/packages/framework-arduinoespressif32/cores/esp32/main.cpp
- *  * 
- * https://www.xtronical.com/basics/audio/dacs-for-sound/playing-wav-files/ DACaudio for ESP32
- */
-
 #include "Arduino.h"
 #include "codec2.h"
 #include "lookdave.h"
@@ -22,8 +14,21 @@ int nsam, nbit, nbyte;
 short *buf;
 unsigned char *bits;
 
+#ifdef ARDUINO_ARCH_ESP32
+void codec2task(void *pvParameters)
+{
+  for (;;)
+  {
+    loop();
+    if (serialEventRun)
+      serialEventRun();
+  }
+}
+#endif
+
 void setup()
 {
+
   Serial.begin(115200);
 
   unsigned long startTime = millis();
@@ -32,6 +37,14 @@ void setup()
   }
   Serial.printf("Build %s\r\n", __TIMESTAMP__);
 
+#ifdef ARDUINO_ARCH_ESP32
+  xTaskCreateUniversal(codec2task, "Codec2Task", 24576, NULL, 1, NULL, CONFIG_ARDUINO_RUNNING_CORE);
+  vTaskDelete(NULL);
+#endif
+}
+
+void loop()
+{
   codec2 = codec2_create(mode);
   nsam = codec2_samples_per_frame(codec2);
   nbit = codec2_bits_per_frame(codec2);
@@ -49,12 +62,8 @@ void setup()
   decodingSpeed();
 
   codec2_destroy(codec2);
-}
-
-void loop()
-{
   Serial.print(".");
-  delay(500);
+  delay(5000);
 }
 
 /* This function will export the codec2 packet to the serial port.
