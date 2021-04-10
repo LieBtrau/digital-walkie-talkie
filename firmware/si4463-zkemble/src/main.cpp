@@ -161,7 +161,7 @@ void clientloop()
 	Serial.println(F(" Invalid"));
 	Serial.println(F("------"));
 
-	delay(1000);
+	delay(100);
 }
 
 void serverloop()
