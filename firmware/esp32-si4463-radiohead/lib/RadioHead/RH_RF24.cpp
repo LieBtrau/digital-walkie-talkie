@@ -13,6 +13,7 @@
 //#include "RF24configs/4gfsk_2.4_4.h" : no recepction
 //#include "RF24configs/4gfsk_5_5.h"//no reception
 
+//#include "RF24configs/4gfsk_50k_8.333_variable_length_packet.h"
 //#include "RF24configs/4fsk_1_2.h" //no reception
 #include "RF24configs/radio_config_Si4463_26_434_2GFSK_5_10.h"          // 1200bps
 //#include "RF24configs/radio_config_Si4463_26_434_2FSK_2.4_4.8.h"      // 656bps
