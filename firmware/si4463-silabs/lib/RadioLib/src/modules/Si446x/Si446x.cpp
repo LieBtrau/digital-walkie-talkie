@@ -128,11 +128,11 @@ si446x_state_t Si446x::getState(void)
 
 int16_t Si446x::startReceive()
 {
+    const byte SI446X_PKT_FIELD_2_LENGTH_LOW = 0x12;
     si446x_change_state(SI446X_STATE_READY);
     si446x_fifo_info_fast_reset(SI446X_FIFO_CLEAR_RX | SI446X_FIFO_CLEAR_TX);
     //fix_invalidSync_irq(0);
     //Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
-    //setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN); // TODO ?
     si446x_get_int_status(0, 0, 0xFF);
 
     // TODO RX timeout to sleep if WUT LDC enabled
@@ -194,4 +194,67 @@ int16_t Si446x::readData(uint8_t *data, size_t len)
     //Read packet data
     si446x_read_rx_fifo(_packetLength, data);
     return ERR_NONE;
+}
+
+int16_t Si446x::startTransmit(uint8_t *data, size_t len, uint8_t addr)
+{
+    byte txdata[len+1];
+
+    txdata[0]=len;
+    memcpy(txdata+1, data, len);
+    const byte SI446X_PKT_FIELD_2_LENGTH_LOW = 0x12;
+    if (getState() == SI446X_STATE_TX)
+    { // Already transmitting
+        return ERR_CMD_MODE_FAILED;
+    }
+    si446x_change_state(SI446X_STATE_READY);
+    si446x_fifo_info_fast_reset(SI446X_FIFO_CLEAR_RX | SI446X_FIFO_CLEAR_TX);
+    si446x_get_int_status(0u, 0u, 0xFF);
+    si446x_write_tx_fifo(len+1, txdata);
+    //in case of variable packet length, write packet length to property
+    si446x_set_property(SI446X_PROP_GRP_ID_PKT, 1, SI446X_PKT_FIELD_2_LENGTH_LOW, &len, 1);
+    si446x_start_tx(_channel, SI446X_STATE_RX << 4, 0);
+    //For RX
+    byte maxlength = SI4463_MAX_PACKET_LENGTH;
+    si446x_set_property(SI446X_PROP_GRP_ID_PKT, 1, SI446X_PKT_FIELD_2_LENGTH_LOW, &maxlength, 1);
+    return ERR_NONE;
+}
+
+int16_t Si446x::transmit(uint8_t *data, size_t len, uint8_t addr)
+{
+    // calculate timeout (5ms + 500 % of expected time-on-air)
+    uint32_t timeout = 5000000 + (uint32_t)((((float)(len * 8)) / (_br * 1000.0)) * 5000000.0);
+
+    // start transmission
+    int16_t state = startTransmit(data, len, addr);
+    RADIOLIB_ASSERT(state);
+
+   // wait for transmission end or timeout
+
+   /* todo
+    * IRQ doesn't come low yet at the end of TX, check radio_config.h to see if TX-interrupt enabled.
+    */
+    uint32_t start = Module::micros();
+    while (Module::digitalRead(_mod->getIrq()))
+    {
+        Module::yield();
+        if (Module::micros() - start > timeout)
+        {
+            standby();
+            clearIRQFlags();
+            return ERR_TX_TIMEOUT;
+        }
+    }
+
+    // clear interrupt flags
+    clearIRQFlags();
+    if (Si446xCmd.GET_INT_STATUS.PH_PEND & SI446X_CMD_GET_PH_STATUS_REP_PH_PEND_PACKET_SENT_PEND_BIT)
+    {
+        //Packet_sent interrupt pending
+        if (Si446xCmd.GET_INT_STATUS.PH_STATUS & SI446X_CMD_GET_PH_STATUS_REP_PH_STATUS_PACKET_SENT_BIT)
+        {
+            return ERR_NONE;
+        }
+    }
+    return ERR_TX_TIMEOUT;
 }

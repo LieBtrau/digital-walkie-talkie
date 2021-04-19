@@ -85,6 +85,28 @@ void Si446x::radio_comm_SendCmd(byte byteCount, byte *pData)
  *
  * @param cmd           Command ID
  * @param pollCts       Set to poll CTS
+ * @param byteCount     Number of bytes to get from the radio chip
+ * @param pData         Pointer to where to put the data
+ */
+void Si446x::radio_comm_WriteData(byte cmd, bool pollCts, byte byteCount, byte *pData)
+{
+    if (pollCts)
+    {
+        while (!ctsWentHigh)
+        {
+            radio_comm_PollCTS();
+        }
+    }
+    _mod->SPIwriteRegisterBurst(cmd, pData, byteCount);
+    ctsWentHigh = 0;
+}
+
+
+/*!
+ * Gets a command response from the radio chip
+ *
+ * @param cmd           Command ID
+ * @param pollCts       Set to poll CTS
  * @param byteCount     Number of bytes to get from the radio chip.
  * @param pData         Pointer to where to put the data.
  */
@@ -98,27 +120,6 @@ void Si446x::radio_comm_ReadData(byte cmd, bool pollCts, byte byteCount, byte *p
         }
     }
     _mod->SPIreadRegisterBurst(cmd, byteCount, pData);
-    ctsWentHigh = 0;
-}
-
-/*!
- * Gets a command response from the radio chip
- *
- * @param cmd           Command ID
- * @param pollCts       Set to poll CTS
- * @param byteCount     Number of bytes to get from the radio chip
- * @param pData         Pointer to where to put the data
- */
-void Si446x::radio_comm_WriteData(byte cmd, bool pollCts, byte byteCount, byte *pData)
-{
-    if (pollCts)
-    {
-        //while (!ctsWentHigh)
-        {
-            radio_comm_PollCTS();
-        }
-    }
-    _mod->SPIwriteRegisterBurst(cmd, pData, byteCount);
     ctsWentHigh = 0;
 }
 

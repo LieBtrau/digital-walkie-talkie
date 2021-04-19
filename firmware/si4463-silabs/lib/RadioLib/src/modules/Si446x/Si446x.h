@@ -56,7 +56,7 @@ public:
 	Si446x(Module *mod);
 	int16_t begin();
 	void reset();
-	int16_t transmit(uint8_t *data, size_t len, uint8_t addr = 0) { return -1; };
+	int16_t transmit(uint8_t *data, size_t len, uint8_t addr = 0);
 	int16_t transmitDirect(uint32_t frf = 0) { return -1; };
 	int16_t receive(uint8_t *data, size_t len);
 	int16_t receiveDirect() { return -1; };
@@ -65,7 +65,7 @@ public:
 	int16_t setDataShaping(uint8_t sh) { return -1; };
 	int16_t setEncoding(uint8_t encoding) { return -1; };
 	size_t getPacketLength(bool update = true);
-	int16_t startTransmit(uint8_t *data, size_t len, uint8_t addr = 0) { return -1; };
+	int16_t startTransmit(uint8_t *data, size_t len, uint8_t addr = 0);
 	int16_t startReceive();
 	int16_t readData(uint8_t *data, size_t len);
 	uint8_t random() { return -1; };
@@ -99,7 +99,9 @@ private:
 	void si446x_change_state(byte NEXT_STATE1);
 	void si446x_fifo_info_fast_reset(byte FIFO);
 	void si446x_read_rx_fifo(byte numBytes, byte* pRxData);
+	void si446x_write_tx_fifo(byte numBytes, byte* pTxData);
 	void si446x_start_rx(byte CHANNEL, byte CONDITION, word RX_LEN, byte NEXT_STATE1, byte NEXT_STATE2, byte NEXT_STATE3);
+	void si446x_start_tx(byte CHANNEL, byte CONDITION, word TX_LEN);
 
 	//Radio_cmd
 	byte radioCmd[16u];

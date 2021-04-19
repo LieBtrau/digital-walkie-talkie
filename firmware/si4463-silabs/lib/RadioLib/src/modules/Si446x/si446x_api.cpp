@@ -190,6 +190,16 @@ void Si446x::si446x_read_rx_fifo(byte numBytes, byte* pRxData)
   radio_comm_ReadData( SI446X_CMD_ID_READ_RX_FIFO, 0, numBytes, pRxData );
 }
 
+/*!
+ * The function can be used to load data into TX FIFO.
+ *
+ * @param numBytes  Data length to be load.
+ * @param pTxData   Pointer to the data (U8*).
+ */
+void Si446x::si446x_write_tx_fifo(byte numBytes, byte* pTxData)
+{
+  radio_comm_WriteData( SI446X_CMD_ID_WRITE_TX_FIFO, 0, numBytes, pTxData );
+}
 
 /*!
  * Sends START_RX command to the radio.
@@ -213,4 +223,26 @@ void Si446x::si446x_start_rx(byte CHANNEL, byte CONDITION, word RX_LEN, byte NEX
     Pro2Cmd[7] = NEXT_STATE3;
 
     radio_comm_SendCmd( SI446X_CMD_ARG_COUNT_START_RX, Pro2Cmd );
+}
+
+/*! Sends START_TX command to the radio.
+ *
+ * @param CHANNEL   Channel number.
+ * @param CONDITION Start TX condition.
+ * @param TX_LEN    Payload length (exclude the PH generated CRC).
+ */
+void Si446x::si446x_start_tx(byte CHANNEL, byte CONDITION, word TX_LEN)
+{
+    Pro2Cmd[0] = SI446X_CMD_ID_START_TX;
+    Pro2Cmd[1] = CHANNEL;
+    Pro2Cmd[2] = CONDITION;
+    Pro2Cmd[3] = highByte(TX_LEN);
+    Pro2Cmd[4] = lowByte(TX_LEN);
+    Pro2Cmd[5] = 0x00;
+
+    // Don't repeat the packet, 
+    // ie. transmit the packet only once
+    Pro2Cmd[6] = 0x00;
+
+    radio_comm_SendCmd( SI446X_CMD_ARG_COUNT_START_TX, Pro2Cmd );
 }
