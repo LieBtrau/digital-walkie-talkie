@@ -71,7 +71,7 @@ byte Si446x::radio_comm_GetResp(byte byteCount, byte *pData)
  */
 void Si446x::radio_comm_SendCmd(byte byteCount, byte *pData)
 {
-    //while (!ctsWentHigh)
+    while (!ctsWentHigh)
     {
         radio_comm_PollCTS();
     }

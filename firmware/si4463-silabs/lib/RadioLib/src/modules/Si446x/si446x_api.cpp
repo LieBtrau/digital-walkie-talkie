@@ -238,11 +238,6 @@ void Si446x::si446x_start_tx(byte CHANNEL, byte CONDITION, word TX_LEN)
     Pro2Cmd[2] = CONDITION;
     Pro2Cmd[3] = highByte(TX_LEN);
     Pro2Cmd[4] = lowByte(TX_LEN);
-    Pro2Cmd[5] = 0x00;
 
-    // Don't repeat the packet, 
-    // ie. transmit the packet only once
-    Pro2Cmd[6] = 0x00;
-
-    radio_comm_SendCmd( SI446X_CMD_ARG_COUNT_START_TX, Pro2Cmd );
+    radio_comm_SendCmd( 5, Pro2Cmd );
 }

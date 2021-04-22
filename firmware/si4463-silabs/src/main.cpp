@@ -107,7 +107,7 @@ void clientloop()
 	else
 	{
 		// If success toggle LED and send ping time over UART
-		uint16_t totalTime = pingInfo.timestamp - startTime;
+		uint16_t totalTime = millis() - startTime;
 
 		static uint8_t ledState;
 		digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
@@ -126,6 +126,7 @@ void clientloop()
 		// Print out ping contents
 		Serial.print(F("Data from server: "));
 		Serial.write((uint8_t *)data, radio.getPacketLength());
+		Serial.printf("Packet length: %d\r\n",radio.getPacketLength());
 		Serial.println();
 	}
 

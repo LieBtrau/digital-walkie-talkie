@@ -129,6 +129,9 @@ si446x_state_t Si446x::getState(void)
 int16_t Si446x::startReceive()
 {
     const byte SI446X_PKT_FIELD_2_LENGTH_LOW = 0x12;
+    //For RX
+    byte maxlength = SI4463_MAX_PACKET_LENGTH;
+    si446x_set_property(SI446X_PROP_GRP_ID_PKT, 1, SI446X_PKT_FIELD_2_LENGTH_LOW, &maxlength, 1);
     si446x_change_state(SI446X_STATE_READY);
     si446x_fifo_info_fast_reset(SI446X_FIFO_CLEAR_RX | SI446X_FIFO_CLEAR_TX);
     //fix_invalidSync_irq(0);
@@ -214,14 +217,12 @@ int16_t Si446x::startTransmit(uint8_t *data, size_t len, uint8_t addr)
     //in case of variable packet length, write packet length to property
     si446x_set_property(SI446X_PROP_GRP_ID_PKT, 1, SI446X_PKT_FIELD_2_LENGTH_LOW, &len, 1);
     si446x_start_tx(_channel, SI446X_STATE_RX << 4, 0);
-    //For RX
-    byte maxlength = SI4463_MAX_PACKET_LENGTH;
-    si446x_set_property(SI446X_PROP_GRP_ID_PKT, 1, SI446X_PKT_FIELD_2_LENGTH_LOW, &maxlength, 1);
     return ERR_NONE;
 }
 
 int16_t Si446x::transmit(uint8_t *data, size_t len, uint8_t addr)
 {
+    Serial.printf("Sending %d bytes\r\n", len);
     // calculate timeout (5ms + 500 % of expected time-on-air)
     uint32_t timeout = 5000000 + (uint32_t)((((float)(len * 8)) / (_br * 1000.0)) * 5000000.0);
 
