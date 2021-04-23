@@ -222,7 +222,6 @@ int16_t Si446x::startTransmit(uint8_t *data, size_t len, uint8_t addr)
 
 int16_t Si446x::transmit(uint8_t *data, size_t len, uint8_t addr)
 {
-    Serial.printf("Sending %d bytes\r\n", len);
     // calculate timeout (5ms + 500 % of expected time-on-air)
     uint32_t timeout = 5000000 + (uint32_t)((((float)(len * 8)) / (_br * 1000.0)) * 5000000.0);
 
