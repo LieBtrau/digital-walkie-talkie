@@ -8,9 +8,18 @@ Codec2Encoder::Codec2Encoder(CODEC2 *codec2) : SampleSink(codec2_samples_per_fra
 {
 }
 
-/* This function should not take longer than codec2_samples_per_frame / sample rate
- * e.g. for codec2 1200bps: 320 / 8000 = 40ms
- */
+/**
+* @brief Encode audio from the \p inputQueue and write the codec2 data to \p bits.
+*
+* This function should not take longer than codec2_samples_per_frame / sample rate
+* e.g. for codec2 1200bps: 320 / 8000 = 40ms
+*
+* @param [inputQueue] inputQueue containing 16bit signed integer audio samples
+* @param [bits] Codec2 encoded data will be written to bits.
+* @param [xSemaphoreCodec2] Codec2 semaphore to make sure we're not simultaneously encoding and decoding on the same codec2 object.
+* @return (none)
+*/
+
 void Codec2Encoder::setFrames(QueueHandle_t inputQueue, byte *bits, SemaphoreHandle_t xSemaphoreCodec2)
 {
     short samples[codec2_samples_per_frame(m_codec2)];

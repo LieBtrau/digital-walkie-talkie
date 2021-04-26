@@ -24,7 +24,7 @@ private:
 };
 
 /**
- * Base class for our sample generators
+ * Base class for our sample consumers
  **/
 class SampleSink
 {
