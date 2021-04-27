@@ -1,5 +1,4 @@
 /**
- * /home/christoph/.platformio/packages/framework-arduinoespressif32/cores/esp32 ->  #define CONFIG_ARDUINO_LOOP_STACK_SIZE 24576
  * Output decoded codec2 packets to SGTL5000 headphone and line out.
  * 
  * The on-off functionality in the audio stream simulates the PTT-behaviour.
@@ -24,17 +23,17 @@
  * GND                                      GND                             GND
  *                                          G                               both ground pins of the Adafruit 1780 must be connected!
  * MCLK (Audio Master Clock)                23 (MCLK)                       GPIO0 (or another CLK_OUT pin)
- *      2MHz, Sinusoidal signal, 1.8Vpp, 1.7Vavg.
+ *      Sinusoidal signal, 1.8Vpp, 1.7Vavg.
  * LRCLK                                    20 (LRCLK)                      GPIO25 (or other GPIO)
  *      Audio Left/Right Clock
  *      WS (Word Select)
- *      8kHz square wave
+ *      48kHz square wave
  * BCLK                                     21 (BCLK)                       GPIO26 (or other GPIO)
  *      SCLK (Audio Bit Clock)
- *      256kHz
+ *      1.54MHz
  * DOUT                                     8                               GPIO33
- *      Audio Data from Audio Shield to Teensy/ESP32
- * DIN                                      7                               GPIO32
+ *      Audio Data from Audio Shield to Teensy
+ * DIN                                      7                               GPIO32 
  *      Audio Data from MCU to Audio Shield
  * SDA                                      18                              GPIO21
  * SCL                                      19                              GPIO22
@@ -137,7 +136,6 @@ void setup()
 	xTaskCreateUniversal(codec2task, "Codec2Task", 24576, NULL, 1, NULL, CONFIG_ARDUINO_RUNNING_CORE);
 	vTaskDelete(NULL);
 }
-
 
 void loop()
 {

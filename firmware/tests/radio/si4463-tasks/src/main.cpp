@@ -81,7 +81,7 @@ void setup()
 		while (true)
 			;
 	}
-	radio.setTxPower(SI446X_MAX_TX_POWER);
+	//radio.setTxPower(SI446X_MAX_TX_POWER);
 	txPacketsQueue = xQueueCreate(3, PACKET_SIZE);
 	if (txPacketsQueue == NULL)
 	{
