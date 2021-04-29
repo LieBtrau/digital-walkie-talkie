@@ -19,7 +19,6 @@ Codec2Encoder::Codec2Encoder(CODEC2 *codec2) : SampleSink(codec2_samples_per_fra
 * @param [xSemaphoreCodec2] Codec2 semaphore to make sure we're not simultaneously encoding and decoding on the same codec2 object.
 * @return (none)
 */
-
 void Codec2Encoder::setFrames(QueueHandle_t inputQueue, byte *bits, SemaphoreHandle_t xSemaphoreCodec2)
 {
     short samples[codec2_samples_per_frame(m_codec2)];
