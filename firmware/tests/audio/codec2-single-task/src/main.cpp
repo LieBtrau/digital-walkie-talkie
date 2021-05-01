@@ -90,7 +90,7 @@ void encodingSpeed()
 	{
 		memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
 		startTime = micros();
-		xQueueSendToBack(xAudioSamplesQueue, buf, 10);
+		xQueueSendToBack(xAudioSamplesQueue, buf, (TickType_t)0);
 		if (xQueueReceive(xCodec2SamplesQueue, bits, 100) == pdTRUE)
 		{
 			totalTime += micros() - startTime;
@@ -121,7 +121,7 @@ void decodingSpeed()
 	{
 		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
 		startTime = micros();
-		xQueueSendToBack(xCodec2SamplesQueue, bits, 10);
+		xQueueSendToBack(xCodec2SamplesQueue, bits, (TickType_t)0);
 		if (xQueueReceive(xAudioSamplesQueue, buf, 100) == pdTRUE)
 		{
 			totalTime += micros() - startTime;

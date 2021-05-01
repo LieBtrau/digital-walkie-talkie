@@ -1,157 +1,141 @@
-/**
- * Output decoded codec2 packets to SGTL5000 headphone and line out.
- * 
- * The on-off functionality in the audio stream simulates the PTT-behaviour.
- * 
- * A trade-off must be made between fast response on PTT-release (start I2S-RX task) and buffering.
- * Upon stopping the I2S-TX task (push PTT), audio stops immediately.
- * 
- * Remember that one codec2 1200bps packets contains 640bytes.
- * 
- * DMA-buf count		DMA-buf len			Delay from start output to I2S out (includes codec2 encoding)
- * 2					256					64ms
- * 2					1024				256ms
- * 4					1024				511ms
- * 
- * Maybe helpful for debugging:
- *  http://www.iotsharing.com/2017/07/how-to-use-arduino-esp32-i2s-to-play-wav-music-from-sdcard.html
- *  https://diyi0t.com/i2s-sound-tutorial-for-esp32/
- *  https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/i2s.html
- * 
- * Signal name                              Adafruit 1780                   NodeMCU-32S
- * 3V3                                      3.3V                            3.3V
- * GND                                      GND                             GND
- *                                          G                               both ground pins of the Adafruit 1780 must be connected!
- * MCLK (Audio Master Clock)                23 (MCLK)                       GPIO0 (or another CLK_OUT pin)
- *      Sinusoidal signal, 1.8Vpp, 1.7Vavg.
- * LRCLK                                    20 (LRCLK)                      GPIO25 (or other GPIO)
- *      Audio Left/Right Clock
- *      WS (Word Select)
- *      48kHz square wave
- * BCLK                                     21 (BCLK)                       GPIO26 (or other GPIO)
- *      SCLK (Audio Bit Clock)
- *      1.54MHz
- * DOUT                                     8                               GPIO33
- *      Audio Data from Audio Shield to Teensy
- * DIN                                      7                               GPIO32 
- *      Audio Data from MCU to Audio Shield
- * SDA                                      18                              GPIO21
- * SCL                                      19                              GPIO22
- */
-
-#include "Codec2Decoder.h"
-#include "DacOutput.h"
+#include <Arduino.h>
 #include "codec2.h"
 #include "lookdave.h"
-#include "Sgtl5000_Output.h"
-#include "control_sgtl5000.h"
-#include "AsyncDelay.h"
 
+const int mode = CODEC2_MODE_1200;
 CODEC2 *codec2;
-Sgtl5000_Output *output;
-SampleSource *sampleSource;
-AudioControlSGTL5000 audioShield;
 QueueHandle_t xAudioSamplesQueue = NULL;
-AsyncDelay delay_1s;
-bool isPlaying = true;
-const int iopin = LED_BUILTIN; //maximum 3.3MHz digitalWrite toggle frequency.
-
-int nbit_ctr = 0;
-SemaphoreHandle_t xSemaphoreCodec2 = NULL;
-
-// The pin config as per the setup
-static i2s_pin_config_t i2s_pin_config = {
-	.bck_io_num = 26,	// Serial Clock (SCK)
-	.ws_io_num = 25,	// Word Select (WS)
-	.data_out_num = 32, // data out to audio codec
-	.data_in_num = 33	// data from audio codec
-};
-
-/**
- *	This task should normally get its samples from the wireless connection, not from some fix buffer 
- *	as is the case here.
- */
-void vCodec2SampleSource(void *pvParameters)
-{
-	int nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
-	for (;;)
-	{
-		if (nbit_ctr + nbyte < lookdave_bit_len)
-		{
-			sampleSource->getFrames(lookdave_bit + nbit_ctr, xAudioSamplesQueue, xSemaphoreCodec2);
-			nbit_ctr += nbyte;
-		}
-		else
-		{
-			nbit_ctr = 0;
-		}
-		taskYIELD();
-	}
-}
+QueueHandle_t xCodec2SamplesQueue = NULL;
+bool isCodec2Encoding = false;
 
 void codec2task(void *pvParameters)
 {
-	Serial.begin(115200);
-	delay_1s.start(1000, AsyncDelay::MILLIS);
-	Serial.printf("Build %s\r\n", __TIMESTAMP__);
-	Serial.printf("CPU clock speed: %uMHz\r\n", ESP.getCpuFreqMHz());
-	pinMode(iopin, OUTPUT);
-
-	xSemaphoreCodec2 = xSemaphoreCreateMutex();
-	if (xSemaphoreCodec2 == NULL)
-	{
-		Serial.println("Can't create semaphore");
-		while (true)
-			;
-	}
 	codec2 = codec2_create(CODEC2_MODE_1200);
 	codec2_set_natural_or_gray(codec2, 0);
-	sampleSource = new Codec2Decoder(codec2);
-	xAudioSamplesQueue = xQueueCreate(3, sizeof(Frame_t) * sampleSource->getFrameSampleCount());
+
+	int nsam = codec2_samples_per_frame(codec2);
+	xAudioSamplesQueue = xQueueCreate(3, sizeof(int16_t) * nsam);
 	if (xAudioSamplesQueue == NULL)
 	{
-		Serial.println("Can't create queue");
+		Serial.println("Can't create xAudioSamplesQueue");
 		while (true)
 			;
 	}
 
-	//  codec2_destroy(codec2);
+	int nbyte = (codec2_bits_per_frame(codec2) + 7) / 8;
+	xCodec2SamplesQueue = xQueueCreate(3, nbyte);
+	if (xCodec2SamplesQueue == NULL)
+	{
+		Serial.println("Can't create xCodec2SamplesQueue");
+		while (true)
+			;
+	}
 
-	Serial.println("Starting I2S Output");
-	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
-	output->start(sampleSource, xAudioSamplesQueue); //init needed here to generate MCLK, needed for SGTL5000 init.
-	Serial.printf("SGTL5000 %s initialized.", audioShield.enable() ? "is" : "not");
-	audioShield.volume(0.5);
-	xTaskCreate(vCodec2SampleSource, "SampleSource", 24576, NULL, 2, NULL);
+	unsigned char *bits = (unsigned char *)malloc(nbyte * sizeof(char));
+	short *buf = (short *)malloc(nsam * sizeof(short));
 	for (;;)
 	{
-		loop();
-		if (serialEventRun)
-			serialEventRun();
+		if (isCodec2Encoding)
+		{
+			//Codec2 encoding : Receive from audio queue and send to codec2 queue
+			if (xQueueReceive(xAudioSamplesQueue, buf, 10) == pdTRUE)
+			{
+				codec2_encode(codec2, bits, buf);
+				xQueueSendToBack(xCodec2SamplesQueue, bits, 10);
+			}
+		}
+		else
+		{
+			//Codec2 decoding : Receive from codec2 bits and send to audio queue
+			if (xQueueReceive(xCodec2SamplesQueue, bits, 10) == pdTRUE)
+			{
+				codec2_decode(codec2, buf, bits);
+				xQueueSendToBack(xAudioSamplesQueue, buf, 10);
+			}
+		}
 	}
 }
 
 void setup()
 {
-	xTaskCreateUniversal(codec2task, "Codec2Task", 24576, NULL, 1, NULL, CONFIG_ARDUINO_RUNNING_CORE);
-	vTaskDelete(NULL);
+	Serial.begin(115200);
+
+	unsigned long startTime = millis();
+	while (!Serial && (startTime + (10 * 1000) > millis()))
+	{
+	}
+	Serial.printf("Build %s\r\n", __TIMESTAMP__);
+
+	xTaskCreate(codec2task, "Codec2Task", 24576, NULL, 2, NULL);
+}
+
+void encodingSpeed()
+{
+	isCodec2Encoding = true;
+	int nsam_ctr = 0;
+	int nsam = 320; //todo : variable depending on codec2 mode
+	int nbyte = 8;
+	int bufsize = nsam << 1;
+	short *buf = (short *)malloc(nsam * sizeof(short));
+	unsigned char *bits = (unsigned char *)malloc(nbyte * sizeof(char));
+	int packet_ctr = 0;
+	unsigned long startTime;
+	unsigned long totalTime = 0;
+	if (xAudioSamplesQueue == NULL || xCodec2SamplesQueue == NULL)
+	{
+		Serial.println("not ready");
+		return;
+	}
+	while (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
+	{
+		memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
+		startTime = micros();
+		xQueueSendToBack(xAudioSamplesQueue, buf, (TickType_t)0);
+		if (xQueueReceive(xCodec2SamplesQueue, bits, 100) == pdTRUE)
+		{
+			totalTime += micros() - startTime;
+			packet_ctr++;
+			nsam_ctr += bufsize;
+		}
+	}
+	Serial.printf("Average encoding time per packet: %luµs\r\n", totalTime / packet_ctr);
+}
+
+void decodingSpeed()
+{
+	isCodec2Encoding=false;
+	int nbit_ctr = 0;
+	int packet_ctr = 0;
+	unsigned long startTime;
+	unsigned long totalTime = 0;
+	int nsam = 320; //todo : variable depending on codec2 mode
+	int nbyte = 8;
+	unsigned char *bits = (unsigned char *)malloc(nbyte * sizeof(char));
+	short *buf = (short *)malloc(nsam * sizeof(short));
+	if (xAudioSamplesQueue == NULL || xCodec2SamplesQueue == NULL)
+	{
+		Serial.println("not ready");
+		return;
+	}
+	while (nbit_ctr + nbyte < lookdave_bit_len)
+	{
+		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
+		startTime = micros();
+		xQueueSendToBack(xCodec2SamplesQueue, bits, (TickType_t)0);
+		if (xQueueReceive(xAudioSamplesQueue, buf, 100) == pdTRUE)
+		{
+			totalTime += micros() - startTime;
+			packet_ctr++;
+			nbit_ctr += nbyte;
+		}
+	}
+	Serial.printf("Average decoding time per packet: %luµs\r\n", totalTime / packet_ctr);
 }
 
 void loop()
 {
-	// nothing to do here - everything is taken care of by tasks
-	if (delay_1s.isExpired())
-	{
-		delay_1s.repeat(); // Count from when the delay expired, not now
-		if (isPlaying)
-		{
-			output->stop();
-		}
-		else
-		{
-			output->start(sampleSource, xAudioSamplesQueue);
-		}
-		digitalWrite(iopin, isPlaying ? HIGH : LOW);
-		isPlaying = !isPlaying;
-	}
+	// put your main code here, to run repeatedly:
+	//encodingSpeed();
+	decodingSpeed();
+	delay(500);
 }

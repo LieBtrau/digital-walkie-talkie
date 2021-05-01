@@ -28,9 +28,39 @@ int totalBytes = 0;
 bool isClient = false;
 QueueHandle_t txPacketsQueue;
 QueueHandle_t rxPacketsQueue;
+volatile bool vRadioTaskReady=false;
 
 void vRadioTask(void *pvParameters)
 {
+	Serial.print(F("[Si4463] Initializing ... "));
+	int state = radio.begin();
+	if (state == ERR_NONE)
+	{
+		Serial.println(F("success!"));
+	}
+	else
+	{
+		Serial.print(F("failed, code "));
+		Serial.println(state);
+		while (true)
+			;
+	}
+	//radio.setTxPower(SI446X_MAX_TX_POWER);
+	txPacketsQueue = xQueueCreate(3, PACKET_SIZE);
+	if (txPacketsQueue == NULL)
+	{
+		Serial.println("Can't create queue");
+		while (true)
+			;
+	}
+	rxPacketsQueue = xQueueCreate(3, PACKET_SIZE);
+	if (rxPacketsQueue == NULL)
+	{
+		Serial.println("Can't create queue");
+		while (true)
+			;
+	}
+	vRadioTaskReady=true;
 	for (;;)
 	{
 		byte packet[PACKET_SIZE];
@@ -68,35 +98,9 @@ void setup()
 	{
 		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
 	}
-	Serial.print(F("[Si4463] Initializing ... "));
-	int state = radio.begin();
-	if (state == ERR_NONE)
-	{
-		Serial.println(F("success!"));
-	}
-	else
-	{
-		Serial.print(F("failed, code "));
-		Serial.println(state);
-		while (true)
-			;
-	}
-	//radio.setTxPower(SI446X_MAX_TX_POWER);
-	txPacketsQueue = xQueueCreate(3, PACKET_SIZE);
-	if (txPacketsQueue == NULL)
-	{
-		Serial.println("Can't create queue");
-		while (true)
-			;
-	}
-	rxPacketsQueue = xQueueCreate(3, PACKET_SIZE);
-	if (rxPacketsQueue == NULL)
-	{
-		Serial.println("Can't create queue");
-		while (true)
-			;
-	}
 	xTaskCreate(vRadioTask, "RadioTask", 2000, NULL, 2, NULL);
+	while(!vRadioTaskReady);
+	Serial.println("Ready for looping");
 }
 
 void clientloop()
