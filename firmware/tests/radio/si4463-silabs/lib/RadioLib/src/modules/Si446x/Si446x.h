@@ -12,9 +12,9 @@
 #define RADIO_CTS_TIMEOUT 10000
 #define SI446X_MAX_TX_POWER 127
 
-#define IRQ_PACKET				0
-#define IRQ_MODEM				1
-#define IRQ_CHIP				2
+#define IRQ_PACKET 0
+#define IRQ_MODEM 1
+#define IRQ_CHIP 2
 
 enum
 {
@@ -30,20 +30,19 @@ enum
 */
 typedef enum
 {
-	SI446X_STATE_NOCHANGE	= 0x00,
-	SI446X_STATE_SLEEP		= 0x01, ///< This will never be returned since SPI activity will wake the radio into ::SI446X_STATE_SPI_ACTIVE
-	SI446X_STATE_SPI_ACTIVE	= 0x02,
-	SI446X_STATE_READY		= 0x03,
-	SI446X_STATE_READY2		= 0x04, ///< Will return as ::SI446X_STATE_READY
-	SI446X_STATE_TX_TUNE	= 0x05, ///< Will return as ::SI446X_STATE_TX
-	SI446X_STATE_RX_TUNE	= 0x06, ///< Will return as ::SI446X_STATE_RX
-	SI446X_STATE_TX			= 0x07,
-	SI446X_STATE_RX			= 0x08
+	SI446X_STATE_NOCHANGE = 0x00,
+	SI446X_STATE_SLEEP = 0x01, ///< This will never be returned since SPI activity will wake the radio into ::SI446X_STATE_SPI_ACTIVE
+	SI446X_STATE_SPI_ACTIVE = 0x02,
+	SI446X_STATE_READY = 0x03,
+	SI446X_STATE_READY2 = 0x04,	 ///< Will return as ::SI446X_STATE_READY
+	SI446X_STATE_TX_TUNE = 0x05, ///< Will return as ::SI446X_STATE_TX
+	SI446X_STATE_RX_TUNE = 0x06, ///< Will return as ::SI446X_STATE_RX
+	SI446X_STATE_TX = 0x07,
+	SI446X_STATE_RX = 0x08
 } si446x_state_t;
 
-#define SI446X_FIFO_CLEAR_RX			0x02
-#define SI446X_FIFO_CLEAR_TX			0x01
-
+#define SI446X_FIFO_CLEAR_RX 0x02
+#define SI446X_FIFO_CLEAR_TX 0x01
 
 class Si446x : public PhysicalLayer
 {
@@ -75,6 +74,7 @@ public:
 	// void setIrqAction(void (*func)(void));
 	// void clearIrqAction();
 	int16_t getChipVersion();
+	bool pollIRQLine();
 
 protected:
 	Module *_mod;
@@ -83,8 +83,9 @@ private:
 	si446x_state_t getState();
 	volatile uint8_t enabledInterrupts[3];
 	byte _channel;
-	size_t _packetLength=0;
+	size_t _packetLength = 0;
 	float _br = 2.400;
+	uint32_t start_rx_timeout;
 
 	//API-lib
 	si446x_cmd_reply_union Si446xCmd;
@@ -98,8 +99,8 @@ private:
 	byte si446x_get_fastResponse(byte reg);
 	void si446x_change_state(byte NEXT_STATE1);
 	void si446x_fifo_info_fast_reset(byte FIFO);
-	void si446x_read_rx_fifo(byte numBytes, byte* pRxData);
-	void si446x_write_tx_fifo(byte numBytes, byte* pTxData);
+	void si446x_read_rx_fifo(byte numBytes, byte *pRxData);
+	void si446x_write_tx_fifo(byte numBytes, byte *pTxData);
 	void si446x_start_rx(byte CHANNEL, byte CONDITION, word RX_LEN, byte NEXT_STATE1, byte NEXT_STATE2, byte NEXT_STATE3);
 	void si446x_start_tx(byte CHANNEL, byte CONDITION, word TX_LEN);
 

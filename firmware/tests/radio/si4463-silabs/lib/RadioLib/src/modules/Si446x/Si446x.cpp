@@ -141,6 +141,7 @@ int16_t Si446x::startReceive()
     // TODO RX timeout to sleep if WUT LDC enabled
     word packetLength = 0; //variable length packets -> set to 0
     si446x_start_rx(_channel, 0, packetLength, SI446X_STATE_NOCHANGE, SI446X_STATE_READY, SI446X_STATE_SLEEP);
+    start_rx_timeout = Module::micros();
     return SI446X_SUCCESS;
 }
 
@@ -156,31 +157,31 @@ size_t Si446x::getPacketLength(bool update)
 
 int16_t Si446x::receive(uint8_t *data, size_t len)
 {
+    bool irqActive = false;
     // calculate timeout (500 ms + 400 full 64-byte packets at current bit rate)
     uint32_t timeout = 500000 + (1.0 / (_br * 1000.0)) * (SI4463_MAX_PACKET_LENGTH * 400.0);
     startReceive();
     // wait for packet reception or timeout
-    uint32_t start = Module::micros();
-    while (Module::digitalRead(_mod->getIrq()))
+    while (Module::micros() - start_rx_timeout <= timeout)
     {
-        if (Module::micros() - start > timeout)
+        irqActive = pollIRQLine();
+        if (irqActive)
         {
-            standby();
-            clearIRQFlags();
-            return (ERR_RX_TIMEOUT);
+            break;
         }
     }
-    clearIRQFlags();
-    if (Si446xCmd.GET_INT_STATUS.PH_PEND & SI446X_CMD_GET_INT_STATUS_REP_PH_PEND_PACKET_RX_PEND_BIT)
+    if (!irqActive)
     {
-        //Packet RX interrupt pending
-        if (Si446xCmd.GET_INT_STATUS.PH_STATUS & SI446X_CMD_GET_PH_STATUS_REP_PH_PEND_PACKET_RX_PEND_BIT)
-        {
-            //Valid packet in RX FIFO
-            return readData(data, len);
-        }
+        standby();
+        clearIRQFlags();
+        return (ERR_RX_TIMEOUT);
     }
-    return ERR_PACKET_TOO_LONG;
+    return readData(data, len);
+}
+
+bool Si446x::pollIRQLine()
+{
+    return !Module::digitalRead(_mod->getIrq());
 }
 
 void Si446x::clearIRQFlags()
@@ -191,20 +192,30 @@ void Si446x::clearIRQFlags()
 int16_t Si446x::readData(uint8_t *data, size_t len)
 {
     byte length;
-    //Read packet length (in case of variable length packet)
-    si446x_read_rx_fifo(1, &length);
-    _packetLength = length;
-    //Read packet data
-    si446x_read_rx_fifo(_packetLength, data);
-    return ERR_NONE;
+    clearIRQFlags();
+    if (Si446xCmd.GET_INT_STATUS.PH_PEND & SI446X_CMD_GET_INT_STATUS_REP_PH_PEND_PACKET_RX_PEND_BIT)
+    {
+        //Packet RX interrupt pending
+        if (Si446xCmd.GET_INT_STATUS.PH_STATUS & SI446X_CMD_GET_PH_STATUS_REP_PH_PEND_PACKET_RX_PEND_BIT)
+        {
+            //Valid packet in RX FIFO
+            //Read packet length (in case of variable length packet)
+            si446x_read_rx_fifo(1, &length);
+            _packetLength = length;
+            //Read packet data
+            si446x_read_rx_fifo(_packetLength, data);
+            return ERR_NONE;
+        }
+    }
+    return ERR_PACKET_TOO_LONG;
 }
 
 int16_t Si446x::startTransmit(uint8_t *data, size_t len, uint8_t addr)
 {
-    byte txdata[len+1];
+    byte txdata[len + 1];
 
-    txdata[0]=len;
-    memcpy(txdata+1, data, len);
+    txdata[0] = len;
+    memcpy(txdata + 1, data, len);
     const byte SI446X_PKT_FIELD_2_LENGTH_LOW = 0x12;
     if (getState() == SI446X_STATE_TX)
     { // Already transmitting
@@ -213,7 +224,7 @@ int16_t Si446x::startTransmit(uint8_t *data, size_t len, uint8_t addr)
     si446x_change_state(SI446X_STATE_READY);
     si446x_fifo_info_fast_reset(SI446X_FIFO_CLEAR_RX | SI446X_FIFO_CLEAR_TX);
     si446x_get_int_status(0u, 0u, 0xFF);
-    si446x_write_tx_fifo(len+1, txdata);
+    si446x_write_tx_fifo(len + 1, txdata);
     //in case of variable packet length, write packet length to property
     si446x_set_property(SI446X_PROP_GRP_ID_PKT, 1, SI446X_PKT_FIELD_2_LENGTH_LOW, &len, 1);
     si446x_start_tx(_channel, SI446X_STATE_RX << 4, 0);
@@ -229,9 +240,9 @@ int16_t Si446x::transmit(uint8_t *data, size_t len, uint8_t addr)
     int16_t state = startTransmit(data, len, addr);
     RADIOLIB_ASSERT(state);
 
-   // wait for transmission end or timeout
+    // wait for transmission end or timeout
 
-   /* todo
+    /* todo
     * IRQ doesn't come low yet at the end of TX, check radio_config.h to see if TX-interrupt enabled.
     */
     uint32_t start = Module::micros();
