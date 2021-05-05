@@ -21,11 +21,12 @@ private:
     QueueHandle_t txPacketsQueue = NULL;
     QueueHandle_t rxPacketsQueue = NULL;
     friend void vRadioTask(void *pvParameters);
-
+    volatile bool receiveActive=false;
 public:
     RadioInterface(/* args */);
     ~RadioInterface();
     bool init();
     bool sendPacket(byte *data);
     bool receivePacket(byte *data);
+    int getPacketLength();
 };

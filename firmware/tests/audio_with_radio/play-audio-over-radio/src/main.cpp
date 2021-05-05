@@ -1,13 +1,22 @@
 #include <Arduino.h>
 #include "lookdave.h"
 #include "Codec2Interface.h"
+#include "RadioInterface.h"
 #include "AsyncDelay.h"
 
-const int MODE_SELECT_PIN = 25;
+const int MODE_SELECT_PIN = 27;
 const int TIMER_INTERVAL = 5000;
+const int PACKET_SIZE = 20;
+const int PACKET_INTERVAL_ms = 80; //in ms
+const int MAX_PACKET = 100;
+
+int packetCount = 0, totalBytes = 0;
+float averageRssi = 0, averageSNR = 0;
+unsigned long startInterval = 0;
 bool isClient = false;
 Codec2Interface c2i;
-AsyncDelay pttTimer;
+AsyncDelay pttTimer, wperfTimer;
+RadioInterface ri;
 
 void setup()
 {
@@ -22,6 +31,19 @@ void setup()
 	if (!c2i.init())
 	{
 		Serial.println("Can't init codec2");
+		while (true)
+			;
+	}
+	pinMode(MODE_SELECT_PIN, INPUT_PULLUP);
+	isClient = digitalRead(MODE_SELECT_PIN) == HIGH ? true : false;
+	Serial.printf("Mode: %s\r\n", isClient ? "Client" : "Server");
+	if (isClient)
+	{
+		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
+	}
+	if (!ri.init())
+	{
+		Serial.println("Can't init radio");
 		while (true)
 			;
 	}
@@ -51,7 +73,7 @@ void encodingSpeed()
 			nsam_ctr += bufsize;
 		}
 	}
-	Serial.printf("Average encoding time per packet: %luµs\r\n", totalTime / packet_ctr);
+	Serial.printf("Uptime: %lu\tAverage encoding time per packet: %luµs\r\n", millis(), totalTime / packet_ctr);
 }
 
 void decodingSpeed()
@@ -76,22 +98,73 @@ void decodingSpeed()
 			nbit_ctr += nbyte;
 		}
 	}
-	Serial.printf("Average decoding time per packet: %luµs\r\n", totalTime / packet_ctr);
+	Serial.printf("Uptime: %lu\tAverage decoding time per packet: %luµs\r\n", millis(), totalTime / packet_ctr);
+}
+
+void clientloop()
+{
+	uint8_t data[PACKET_SIZE];
+	if (wperfTimer.isExpired())
+	{
+		wperfTimer.repeat();
+		data[0] = packetCount++;
+		if (packetCount == MAX_PACKET)
+		{
+			packetCount = 0;
+		}
+		ri.sendPacket(data);
+	}
+}
+
+void serverloop()
+{
+	byte data[100];
+
+	if (ri.receivePacket(data))
+	{
+		totalBytes += ri.getPacketLength();
+		packetCount++;
+		//averageRssi += rf24.lastRssi();
+		if (data[0] == 0)
+		{
+			int bitrate = (totalBytes << 3) * 1000 / (millis() - startInterval);
+			Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %d bps", totalBytes, packetCount, bitrate);
+			if (packetCount > 0)
+			{
+				Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
+			}
+			else
+			{
+				Serial.println();
+			}
+			packetCount = 0;
+			averageRssi = 0;
+			averageSNR = 0;
+			totalBytes = 0;
+			startInterval = millis();
+		}
+	}
+	else
+	{
+		Serial.println("recv failed");
+	}
 }
 
 void loop()
 {
-	if (pttTimer.isExpired())
-	{
-		pttTimer.repeat();
-		isClient = !isClient;
-	}
+	// if (pttTimer.isExpired())
+	// {
+	// 	pttTimer.repeat();
+	// 	isClient = !isClient;
+	// }
 	if (isClient)
 	{
-		encodingSpeed();
+		//encodingSpeed();
+		clientloop();
 	}
 	else
 	{
-		decodingSpeed();
+		//decodingSpeed();
+		serverloop();
 	}
 }

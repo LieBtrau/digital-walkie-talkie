@@ -3,7 +3,7 @@
 static Codec2Interface *ci;
 /**
  * Because of the 8K task size limitation of FreeRTOS on the ESP32, we must create the codec2 object
- * in a task that we give 24K of memory
+ * inside a task that we give at least 24K of memory
  */
 void codec2task(void *pvParameters)
 {

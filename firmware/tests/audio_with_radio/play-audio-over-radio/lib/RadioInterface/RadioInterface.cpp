@@ -7,29 +7,32 @@ void vRadioTask(void *pvParameters)
 	for (;;)
 	{
 		byte packet[RadioInterface::PACKET_SIZE];
-		if (xQueueReceive(ri->txPacketsQueue, packet, 10) == pdTRUE)
+		if (xQueueReceive(ri->txPacketsQueue, packet, 1) == pdTRUE)
 		{
 			if (ri->radio.transmit(packet, sizeof(packet)) != ERR_NONE)
 			{
 				Serial.println("TX error");
 			}
 		}
-		if (ri->radio.receive(packet, 0) == ERR_NONE)
+		if (ri->receiveActive && ri->radio.pollIRQLine() && ri->radio.readData(packet, 10) == ERR_NONE)
 		{
 			xQueueSendToBack(ri->rxPacketsQueue, packet, portMAX_DELAY);
 		}
-		taskYIELD();
 	}
 }
 
 bool RadioInterface::sendPacket(byte *data)
 {
-	xQueueSendToBack(ri->txPacketsQueue, data, portMAX_DELAY);
+	return xQueueSendToBack(ri->txPacketsQueue, data, portMAX_DELAY) == pdTRUE;
 }
 
 bool RadioInterface::receivePacket(byte *data)
 {
-	return xQueueReceive(ri->rxPacketsQueue, data, portMAX_DELAY) == pdTRUE;
+	ri->radio.startReceive();
+	receiveActive = true;
+	bool success = xQueueReceive(ri->rxPacketsQueue, data, (TickType_t)500) == pdTRUE;
+	receiveActive = false;
+	return success;
 }
 
 RadioInterface::RadioInterface(/* args */)
@@ -73,4 +76,9 @@ bool RadioInterface::init()
 	}
 	xTaskCreate(vRadioTask, "RadioTask", 2000, NULL, 2, NULL);
 	return true;
+}
+
+int RadioInterface::getPacketLength()
+{
+	return radio.getPacketLength();
 }

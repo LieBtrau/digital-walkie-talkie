@@ -10,7 +10,7 @@ private:
     QueueHandle_t xAudioSamplesQueue = NULL;
     QueueHandle_t xCodec2SamplesQueue = NULL;
     friend void codec2task(void *pvParameters);
-    volatile bool codec2initOk = false;
+    volatile bool codec2initOk = false;//volatile required for code to work
     int nsam;
     int nbyte;
     bool isEncoding = false;
