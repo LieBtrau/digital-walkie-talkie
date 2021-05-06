@@ -11,8 +11,9 @@ void codec2task(void *pvParameters)
     codec2_set_natural_or_gray(ci->codec2, 0);
 
     ci->nsam = codec2_samples_per_frame(ci->codec2);
-    ci->xAudioSamplesQueue = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
-    if (ci->xAudioSamplesQueue == NULL)
+    ci->xEncoderAudioIn = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
+    ci->xDecoderAudioOut = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
+    if (ci->xEncoderAudioIn == NULL || ci->xDecoderAudioOut==NULL)
     {
         Serial.println("Can't create xAudioSamplesQueue");
         while (true)
@@ -20,8 +21,9 @@ void codec2task(void *pvParameters)
     }
 
     ci->nbyte = (codec2_bits_per_frame(ci->codec2) + 7) / 8;
-    ci->xCodec2SamplesQueue = xQueueCreate(3, ci->nbyte);
-    if (ci->xCodec2SamplesQueue == NULL)
+    ci->xEncoderCodec2Out = xQueueCreate(3, ci->nbyte);
+    ci->xDecoderCodec2In = xQueueCreate(3, ci->nbyte);
+    if (ci->xEncoderCodec2Out == NULL || ci->xDecoderCodec2In==NULL)
     {
         Serial.println("Can't create xCodec2SamplesQueue");
         while (true)
@@ -45,19 +47,19 @@ void codec2task(void *pvParameters)
         if (ci->isEncoding)
         {
             //Codec2 encoding : Receive from audio queue and send to codec2 queue
-            if (xQueueReceive(ci->xAudioSamplesQueue, buf, 1) == pdTRUE)
+            if (xQueueReceive(ci->xEncoderAudioIn, buf, 1) == pdTRUE)
             {
                 codec2_encode(ci->codec2, bits, buf);
-                xQueueSendToBack(ci->xCodec2SamplesQueue, bits, 1);
+                xQueueSendToBack(ci->xEncoderCodec2Out, bits, 1);
             }
         }
         else
         {
             //Codec2 decoding : Receive from codec2 bits and send to audio queue
-            if (xQueueReceive(ci->xCodec2SamplesQueue, bits, 1) == pdTRUE)
+            if (xQueueReceive(ci->xDecoderCodec2In, bits, 1) == pdTRUE)
             {
                 codec2_decode(ci->codec2, buf, bits);
-                xQueueSendToBack(ci->xAudioSamplesQueue, buf, 1);
+                xQueueSendToBack(ci->xDecoderAudioOut, buf, 1);
             }
         }
     }
@@ -94,21 +96,27 @@ int Codec2Interface::getCodec2PacketSize()
 bool Codec2Interface::startEncodingAudio(short *buf)
 {
     isEncoding=true;
-    return xQueueSendToBack(xAudioSamplesQueue, buf, (TickType_t)0) == pdTRUE;
+    return xQueueSendToBack(xEncoderAudioIn, buf, (TickType_t)1000) == pdTRUE;
 }
 
 bool Codec2Interface::getEncodedAudio(byte *bits)
 {
-    return xQueueReceive(xCodec2SamplesQueue, bits, 100) == pdTRUE;
+    return xQueueReceive(xEncoderCodec2Out, bits, 1000) == pdTRUE;
 }
+
+int Codec2Interface::codec2FramesWaiting()
+{
+    return uxQueueMessagesWaiting(xEncoderCodec2Out);
+}
+
 
 bool Codec2Interface::startDecodingAudio(byte *bits)
 {
     isEncoding=false;
-    return xQueueSendToBack(xCodec2SamplesQueue, bits, (TickType_t)0) == pdTRUE;
+    return xQueueSendToBack(xDecoderCodec2In, bits, (TickType_t)1000) == pdTRUE;
 }
 
 bool Codec2Interface::getDecodedAudio(short *buf)
 {
-    return xQueueReceive(xAudioSamplesQueue, buf, 100) == pdTRUE;
+    return xQueueReceive(xDecoderAudioOut, buf, 1000) == pdTRUE;
 }

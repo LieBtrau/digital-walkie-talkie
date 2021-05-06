@@ -17,6 +17,10 @@ bool isClient = false;
 Codec2Interface c2i;
 AsyncDelay pttTimer, wperfTimer;
 RadioInterface ri;
+int nsam;
+int nbyte;
+unsigned char *bits;
+short *buf;
 
 void setup()
 {
@@ -34,6 +38,10 @@ void setup()
 		while (true)
 			;
 	}
+	nsam = c2i.getAudioSampleCount();
+	nbyte = c2i.getCodec2PacketSize();
+	bits = (unsigned char *)malloc(nbyte * sizeof(char));
+	buf = (short *)malloc(nsam * sizeof(short));
 	pinMode(MODE_SELECT_PIN, INPUT_PULLUP);
 	isClient = digitalRead(MODE_SELECT_PIN) == HIGH ? true : false;
 	Serial.printf("Mode: %s\r\n", isClient ? "Client" : "Server");
@@ -53,11 +61,7 @@ void setup()
 void encodingSpeed()
 {
 	int nsam_ctr = 0;
-	int nsam = c2i.getAudioSampleCount();
-	int nbyte = c2i.getCodec2PacketSize();
 	int bufsize = nsam << 1;
-	short *buf = (short *)malloc(nsam * sizeof(short));
-	unsigned char *bits = (unsigned char *)malloc(nbyte * sizeof(char));
 	int packet_ctr = 0;
 	unsigned long startTime;
 	unsigned long totalTime = 0;
@@ -65,8 +69,7 @@ void encodingSpeed()
 	{
 		memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
 		startTime = micros();
-		c2i.startEncodingAudio(buf);
-		if (c2i.getEncodedAudio(bits))
+		if (c2i.startEncodingAudio(buf))
 		{
 			totalTime += micros() - startTime;
 			packet_ctr++;
@@ -82,10 +85,6 @@ void decodingSpeed()
 	int packet_ctr = 0;
 	unsigned long startTime;
 	unsigned long totalTime = 0;
-	int nsam = c2i.getAudioSampleCount();
-	int nbyte = c2i.getCodec2PacketSize();
-	unsigned char *bits = (unsigned char *)malloc(nbyte * sizeof(char));
-	short *buf = (short *)malloc(nsam * sizeof(short));
 	while (nbit_ctr + nbyte < lookdave_bit_len)
 	{
 		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
@@ -104,15 +103,18 @@ void decodingSpeed()
 void clientloop()
 {
 	uint8_t data[PACKET_SIZE];
-	if (wperfTimer.isExpired())
+	if (wperfTimer.isExpired() && c2i.codec2FramesWaiting() >= 2)
 	{
 		wperfTimer.repeat();
-		data[0] = packetCount++;
-		if (packetCount == MAX_PACKET)
+		if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
 		{
-			packetCount = 0;
+			data[0] = packetCount++;
+			if (packetCount == MAX_PACKET)
+			{
+				packetCount = 0;
+			}
+			ri.sendPacket(data);
 		}
-		ri.sendPacket(data);
 	}
 }
 
@@ -152,19 +154,19 @@ void serverloop()
 
 void loop()
 {
-	// if (pttTimer.isExpired())
-	// {
-	// 	pttTimer.repeat();
-	// 	isClient = !isClient;
-	// }
+	if (pttTimer.isExpired())
+	{
+		pttTimer.repeat();
+		isClient = !isClient;
+	}
 	if (isClient)
 	{
-		//encodingSpeed();
-		clientloop();
+		encodingSpeed();
+		//clientloop();
 	}
 	else
 	{
-		//decodingSpeed();
-		serverloop();
+		decodingSpeed();
+		//serverloop();
 	}
 }

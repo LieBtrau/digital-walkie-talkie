@@ -7,8 +7,10 @@ class Codec2Interface
 private:
     static const int mode = CODEC2_MODE_1200;
     CODEC2 *codec2;
-    QueueHandle_t xAudioSamplesQueue = NULL;
-    QueueHandle_t xCodec2SamplesQueue = NULL;
+    QueueHandle_t xEncoderAudioIn = NULL;
+    QueueHandle_t xEncoderCodec2Out = NULL;
+    QueueHandle_t xDecoderCodec2In = NULL;
+    QueueHandle_t xDecoderAudioOut = NULL;
     friend void codec2task(void *pvParameters);
     volatile bool codec2initOk = false;//volatile required for code to work
     int nsam;
@@ -25,4 +27,5 @@ public:
     bool getEncodedAudio(byte *bits);
     bool startDecodingAudio(byte *bits);
     bool getDecodedAudio(short *buf);
+    int codec2FramesWaiting();
 };
