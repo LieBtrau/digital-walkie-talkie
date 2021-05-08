@@ -21,6 +21,11 @@ int nsam;
 int nbyte;
 unsigned char *bits;
 short *buf;
+int nbit_ctr = 0;
+int packet_ctr = 0;
+unsigned long startTime;
+unsigned long totalTime = 0;
+int nsam_ctr = 0;
 
 void setup()
 {
@@ -60,12 +65,8 @@ void setup()
 
 void encodingSpeed()
 {
-	int nsam_ctr = 0;
 	int bufsize = nsam << 1;
-	int packet_ctr = 0;
-	unsigned long startTime;
-	unsigned long totalTime = 0;
-	while (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
+	if (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
 	{
 		memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
 		startTime = micros();
@@ -76,16 +77,21 @@ void encodingSpeed()
 			nsam_ctr += bufsize;
 		}
 	}
-	Serial.printf("Uptime: %lu\tAverage encoding time per packet: %luµs\r\n", millis(), totalTime / packet_ctr);
+	else
+	{
+		if (packet_ctr > 0)
+		{
+			Serial.printf("Uptime: %lu\tAverage encoding time per packet: %luµs\r\n", millis(), totalTime / packet_ctr);
+		}
+		nsam_ctr = 0;
+		packet_ctr = 0;
+		totalTime = 0;
+	}
 }
 
 void decodingSpeed()
 {
-	int nbit_ctr = 0;
-	int packet_ctr = 0;
-	unsigned long startTime;
-	unsigned long totalTime = 0;
-	while (nbit_ctr + nbyte < lookdave_bit_len)
+	if (nbit_ctr + nbyte < lookdave_bit_len)
 	{
 		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
 		startTime = micros();
@@ -97,24 +103,33 @@ void decodingSpeed()
 			nbit_ctr += nbyte;
 		}
 	}
-	Serial.printf("Uptime: %lu\tAverage decoding time per packet: %luµs\r\n", millis(), totalTime / packet_ctr);
+	else
+	{
+		if (packet_ctr > 0)
+		{
+			Serial.printf("Uptime: %lu\tAverage decoding time per packet: %luµs\r\n", millis(), totalTime / packet_ctr);
+		}
+		nbit_ctr = 0;
+		packet_ctr = 0;
+		totalTime = 0;
+	}
 }
 
 void clientloop()
 {
 	uint8_t data[PACKET_SIZE];
-	if (wperfTimer.isExpired() && c2i.codec2FramesWaiting() >= 2)
+	if (wperfTimer.isExpired() /*&& c2i.codec2FramesWaiting() >= 2*/)
 	{
 		wperfTimer.repeat();
-		if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
+		// if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
+		// {
+		data[0] = packetCount++;
+		if (packetCount == MAX_PACKET)
 		{
-			data[0] = packetCount++;
-			if (packetCount == MAX_PACKET)
-			{
-				packetCount = 0;
-			}
-			ri.sendPacket(data);
+			packetCount = 0;
 		}
+		ri.sendPacket(data);
+		// }
 	}
 }
 
