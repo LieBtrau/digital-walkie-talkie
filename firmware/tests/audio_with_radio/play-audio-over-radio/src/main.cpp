@@ -118,18 +118,18 @@ void decodingSpeed()
 void clientloop()
 {
 	uint8_t data[PACKET_SIZE];
-	if (wperfTimer.isExpired() /*&& c2i.codec2FramesWaiting() >= 2*/)
+	if (wperfTimer.isExpired() && c2i.codec2FramesWaiting() >= 2)
 	{
 		wperfTimer.repeat();
-		// if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
-		// {
-		data[0] = packetCount++;
-		if (packetCount == MAX_PACKET)
+		if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
 		{
-			packetCount = 0;
+			data[0] = packetCount++;
+			if (packetCount == MAX_PACKET)
+			{
+				packetCount = 0;
+			}
+			ri.sendPacket(data);
 		}
-		ri.sendPacket(data);
-		// }
 	}
 }
 
@@ -169,19 +169,22 @@ void serverloop()
 
 void loop()
 {
-	if (pttTimer.isExpired())
-	{
-		pttTimer.repeat();
-		isClient = !isClient;
-	}
+	// if (pttTimer.isExpired())
+	// {
+	// 	pttTimer.repeat();
+	// 	isClient = !isClient;
+	// }
 	if (isClient)
 	{
-		encodingSpeed();
-		//clientloop();
+		if (c2i.codec2FramesWaiting() < 2)
+		{
+			encodingSpeed();
+		}
+		clientloop();
 	}
 	else
 	{
-		decodingSpeed();
-		//serverloop();
+		//decodingSpeed();
+		serverloop();
 	}
 }
