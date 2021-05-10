@@ -13,7 +13,7 @@ void codec2task(void *pvParameters)
     ci->nsam = codec2_samples_per_frame(ci->codec2);
     ci->xEncoderAudioIn = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
     ci->xDecoderAudioOut = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
-    if (ci->xEncoderAudioIn == NULL || ci->xDecoderAudioOut==NULL)
+    if (ci->xEncoderAudioIn == NULL || ci->xDecoderAudioOut == NULL)
     {
         Serial.println("Can't create xAudioSamplesQueue");
         while (true)
@@ -23,7 +23,7 @@ void codec2task(void *pvParameters)
     ci->nbyte = (codec2_bits_per_frame(ci->codec2) + 7) / 8;
     ci->xEncoderCodec2Out = xQueueCreate(3, ci->nbyte);
     ci->xDecoderCodec2In = xQueueCreate(3, ci->nbyte);
-    if (ci->xEncoderCodec2Out == NULL || ci->xDecoderCodec2In==NULL)
+    if (ci->xEncoderCodec2Out == NULL || ci->xDecoderCodec2In == NULL)
     {
         Serial.println("Can't create xCodec2SamplesQueue");
         while (true)
@@ -56,10 +56,10 @@ void codec2task(void *pvParameters)
         else
         {
             //Codec2 decoding : Receive from codec2 bits and send to audio queue
-            if (xQueueReceive(ci->xDecoderCodec2In, bits, 1) == pdTRUE)
+            if (xQueueReceive(ci->xDecoderCodec2In, bits, 100) == pdTRUE)
             {
                 codec2_decode(ci->codec2, buf, bits);
-                xQueueSendToBack(ci->xDecoderAudioOut, buf, 1);
+                xQueueSendToBack(ci->xDecoderAudioOut, buf, 100);
             }
         }
     }
@@ -85,17 +85,21 @@ bool Codec2Interface::init()
 
 int Codec2Interface::getAudioSampleCount()
 {
+    while (!codec2initOk)
+        ;
     return nsam;
 }
 
 int Codec2Interface::getCodec2PacketSize()
 {
+    while (!codec2initOk)
+        ;
     return nbyte;
 }
 
 bool Codec2Interface::startEncodingAudio(short *buf)
 {
-    isEncoding=true;
+    isEncoding = true;
     return xQueueSendToBack(xEncoderAudioIn, buf, (TickType_t)1000) == pdTRUE;
 }
 
@@ -104,15 +108,19 @@ bool Codec2Interface::getEncodedAudio(byte *bits)
     return xQueueReceive(xEncoderCodec2Out, bits, 1000) == pdTRUE;
 }
 
-int Codec2Interface::codec2FramesWaiting()
+bool Codec2Interface::isAvailableEncodedFrame()
 {
-    return uxQueueMessagesWaiting(xEncoderCodec2Out);
+    return uxQueueMessagesWaiting(xEncoderCodec2Out) > 0;
 }
 
+bool Codec2Interface::isDecodingInputBufferSpaceLeft()
+{
+    return uxQueueSpacesAvailable(xDecoderCodec2In) > 0;
+}
 
 bool Codec2Interface::startDecodingAudio(byte *bits)
 {
-    isEncoding=false;
+    isEncoding = false;
     return xQueueSendToBack(xDecoderCodec2In, bits, (TickType_t)1000) == pdTRUE;
 }
 

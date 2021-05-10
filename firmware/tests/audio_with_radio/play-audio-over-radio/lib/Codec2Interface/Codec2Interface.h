@@ -12,7 +12,7 @@ private:
     QueueHandle_t xDecoderCodec2In = NULL;
     QueueHandle_t xDecoderAudioOut = NULL;
     friend void codec2task(void *pvParameters);
-    volatile bool codec2initOk = false;//volatile required for code to work
+    volatile bool codec2initOk = false; //volatile required for code to work
     int nsam;
     int nbyte;
     bool isEncoding = false;
@@ -24,8 +24,9 @@ public:
     int getAudioSampleCount();
     int getCodec2PacketSize();
     bool startEncodingAudio(short *buf);
+    bool isAvailableEncodedFrame();
     bool getEncodedAudio(byte *bits);
+    bool isDecodingInputBufferSpaceLeft();
     bool startDecodingAudio(byte *bits);
     bool getDecodedAudio(short *buf);
-    int codec2FramesWaiting();
 };
