@@ -4,7 +4,10 @@
 #include "Codec2Decoder.h"
 #include "Sgtl5000_Output.h"
 #include "control_sgtl5000.h"
+#include "AsyncDelay.h"
 
+AsyncDelay delay_3s;
+bool isPlaying = true;
 Codec2Interface c2i;
 Codec2Decoder c2d(&c2i);
 int nbit_ctr = 0, nbyte;
@@ -20,7 +23,8 @@ static i2s_pin_config_t i2s_pin_config = {
 void setup()
 {
 	Serial.begin(115200);
-
+	delay_3s.start(3000, AsyncDelay::MILLIS);
+	pinMode(LED_BUILTIN, OUTPUT);
 	unsigned long startTime = millis();
 	while (!Serial && (startTime + (10 * 1000) > millis()))
 	{
@@ -43,7 +47,21 @@ void setup()
 
 void loop()
 {
-	if (c2i.isDecodingInputBufferSpaceLeft())
+	if (delay_3s.isExpired())
+	{
+		delay_3s.repeat(); // Count from when the delay expired, not now
+		if (isPlaying)
+		{
+			output->stop();
+		}
+		else
+		{
+			output->start(&c2d);
+		}
+		digitalWrite(LED_BUILTIN, isPlaying ? HIGH : LOW);
+		isPlaying = !isPlaying;
+	}
+	if (isPlaying && c2i.isDecodingInputBufferSpaceLeft())
 	{
 		byte bits[nbyte];
 		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
