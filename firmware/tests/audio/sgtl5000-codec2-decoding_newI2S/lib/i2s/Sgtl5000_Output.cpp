@@ -15,7 +15,7 @@ Sgtl5000_Output::Sgtl5000_Output(i2s_port_t i2sPort, i2s_pin_config_t *pin_confi
 
 void Sgtl5000_Output::start(SampleSource *sample_generator)
 {
-	i2s_config_t m_i2sConfig = {
+	i2s_config_t i2sConfig = {
 		.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX), // Only TX
 		.sample_rate = sample_generator->sampleRate(),
 		.bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT, // 16-bit per channel
@@ -27,7 +27,7 @@ void Sgtl5000_Output::start(SampleSource *sample_generator)
 		.use_apll = true,
 		.tx_desc_auto_clear = true,
 		.fixed_mclk = sample_generator->sampleRate() * 256};
-	I2SOutput::start(&m_i2sConfig, sample_generator);
+	I2SOutput::start(&i2sConfig, sample_generator);
 }
 
 void Sgtl5000_Output::configureI2S()
@@ -35,4 +35,5 @@ void Sgtl5000_Output::configureI2S()
 	// Enable MCLK output
 	WRITE_PERI_REG(PIN_CTRL, READ_PERI_REG(PIN_CTRL) & 0xFFFFFFF0);
 	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
+	delay(5);
 }

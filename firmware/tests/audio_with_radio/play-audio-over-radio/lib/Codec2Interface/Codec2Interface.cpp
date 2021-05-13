@@ -77,9 +77,12 @@ Codec2Interface::~Codec2Interface()
 
 bool Codec2Interface::init()
 {
-    xTaskCreate(codec2task, "Codec2Task", 24576, NULL, 2, NULL);
-    while (!codec2initOk)
-        ;
+    if (!codec2initOk)
+    {
+        xTaskCreate(codec2task, "Codec2Task", 24576, NULL, 2, NULL);
+        while (!codec2initOk)
+            ;
+    }
     return true;
 }
 

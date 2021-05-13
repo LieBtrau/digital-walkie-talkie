@@ -5,6 +5,7 @@
 #include "Sgtl5000_Output.h"
 #include "control_sgtl5000.h"
 #include "AsyncDelay.h"
+#include "pinconfig.h"
 
 AsyncDelay delay_3s;
 bool isPlaying = true;
@@ -14,10 +15,10 @@ int nbit_ctr = 0, nbyte;
 Sgtl5000_Output *output;
 AudioControlSGTL5000 audioShield;
 static i2s_pin_config_t i2s_pin_config = {
-	.bck_io_num = 26,	// Serial Clock (SCK)
-	.ws_io_num = 25,	// Word Select (WS)
-	.data_out_num = 32, // data out to audio codec
-	.data_in_num = 33	// data from audio codec
+	.bck_io_num = PIN_BCLK,	// Serial Clock (SCK)
+	.ws_io_num = PIN_LRCLK,	// Word Select (WS)
+	.data_out_num = PIN_SDOUT, // data out to audio codec
+	.data_in_num = PIN_SDIN	// data from audio codec
 };
 
 void setup()
