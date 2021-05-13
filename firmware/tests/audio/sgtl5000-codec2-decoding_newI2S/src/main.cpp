@@ -73,20 +73,22 @@ void setup()
 
 void loop()
 {
-	// if (delay_3s.isExpired())
-	// {
-	// 	delay_3s.repeat(); // Count from when the delay expired, not now
-	// 	if (isPlaying)
-	// 	{
-	// 		output->stop();
-	// 	}
-	// 	else
-	// 	{
-	// 		output->start(&c2d);
-	// 	}
-	// 	digitalWrite(LED_BUILTIN, isPlaying ? HIGH : LOW);
-	// 	isPlaying = !isPlaying;
-	// }
+	if (delay_3s.isExpired())
+	{
+		delay_3s.repeat(); // Count from when the delay expired, not now
+		if (isPlaying)
+		{
+			//output->stop();
+			input->stop();
+		}
+		else
+		{
+			//output->start(&c2d);
+			input->start(&c2e);
+		}
+		digitalWrite(LED_BUILTIN, isPlaying ? HIGH : LOW);
+		isPlaying = !isPlaying;
+	}
 	// if (isPlaying && c2i.isDecodingInputBufferSpaceLeft())
 	// {
 	// 	//Decoding loop
