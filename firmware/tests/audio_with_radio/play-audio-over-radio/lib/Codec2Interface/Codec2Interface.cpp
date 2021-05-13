@@ -111,7 +111,7 @@ bool Codec2Interface::getEncodedAudio(byte *bits)
     return xQueueReceive(xEncoderCodec2Out, bits, 1000) == pdTRUE;
 }
 
-bool Codec2Interface::isAvailableEncodedFrame()
+bool Codec2Interface::isEncodedFrameAvailable()
 {
     return uxQueueMessagesWaiting(xEncoderCodec2Out) > 0;
 }
