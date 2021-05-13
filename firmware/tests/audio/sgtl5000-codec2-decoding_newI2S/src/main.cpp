@@ -13,7 +13,6 @@
  *
  */
 
-
 #include <Arduino.h>
 #include "lookdave.h"
 #include "Codec2Interface.h"
@@ -62,9 +61,9 @@ void setup()
 	nbyte = c2i.getCodec2PacketSize();
 	Serial.println("Starting I2S Output");
 	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
-	//output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
 	input = new Sgtl5000_Input(I2S_NUM_0, &i2s_pin_config);
-	input->start(&c2e);
+	output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
+	//input->start(&c2e);
 	Serial.printf("SGTL5000 %s initialized.\r\n", audioShield.enable() ? "is" : "not");
 	audioShield.volume(0.5);
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
@@ -78,32 +77,36 @@ void loop()
 		delay_3s.repeat(); // Count from when the delay expired, not now
 		if (isPlaying)
 		{
-			//output->stop();
-			input->stop();
+			output->stop();
+			vTaskDelay(1);
+			input->start(&c2e);
 		}
 		else
 		{
-			//output->start(&c2d);
-			input->start(&c2e);
+			input->stop();
+			vTaskDelay(1);
+			output->start(&c2d);
 		}
 		digitalWrite(LED_BUILTIN, isPlaying ? HIGH : LOW);
 		isPlaying = !isPlaying;
 	}
-	// if (isPlaying && c2i.isDecodingInputBufferSpaceLeft())
-	// {
-	// 	//Decoding loop
-	// 	byte bits[nbyte];
-	// 	memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
-	// 	c2i.startDecodingAudio(bits);
-	// 	nbit_ctr = nbit_ctr + nbyte < lookdave_bit_len ? nbit_ctr + nbyte : 0;
-	// }
-	if (isPlaying && c2i.isEncodedFrameAvailable())
+	if (isPlaying && c2i.isDecodingInputBufferSpaceLeft())
+	{
+		//Decoding loop
+		byte bits[nbyte];
+		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
+		if (c2i.startDecodingAudio(bits))
+		{
+			nbit_ctr = nbit_ctr + nbyte < lookdave_bit_len ? nbit_ctr + nbyte : 0;
+		}
+	}
+	if (!isPlaying && c2i.isEncodedFrameAvailable())
 	{
 		//Encoding loop
 		byte bits[nbyte];
-		char *b64 = (char *)malloc(nbyte * 2);
 		if (c2i.getEncodedAudio(bits))
 		{
+			char *b64 = (char *)malloc(nbyte * 2);
 			encode_base64(bits, nbyte, (byte *)b64);
 			Serial.print(b64);
 			lineLength += strlen(b64);
