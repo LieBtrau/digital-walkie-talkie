@@ -35,7 +35,7 @@ bool RadioInterface::receivePacket(byte *data)
 	return success;
 }
 
-RadioInterface::RadioInterface(/* args */)
+RadioInterface::RadioInterface(int pin_cs, int pin_irq, int pin_sdn): radio(new Module(pin_cs, pin_irq, pin_sdn))
 {
 	ri = this;
 }
