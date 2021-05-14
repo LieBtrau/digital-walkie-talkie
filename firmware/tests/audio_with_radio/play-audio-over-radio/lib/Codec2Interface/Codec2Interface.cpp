@@ -104,6 +104,11 @@ int Codec2Interface::getCodec2PacketSize()
 bool Codec2Interface::startEncodingAudio(short *buf)
 {
     isEncoding = true;
+    if(uxQueueSpacesAvailable(xEncoderCodec2Out)==0)
+    {
+        //Output queue of packets is full.  If we start to encode more packets, these would be overwritten.
+        return false;
+    }
     return xQueueSendToBack(xEncoderAudioIn, buf, (TickType_t)1000) == pdTRUE;
 }
 
@@ -115,6 +120,11 @@ bool Codec2Interface::getEncodedAudio(byte *bits)
 bool Codec2Interface::isEncodedFrameAvailable()
 {
     return uxQueueMessagesWaiting(xEncoderCodec2Out) > 0;
+}
+
+bool Codec2Interface::isEncoderInputBufferSpaceLeft()
+{
+    return uxQueueSpacesAvailable(xEncoderAudioIn) > 0;
 }
 
 bool Codec2Interface::isDecodingInputBufferSpaceLeft()
