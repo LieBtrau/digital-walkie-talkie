@@ -35,4 +35,8 @@
  * SPI /CS									NSEL							*/const int PIN_CS = 5;/*
  * /IRQ										IRQ								*/const int PIN_IRQ = 4;/*
  * Shutdown									SDN								*/const int PIN_SDN = 16;/*
- */
+ *
+ * Other connections
+ * -----------------*/
+ const int PIN_MODE_SELECT = 27;
+ 

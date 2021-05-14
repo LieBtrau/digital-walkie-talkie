@@ -1,21 +1,9 @@
 #include <Arduino.h>
 #include <RadioLib.h>
 #include "AsyncDelay.h"
+#include "pinconfig.h"
 
-/** 
- * Connections
- *  SI4463   	ESP32	Nucleo32
- *  VCC       	3V3		3V3
- * 	GND			GND		GND
- * 	MOSI		23		11
- * 	MISO		19		12
- * 	SCK			18		13
- * 	NSEL		5		A3
- *	IRQ			4		D3
- *	SDN			16		D6
- */
-Si446x radio = new Module(5, 4, 16);
-const int MODE_SELECT_PIN = 25;
+Si446x radio = new Module(PIN_CS, PIN_IRQ, PIN_SDN);
 AsyncDelay wperfTimer;
 unsigned long startInterval = 0;
 const int PACKET_INTERVAL_ms = 80; //in ms
@@ -92,11 +80,16 @@ void setup()
 	Serial.begin(115200);
 	delay(1000);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__);
-	pinMode(MODE_SELECT_PIN, INPUT_PULLUP);
-	isClient = digitalRead(MODE_SELECT_PIN) == HIGH ? true : false;
+	pinMode(PIN_MODE_SELECT, INPUT_PULLUP);
+	isClient = digitalRead(PIN_MODE_SELECT) == HIGH ? true : false;
 	if (isClient)
 	{
 		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
+		Serial.println("client mode");
+	}
+	else
+	{
+		Serial.println("server mode");
 	}
 	xTaskCreate(vRadioTask, "RadioTask", 2000, NULL, 2, NULL);
 	while(!vRadioTaskReady);
