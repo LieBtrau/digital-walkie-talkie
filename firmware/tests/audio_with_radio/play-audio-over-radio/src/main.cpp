@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include "lookdave.h"
-//#include "Codec2Interface.h"
+#include "Codec2Interface.h"
 #include "RadioInterface.h"
 #include "AsyncDelay.h"
-#include "SampleSource.h"//to stop compile errors
+#include "SampleSource.h" //to stop compile errors
 #include "pinconfig.h"
 
 const int TIMER_INTERVAL = 5000;
@@ -15,19 +15,18 @@ int packetCount = 0, totalBytes = 0;
 float averageRssi = 0, averageSNR = 0;
 unsigned long startInterval = 0;
 bool isClient = false;
-//Codec2Interface c2i;
+Codec2Interface c2i;
 AsyncDelay pttTimer, wperfTimer;
 RadioInterface ri(PIN_CS, PIN_IRQ, PIN_SDN);
-// int nsam;
-// int nbyte;
-// unsigned char *bits;
-// short *buf;
-// int nbit_ctr = 0;
-// int audio_packet_ctr = 0;
-// int nsam_ctr = 0;
+int nsam;
+int nbyte;
+unsigned char *bits;
+short *buf;
+int nbit_ctr = 0;
+int audio_packet_ctr = 0;
+int nsam_ctr = 0;
 unsigned long startTime;
 unsigned long totalTime = 0;
-
 
 void setup()
 {
@@ -39,16 +38,16 @@ void setup()
 	}
 	pttTimer.start(TIMER_INTERVAL, AsyncDelay::MILLIS);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__);
-	// if (!c2i.init())
-	// {
-	// 	Serial.println("Can't init codec2");
-	// 	while (true)
-	// 		;
-	// }
-	// nsam = c2i.getAudioSampleCount();
-	// nbyte = c2i.getCodec2PacketSize();
-	// bits = (unsigned char *)malloc(nbyte * sizeof(char));
-	// buf = (short *)malloc(nsam * sizeof(short));
+	if (!c2i.init())
+	{
+		Serial.println("Can't init codec2");
+		while (true)
+			;
+	}
+	nsam = c2i.getAudioSampleCount();
+	nbyte = c2i.getCodec2PacketSize();
+	bits = (unsigned char *)malloc(nbyte * sizeof(char));
+	buf = (short *)malloc(nsam * sizeof(short));
 	pinMode(PIN_MODE_SELECT, INPUT_PULLUP);
 	isClient = digitalRead(PIN_MODE_SELECT) == HIGH ? true : false;
 	Serial.printf("Mode: %s\r\n", isClient ? "Client" : "Server");
@@ -125,9 +124,9 @@ void clientloop()
 		wperfTimer.repeat();
 		// if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
 		// {
-			data[0] = packetCount;
-			packetCount = packetCount<MAX_PACKET ? packetCount + 1 : 0;
-			ri.sendPacket(data);
+		data[0] = packetCount;
+		ri.sendPacket(data);
+		packetCount = packetCount < MAX_PACKET-1 ? packetCount + 1 : 0;
 		// }
 	}
 }

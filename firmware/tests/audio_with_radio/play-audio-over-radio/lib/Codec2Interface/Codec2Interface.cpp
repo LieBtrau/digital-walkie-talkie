@@ -43,26 +43,27 @@ void codec2task(void *pvParameters)
     }
     for (;;)
     {
-        if (ci->isEncoding)
-        {
+        // if (ci->isEncoding)
+        // {
             //Codec2 encoding : Receive from audio queue and send to codec2 queue
             //Code crashes when 0 is filled in for xQueueReceive xTicksToWait
             if (xQueueReceive(ci->xEncoderAudioIn, buf, 1) == pdTRUE)
             {
                 codec2_encode(ci->codec2, bits, buf);
-                xQueueSendToBack(ci->xEncoderCodec2Out, bits, 1);
+                xQueueSendToBack(ci->xEncoderCodec2Out, bits, 100);
             }
-        }
+//        }
+        //else
         //Start decoding if an encoded packet is available and if there's room for the decoded packet
-        if (uxQueueMessagesWaiting(ci->xDecoderCodec2In) && uxQueueSpacesAvailable(ci->xDecoderAudioOut) > 0)
-        {
+        // if (uxQueueMessagesWaiting(ci->xDecoderCodec2In) && uxQueueSpacesAvailable(ci->xDecoderAudioOut) > 0)
+        // {
             //Codec2 decoding : Receive from codec2 bits and send to audio queue
-            if (xQueueReceive(ci->xDecoderCodec2In, bits, 100) == pdTRUE)
+            if (xQueueReceive(ci->xDecoderCodec2In, bits, 1/*100*/) == pdTRUE)
             {
                 codec2_decode(ci->codec2, buf, bits);
                 xQueueSendToBack(ci->xDecoderAudioOut, buf, 100);
             }
-        }
+        // }
     }
 }
 
