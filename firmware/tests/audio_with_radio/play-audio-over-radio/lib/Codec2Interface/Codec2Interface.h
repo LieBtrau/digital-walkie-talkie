@@ -15,7 +15,6 @@ private:
     volatile bool codec2initOk = false; //volatile required for code to work
     int nsam;
     int nbyte;
-    bool isEncoding = false;
 
 public:
     Codec2Interface(/* args */);

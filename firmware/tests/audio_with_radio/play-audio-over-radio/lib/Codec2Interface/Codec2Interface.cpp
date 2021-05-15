@@ -43,27 +43,18 @@ void codec2task(void *pvParameters)
     }
     for (;;)
     {
-        // if (ci->isEncoding)
-        // {
-            //Codec2 encoding : Receive from audio queue and send to codec2 queue
-            //Code crashes when 0 is filled in for xQueueReceive xTicksToWait
-            if (xQueueReceive(ci->xEncoderAudioIn, buf, 1) == pdTRUE)
-            {
-                codec2_encode(ci->codec2, bits, buf);
-                xQueueSendToBack(ci->xEncoderCodec2Out, bits, 100);
-            }
-//        }
-        //else
-        //Start decoding if an encoded packet is available and if there's room for the decoded packet
-        // if (uxQueueMessagesWaiting(ci->xDecoderCodec2In) && uxQueueSpacesAvailable(ci->xDecoderAudioOut) > 0)
-        // {
-            //Codec2 decoding : Receive from codec2 bits and send to audio queue
-            if (xQueueReceive(ci->xDecoderCodec2In, bits, 1/*100*/) == pdTRUE)
-            {
-                codec2_decode(ci->codec2, buf, bits);
-                xQueueSendToBack(ci->xDecoderAudioOut, buf, 100);
-            }
-        // }
+        //Codec2 encoding : Receive from audio queue and send to codec2 queue
+        if (xQueueReceive(ci->xEncoderAudioIn, buf, 1) == pdTRUE)
+        {
+            codec2_encode(ci->codec2, bits, buf);
+            xQueueSendToBack(ci->xEncoderCodec2Out, bits, 100);
+        }
+        //Codec2 decoding : Receive from codec2 bits and send to audio queue
+        if (xQueueReceive(ci->xDecoderCodec2In, bits, 1) == pdTRUE)
+        {
+            codec2_decode(ci->codec2, buf, bits);
+            xQueueSendToBack(ci->xDecoderAudioOut, buf, 100);
+        }
     }
 }
 
@@ -104,8 +95,7 @@ int Codec2Interface::getCodec2PacketSize()
 
 bool Codec2Interface::startEncodingAudio(short *buf)
 {
-    isEncoding = true;
-    if(uxQueueSpacesAvailable(xEncoderCodec2Out)==0)
+    if (uxQueueSpacesAvailable(xEncoderCodec2Out) == 0)
     {
         //Output queue of packets is full.  If we start to encode more packets, these would be overwritten.
         return false;
@@ -135,7 +125,6 @@ bool Codec2Interface::isDecodingInputBufferSpaceLeft()
 
 bool Codec2Interface::startDecodingAudio(byte *bits)
 {
-    isEncoding = false;
     return xQueueSendToBack(xDecoderCodec2In, bits, (TickType_t)1000) == pdTRUE;
 }
 
