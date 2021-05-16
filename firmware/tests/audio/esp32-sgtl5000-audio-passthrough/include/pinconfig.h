@@ -1,0 +1,1 @@
+../../sgtl5000-codec2-decoding_newI2S/include/pinconfig.h

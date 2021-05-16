@@ -33,13 +33,14 @@
 #include "Arduino.h"
 #include "driver/i2s.h"
 #include "control_sgtl5000.h"
+#include "pinconfig.h"
 
 const i2s_port_t I2S_PORT = I2S_NUM_0;
 const int I2S_READLEN = 256;
 AudioControlSGTL5000 audioShield;
 const int BUFLEN = 1000;
 int16_t buffer[BUFLEN];
-int bufCtr=0;
+int bufCtr = 0;
 
 void setup()
 {
@@ -64,10 +65,10 @@ void setup()
 
   // The pin config as per the setup
   const i2s_pin_config_t pin_config = {
-      .bck_io_num = 26,   // Serial Clock (SCK)
-      .ws_io_num = 25,    // Word Select (WS)
-      .data_out_num = 23, // data out to audio codec
-      .data_in_num = 33   // data from audio codec
+      .bck_io_num = PIN_BCLK,    // Serial Clock (SCK)
+      .ws_io_num = PIN_LRCLK,    // Word Select (WS)
+      .data_out_num = PIN_SDOUT, // data out to audio codec
+      .data_in_num = PIN_SDIN    // data from audio codec
   };
 
   // Configuring the I2S driver and pins.
@@ -80,8 +81,9 @@ void setup()
   PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0_CLK_OUT1);
   delay(5);
   Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
-  audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
-  audioShield.volume(0.2,0.2);
+  //audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
+  audioShield.inputSelect(AUDIO_INPUT_MIC);
+  audioShield.volume(0.2, 0.2);
   delay(200); //to skip the junk samples
 }
 
