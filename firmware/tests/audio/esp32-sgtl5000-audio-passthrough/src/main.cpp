@@ -5,29 +5,12 @@
  * I2S peripheral works at full-duplex mode here, while ESP32-documentation mentions that only half-duplex is supported.
  * In this full duplex mode, it's not clear how and if the DMA-buffers are used.
  * 
+ * If you hear a tapping sound on the output, even when no input is connected.  If you repower the board, the noise is different
+ * or disappears, then the selected gain is likely too high.
+ * Reduce the gain and power cycle the board to remedy this.
+ * 
  * Source code from : https://github.com/Jeija/esp32-lyrat-passthrough/blob/master/main/main.c
  * 
- * Signal name                              Adafruit 1780                   NodeMCU-32S
- * 3V3                                      3.3V                            3.3V
- * GND                                      GND                             GND
- *                                          G                               both ground pins of the Adafruit 1780 must be connected!
- * MCLK (Audio Master Clock)                23 (MCLK)                       GPIO0 (or another CLK_OUT pin)
- *      Sinusoidal signal, 1.8Vpp, 1.7Vavg.
- * LRCLK                                    20 (LRCLK)                      GPIO25 (or other GPIO)
- *      Audio Left/Right Clock
- *      WS (Word Select)
- *      48kHz square wave
- * BCLK                                     21 (BCLK)                       GPIO26 (or other GPIO)
- *      SCLK (Audio Bit Clock)
- *      1.54MHz
- * DOUT                                     8                               GPIO33 (or other GPIO)
- *      Audio Data from Audio Shield to Teensy
- * DIN                                      7                               GPIO23 (or other GPIO)
- *      Audio Data from MCU to Audio Shield
- * SDA                                      18                              GPIO21
- * SCL                                      19                              GPIO22
-
-
  */
 
 #include "Arduino.h"
@@ -83,6 +66,9 @@ void setup()
   Serial.printf("SGTL5000 %s initialized.\n", audioShield.enable() ? "is" : "not");
   //audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
   audioShield.inputSelect(AUDIO_INPUT_MIC);
+  audioShield.micGain(30);
+  //audioShield.autoVolumeControl(2, 2, 0, -18, 16, 2);
+  audioShield.autoVolumeEnable();
   audioShield.volume(0.2, 0.2);
   delay(200); //to skip the junk samples
 }
