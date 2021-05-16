@@ -64,62 +64,63 @@ void setup()
 	Serial.println("Ready to roll");
 }
 
-// void encodingSpeed()
-// {
-// 	int bufsize = nsam << 1;
-// 	if (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
-// 	{
-// 		memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
-// 		startTime = micros();
-// 		if (c2i.startEncodingAudio(buf))
-// 		{
-// 			totalTime += micros() - startTime;
-// 			audio_packet_ctr++;
-// 			nsam_ctr += bufsize;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		if (audio_packet_ctr > 0)
-// 		{
-// 			Serial.printf("Uptime: %lu\tAverage encoding time per packet: %luµs\r\n", millis(), totalTime / audio_packet_ctr);
-// 		}
-// 		nsam_ctr = 0;
-// 		audio_packet_ctr = 0;
-// 		totalTime = 0;
-// 	}
-// }
+void encodingSpeed()
+{
+	int bufsize = nsam << 1;
+	if (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
+	{
+		memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
+		startTime = micros();
+		c2i.startEncodingAudio(buf);
+		if (c2i.getEncodedAudio(bits))
+		{
+			totalTime += micros() - startTime;
+			audio_packet_ctr++;
+			nsam_ctr += bufsize;
+		}
+	}
+	else
+	{
+		if (audio_packet_ctr > 0)
+		{
+			Serial.printf("Uptime: %lu\tAverage encoding time per packet: %luµs\r\n", millis(), totalTime / audio_packet_ctr);
+		}
+		nsam_ctr = 0;
+		audio_packet_ctr = 0;
+		totalTime = 0;
+	}
+}
 
-// void decodingSpeed()
-// {
-// 	if (nbit_ctr + nbyte < lookdave_bit_len)
-// 	{
-// 		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
-// 		startTime = micros();
-// 		c2i.startDecodingAudio(bits);
-// 		if (c2i.getDecodedAudio(buf))
-// 		{
-// 			totalTime += micros() - startTime;
-// 			audio_packet_ctr++;
-// 			nbit_ctr += nbyte;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		if (audio_packet_ctr > 0)
-// 		{
-// 			Serial.printf("Uptime: %lu\tAverage decoding time per packet: %luµs\r\n", millis(), totalTime / audio_packet_ctr);
-// 		}
-// 		nbit_ctr = 0;
-// 		audio_packet_ctr = 0;
-// 		totalTime = 0;
-// 	}
-// }
+void decodingSpeed()
+{
+	if (nbit_ctr + nbyte < lookdave_bit_len)
+	{
+		memcpy(bits, lookdave_bit + nbit_ctr, nbyte);
+		startTime = micros();
+		c2i.startDecodingAudio(bits);
+		if (c2i.getDecodedAudio(buf))
+		{
+			totalTime += micros() - startTime;
+			audio_packet_ctr++;
+			nbit_ctr += nbyte;
+		}
+	}
+	else
+	{
+		if (audio_packet_ctr > 0)
+		{
+			Serial.printf("Uptime: %lu\tAverage decoding time per packet: %luµs\r\n", millis(), totalTime / audio_packet_ctr);
+		}
+		nbit_ctr = 0;
+		audio_packet_ctr = 0;
+		totalTime = 0;
+	}
+}
 
 void clientloop()
 {
 	uint8_t data[PACKET_SIZE];
-	if (wperfTimer.isExpired() /*&& c2i.isEncodedFrameAvailable()*/)
+	if (wperfTimer.isExpired())
 	{
 		wperfTimer.repeat();
 		// if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
@@ -168,22 +169,22 @@ void serverloop()
 
 void loop()
 {
-	// if (pttTimer.isExpired())
-	// {
-	// 	pttTimer.repeat();
-	// 	isClient = !isClient;
-	// }
+	if (pttTimer.isExpired())
+	{
+		pttTimer.repeat();
+		isClient = !isClient;
+	}
 	if (isClient)
 	{
-		// if (c2i.isEncoderInputBufferSpaceLeft())
-		// {
-		// 	encodingSpeed();
-		// }
-		clientloop();
+		if (c2i.isEncoderInputBufferSpaceLeft())
+		{
+			encodingSpeed();
+		}
+//		clientloop();
 	}
 	else
 	{
-		//decodingSpeed();
-		serverloop();
+		decodingSpeed();
+		// serverloop();
 	}
 }
