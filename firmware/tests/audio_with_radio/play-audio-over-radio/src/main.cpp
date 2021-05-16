@@ -27,6 +27,7 @@ int audio_packet_ctr = 0;
 int nsam_ctr = 0;
 unsigned long startTime;
 unsigned long totalTime = 0;
+uint8_t data[PACKET_SIZE];
 
 void setup()
 {
@@ -91,6 +92,26 @@ void encodingSpeed()
 	}
 }
 
+void encodingPacket()
+{
+	int bufsize = nsam << 1;
+	if (c2i.isEncoderInputBufferSpaceLeft())
+	{
+		if (nsam_ctr + bufsize < lookdave_8Khz_raw_len)
+		{
+			memcpy(buf, lookdave_8Khz_raw + nsam_ctr, bufsize);
+			if (c2i.startEncodingAudio(buf))
+			{
+				nsam_ctr += bufsize;
+			}
+		}
+		else
+		{
+			nsam_ctr = 0;
+		}
+	}
+}
+
 void decodingSpeed()
 {
 	if (nbit_ctr + nbyte < lookdave_bit_len)
@@ -119,16 +140,47 @@ void decodingSpeed()
 
 void clientloop()
 {
-	uint8_t data[PACKET_SIZE];
 	if (wperfTimer.isExpired())
 	{
 		wperfTimer.repeat();
-		// if (c2i.getEncodedAudio(data + 1) && c2i.getEncodedAudio(data + nbyte + 1))
-		// {
 		data[0] = packetCount;
 		ri.sendPacket(data);
-		packetCount = packetCount < MAX_PACKET-1 ? packetCount + 1 : 0;
-		// }
+		packetCount = packetCount < MAX_PACKET - 1 ? packetCount + 1 : 0;
+	}
+}
+
+int state = 0;
+void sendPacket()
+{
+	switch (state)
+	{
+	case 0:
+		if (wperfTimer.isExpired())
+		{
+			wperfTimer.repeat();
+		}
+		data[0] = packetCount;
+		packetCount = packetCount < MAX_PACKET - 1 ? packetCount + 1 : 0;
+		state = 1;
+		break;
+	case 1:
+		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + 1))
+		{
+			state = 2;
+		}
+		break;
+	case 2:
+		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + nbyte + 1))
+		{
+			state = 3;
+		}
+		break;
+	case 3:
+		ri.sendPacket(data);
+		state = 0;
+		break;
+	default:
+		break;
 	}
 }
 
@@ -169,22 +221,20 @@ void serverloop()
 
 void loop()
 {
-	if (pttTimer.isExpired())
-	{
-		pttTimer.repeat();
-		isClient = !isClient;
-	}
+	// if (pttTimer.isExpired())
+	// {
+	// 	pttTimer.repeat();
+	// 	isClient = !isClient;
+	// }
 	if (isClient)
 	{
-		if (c2i.isEncoderInputBufferSpaceLeft())
-		{
-			encodingSpeed();
-		}
-//		clientloop();
+		encodingPacket();
+		sendPacket();
 	}
 	else
 	{
-		decodingSpeed();
-		// serverloop();
+		//decodingSpeed();
+		serverloop();
 	}
+	vTaskDelay(1);
 }
