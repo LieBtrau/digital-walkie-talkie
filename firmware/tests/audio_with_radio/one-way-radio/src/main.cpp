@@ -13,7 +13,7 @@
 const int PACKET_INTERVAL_ms = 80; //in ms
 const int PACKET_SIZE = 20;
 
-AsyncDelay delay_3s, wperfTimer;
+AsyncDelay delay_3s, packetTimer;
 Codec2Interface c2i;
 Codec2Decoder c2d(&c2i);
 Codec2Encoder c2e(&c2i);
@@ -53,20 +53,20 @@ void setup()
 	pinMode(PIN_MODE_SELECT, INPUT_PULLUP);
 	isClient = digitalRead(PIN_MODE_SELECT) == HIGH ? true : false;
 	Serial.printf("Mode: %s\r\n", isClient ? "Client" : "Server");
+	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
+	input = new Sgtl5000_Input(I2S_NUM_0, &i2s_pin_config);
 	if (isClient)
 	{
-		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
-		//input = new Sgtl5000_Input(I2S_NUM_0, &i2s_pin_config);
+		packetTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
 		//input->start(&c2e);
 	}
 	else
 	{
-		output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
 		output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
-		Serial.printf("SGTL5000 %s initialized.\r\n", audioShield.enable() ? "is" : "not");
-		audioShield.volume(0.5);
-		audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	}
+	Serial.printf("SGTL5000 %s initialized.\r\n", audioShield.enable() ? "is" : "not");
+	audioShield.volume(0.5);
+	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	if (!ri.init())
 	{
 		Serial.println("Can't init radio");
@@ -82,9 +82,9 @@ void sendPacket()
 	switch (txstate)
 	{
 	case 0:
-		if (wperfTimer.isExpired())
+		if (packetTimer.isExpired())
 		{
-			wperfTimer.repeat();
+			packetTimer.repeat();
 		}
 		txstate = 1;
 		break;
