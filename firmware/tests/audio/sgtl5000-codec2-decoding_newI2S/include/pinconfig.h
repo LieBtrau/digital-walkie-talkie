@@ -4,7 +4,7 @@
  * -----------------------
  * Signal name                              Adafruit 1780                   NodeMCU-32S
  * -----------------------------------------------------------------------------------------------------------------
- * 3V3                                      3.3V                            3.3V
+ * 3V3                                      3V                              3.3V
  * GND                                      GND                             GND
  *                                          G                               both ground pins of the Adafruit 1780 must be connected!
  * MCLK (Audio Master Clock)                23 (MCLK)                       GPIO0 (or another CLK_OUT pin)

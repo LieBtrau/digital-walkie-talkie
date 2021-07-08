@@ -65,7 +65,7 @@ void setup()
 	output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
 	//input->start(&c2e);
 	Serial.printf("SGTL5000 %s initialized.\r\n", audioShield.enable() ? "is" : "not");
-	audioShield.volume(0.5);
+	audioShield.volume(0.3);
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
 	Serial.println("Ready to roll");
 }
