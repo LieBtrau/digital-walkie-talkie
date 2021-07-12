@@ -8,6 +8,7 @@
 #include "control_sgtl5000.h"
 #include "pinconfig.h"
 #include "RadioInterface.h"
+#include "Bounce2.h"
 
 const int PACKET_INTERVAL_ms = 80; //in ms
 const int PACKET_SIZE = 20;
@@ -15,7 +16,6 @@ const int PACKET_SIZE = 20;
 Codec2Interface c2i;
 Codec2Decoder c2d(&c2i);
 Codec2Encoder c2e(&c2i);
-bool isClient = false;
 Sgtl5000_Output *output;
 Sgtl5000_Input *input;
 AudioControlSGTL5000 audioShield;
@@ -29,6 +29,7 @@ static i2s_pin_config_t i2s_pin_config = {
 uint8_t data[PACKET_SIZE];
 int nsam_ctr;
 short *buf;
+Bounce bounce = Bounce();
 
 void setup()
 {
@@ -47,19 +48,10 @@ void setup()
 	}
 	buf = (short *)malloc(c2i.getAudioSampleCount() * sizeof(short));
 	Serial.println("Starting I2S Output");
-	pinMode(PIN_MODE_SELECT, INPUT_PULLUP);
-	isClient = digitalRead(PIN_MODE_SELECT) == HIGH ? true : false;
-	Serial.printf("Mode: %s\r\n", isClient ? "Client" : "Server");
+	bounce.attach(PIN_MODE_SELECT, INPUT_PULLUP);
 	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
 	input = new Sgtl5000_Input(I2S_NUM_0, &i2s_pin_config);
-	if (isClient)
-	{
-		input->start(&c2e);
-	}
-	else
-	{
-		output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
-	}
+	output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
 	Serial.printf("SGTL5000 %s initialized.\r\n", audioShield.enable() ? "is" : "not");
 	audioShield.volume(0.5);
 	audioShield.lineInLevel(2); //2.22Vpp equals maximum output.
@@ -130,29 +122,26 @@ void receivePacket()
 
 void loop()
 {
-	// if (delay_3s.isExpired())
-	// {
-	// 	delay_3s.repeat(); // Count from when the delay expired, not now
-	// 	if (isPlaying)
-	// 	{
-	// 		output->stop();
-	// 		vTaskDelay(1);
-	// 		input->start(&c2e);
-	// 	}
-	// 	else
-	// 	{
-	// 		input->stop();
-	// 		vTaskDelay(1);
-	// 		output->start(&c2d);
-	// 	}
-	// 	digitalWrite(LED_BUILTIN, isPlaying ? HIGH : LOW);
-	// 	isPlaying = !isPlaying;
-	// }
-	if (!isClient)
+	bounce.update();
+	if (bounce.fell())
+	{
+		//PTT-pushed
+		output->stop();
+		vTaskDelay(1);
+		input->start(&c2e);
+	}
+	if(bounce.rose())
+	{
+		//PTT-released
+		input->stop();
+		vTaskDelay(1);
+		output->start(&c2d);
+	}
+	if (bounce.read()==HIGH)
 	{
 		receivePacket();
 	}
-	if (isClient)
+	else
 	{
 		sendPacket();
 	}
