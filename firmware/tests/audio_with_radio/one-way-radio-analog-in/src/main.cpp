@@ -6,14 +6,12 @@
 #include "Sgtl5000_Output.h"
 #include "Sgtl5000_Input.h"
 #include "control_sgtl5000.h"
-#include "AsyncDelay.h"
 #include "pinconfig.h"
 #include "RadioInterface.h"
 
 const int PACKET_INTERVAL_ms = 80; //in ms
 const int PACKET_SIZE = 20;
 
-AsyncDelay delay_3s, packetTimer;
 Codec2Interface c2i;
 Codec2Decoder c2d(&c2i);
 Codec2Encoder c2e(&c2i);
@@ -35,7 +33,6 @@ short *buf;
 void setup()
 {
 	Serial.begin(115200);
-	delay_3s.start(3000, AsyncDelay::MILLIS);
 	pinMode(LED_BUILTIN, OUTPUT);
 	unsigned long startTime = millis();
 	while (!Serial && (startTime + (10 * 1000) > millis()))
@@ -57,7 +54,6 @@ void setup()
 	input = new Sgtl5000_Input(I2S_NUM_0, &i2s_pin_config);
 	if (isClient)
 	{
-		packetTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
 		input->start(&c2e);
 	}
 	else
@@ -82,25 +78,18 @@ void sendPacket()
 	switch (txstate)
 	{
 	case 0:
-		if (packetTimer.isExpired())
+		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data))
 		{
-			packetTimer.repeat();
+			txstate = 1;
 		}
-		txstate = 1;
 		break;
 	case 1:
-		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data))
+		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + c2i.getCodec2PacketSize()))
 		{
 			txstate = 2;
 		}
 		break;
 	case 2:
-		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + c2i.getCodec2PacketSize()))
-		{
-			txstate = 3;
-		}
-		break;
-	case 3:
 		ri.sendPacket(data);
 		txstate = 0;
 		break;
