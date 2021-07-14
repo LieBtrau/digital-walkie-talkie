@@ -133,7 +133,7 @@ void loop()
 	{
 	case LISTENING:
 		receivePacket();
-		if (pttSwitch.fell())
+		if (pttSwitch.read()==LOW)
 		{
 			//PTT-pushed
 			Serial.println("PTT-pushed");
@@ -145,7 +145,7 @@ void loop()
 		break;
 	case SPEAKING:
 		sendPacket();
-		if (pttSwitch.rose())
+		if (pttSwitch.read()==HIGH)
 		{
 			//PTT-released
 			Serial.println("PTT-released");
