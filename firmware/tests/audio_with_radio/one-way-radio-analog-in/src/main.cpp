@@ -29,7 +29,13 @@ static i2s_pin_config_t i2s_pin_config = {
 uint8_t data[PACKET_SIZE];
 int nsam_ctr;
 short *buf;
-Bounce bounce = Bounce();
+Bounce pttSwitch = Bounce();
+typedef enum
+{
+	LISTENING,
+	SPEAKING
+} wtState;
+wtState wtstate = LISTENING;
 
 void setup()
 {
@@ -48,7 +54,7 @@ void setup()
 	}
 	buf = (short *)malloc(c2i.getAudioSampleCount() * sizeof(short));
 	Serial.println("Starting I2S Output");
-	bounce.attach(PIN_MODE_SELECT, INPUT_PULLUP);
+	pttSwitch.attach(PIN_MODE_SELECT, INPUT_PULLUP);
 	output = new Sgtl5000_Output(I2S_NUM_0, &i2s_pin_config);
 	input = new Sgtl5000_Input(I2S_NUM_0, &i2s_pin_config);
 	output->start(&c2d); //init needed here to generate MCLK, needed for SGTL5000 init.
@@ -122,28 +128,36 @@ void receivePacket()
 
 void loop()
 {
-	bounce.update();
-	if (bounce.fell())
+	pttSwitch.update();
+	switch (wtstate)
 	{
-		//PTT-pushed
-		output->stop();
-		vTaskDelay(1);
-		input->start(&c2e);
-	}
-	if(bounce.rose())
-	{
-		//PTT-released
-		input->stop();
-		vTaskDelay(1);
-		output->start(&c2d);
-	}
-	if (bounce.read()==HIGH)
-	{
+	case LISTENING:
 		receivePacket();
-	}
-	else
-	{
+		if (pttSwitch.fell())
+		{
+			//PTT-pushed
+			Serial.println("PTT-pushed");
+			output->stop();
+			vTaskDelay(1);
+			input->start(&c2e);
+			wtstate = SPEAKING;
+		}
+		break;
+	case SPEAKING:
 		sendPacket();
+		if (pttSwitch.rose())
+		{
+			//PTT-released
+			Serial.println("PTT-released");
+			input->stop();
+			vTaskDelay(1);
+			output->start(&c2d);
+			wtstate = LISTENING;
+		}
+		break;
+	default:
+		wtstate = LISTENING;
+		break;
 	}
 	vTaskDelay(1);
 }
