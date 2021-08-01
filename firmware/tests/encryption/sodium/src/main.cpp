@@ -22,12 +22,16 @@ void authenticatedSymmetricEncryption()
 	size_t MESSAGE_LEN = strlen((const char *)MESSAGE); //4
 	size_t CIPHERTEXT_LEN = crypto_secretbox_MACBYTES + MESSAGE_LEN;
 	unsigned char key[crypto_secretbox_KEYBYTES];
-	unsigned char nonce[crypto_secretbox_NONCEBYTES];
+
 	unsigned char ciphertext[CIPHERTEXT_LEN];
 
-	//Generate key & nonce
-	crypto_secretbox_keygen(key);
+	//Generate nonce
+	unsigned char nonce[crypto_secretbox_NONCEBYTES];
 	randombytes_buf(nonce, sizeof nonce);
+
+	//Generate key
+	crypto_secretbox_keygen(key);
+
 	//Encryption
 	//The trailing zero of the string doesn't get encrypted.
 	crypto_secretbox_easy(ciphertext, MESSAGE, MESSAGE_LEN, nonce, key);
@@ -41,11 +45,24 @@ void authenticatedSymmetricEncryption()
 		/* message forged! */
 		Serial.println("message forged");
 	}
+	Serial.println((const char *)decrypted);
+
+	/**
+	 * If another encryption is needed, then use another nonce.  Simple solution: nonce++
+	 * This makes is possible to avoid having to send the complete nonce for every encryption.
+	 * We can suffice by sending the offset from the original value.  That will take less bits.
+	 */
+	sodium_increment(nonce, sizeof nonce);
+
 	//Clear sensitive data
 	sodium_memzero(key, crypto_secretbox_KEYBYTES);
-	Serial.println((const char *)decrypted);
 }
 
+/**
+ * Remark that the client and the server execute different functions for calculating the shared keys.  This
+ * is because Sodium implements key exchange using a hash function.
+ * The key exchange function will also return true when the session keys are not equal in client and server.
+ */
 void keyExchange()
 {
 	//Assymmetric keys for key exchange
@@ -69,7 +86,7 @@ void keyExchange()
 	if (crypto_kx_client_session_keys(client_rx, client_tx, client_pk, client_sk, server_pk) != 0)
 	{
 		/* Suspicious server public key, bail out */
-		Serial.println("Client: Session key error");
+		Serial.println("Client: Server public key error");
 		return;
 	}
 	printArray("Client rx: ", client_rx, crypto_kx_SESSIONKEYBYTES);
@@ -81,7 +98,7 @@ void keyExchange()
 	if (crypto_kx_server_session_keys(server_rx, server_tx, server_pk, server_sk, client_pk) != 0)
 	{
 		/* Suspicious client public key, bail out */
-		Serial.println("Server: Session key error");
+		Serial.println("Server: client public key error");
 		return;
 	}
 	printArray("Server rx: ", server_rx, crypto_kx_SESSIONKEYBYTES);
