@@ -113,20 +113,33 @@ uint32_t getEsp32UniqueId()
 // 	crypto_kdf_derive_from_key(server_handshake_key, sizeof server_handshake_key, 1, "iv_s__trf", hash);
 // }
 
+union mix_t
+{
+    uint32_t theDWord;
+    uint8_t theBytes[4];
+};
+
 void setup()
 {
 	Serial.begin(115200);
 	Serial.printf("\r\nBuild %s\r\n", __TIMESTAMP__);
 	bootloader_random_enable();
-	Serial.printf("Chip ID: %u\r\n", getEsp32UniqueId());
+	Serial.printf("Chip ID: 0x%08x\r\n", getEsp32UniqueId());
 
-	uint32_t clientId = getEsp32UniqueId();
-	uint32_t serverId = clientId+1;
-	Micro_tls client(clientId);
-	Micro_tls server(serverId);
+	mix_t client_id, server_id;
+	client_id.theDWord = getEsp32UniqueId();
+	server_id.theDWord = getEsp32UniqueId()+1;
+	Micro_tls client(client_id.theBytes);
+	Micro_tls server(server_id.theBytes);
+	unsigned char serverCertificate[server.getCertificateLength()];
 
-	client.createStaticKeyPair();
-	server.createStaticKeyPair();
+	client.createSigningKeyPair();
+	server.createSigningKeyPair();
+	/**
+	 * We're not using certificate chains here, so the certificate must be provided by secure means to the client.  The client has to assume that
+	 * the certificate is legitimate.
+	 */
+	server.exportCertificate(serverCertificate);
 
 	uint8_t e_pubkey_client[crypto_kx_PUBLICKEYBYTES];
 	uint8_t cookie_client[32];
@@ -145,11 +158,13 @@ void setup()
 	server.calcHandshakeSecret(e_pubkey_client, false);
 	client.calcHandshakeSecret(f_pubkey_server, true);
 
-	server.calcExchangeHash(clientId, cookie_client, nullptr, false);
+	server.calcExchangeHash(client_id.theBytes, cookie_client, nullptr, false);
+	unsigned char sig[server.getSignatureLength()];
+	server.signExchangeHash(sig);
+	printArray("s: ", sig, sizeof sig);
 
-	uint8_t serverKey[server.getStaticKeylength()];
-	server.getStaticPublicKey(serverKey);
-	client.calcExchangeHash(serverId, cookie_server, serverKey, true);
+
+	client.calcExchangeHash(server_id.theBytes, cookie_server, serverCertificate, true);
 
 	Serial.println("setup done.");
 }
