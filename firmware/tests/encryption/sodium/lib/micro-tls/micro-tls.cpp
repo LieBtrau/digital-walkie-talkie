@@ -15,6 +15,10 @@ Micro_tls::Micro_tls(uint8_t *id)
     memcpy(_myCertificate.id, id, sizeof _myCertificate.id);
 }
 
+/** Create the object with the certificate and secret key
+ * \param certificate : contains id, pubkey and self-signed signature
+ * \param secret key : secret key belonging to pubkey in the certificate
+ */
 Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey)
 {
     if (sodium_init() < 0)
@@ -32,6 +36,7 @@ Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey)
     _isInitStaticKey = true;
 }
 
+//Clean up all sensitive data
 Micro_tls::~Micro_tls()
 {
     sodium_memzero(_myCertificate.private_key_signing, sizeof _myCertificate.private_key_signing);
@@ -40,12 +45,23 @@ Micro_tls::~Micro_tls()
     sodium_memzero(_handshakeSecret_K_part2, sizeof _handshakeSecret_K_part2);
 }
 
+/** Create a static key pair for the object.
+ * This should only be called once in the lifetime of the product.  The result should then be exported and saved in non-volatile memory.
+ * This key-pair is used to create a certificate, which will then be distributed among devices in the same group for authentication purposes.
+ */
 void Micro_tls::createSigningKeyPair()
 {
     crypto_sign_keypair(_myCertificate.public_key_signing, _myCertificate.private_key_signing);
     _isInitStaticKey = true;
 }
 
+/** Generate the first message in the key exchange protocol.
+ * It's the client who sends the output of this command to the server.
+ * \param cookie will contain a random value upon return, to prevent replay-attacks.
+ * \param cookieLength size of the cookie
+ * \param public_ephemeral_key public key for key exchange purposes.  Short lifetime.
+ * \param keyLength size of the public ephemeral key
+ */
 bool Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength)
 {
     if (!_isInitStaticKey)
@@ -64,9 +80,14 @@ bool Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *publi
     return true;
 }
 
-/**
- * https://datatracker.ietf.org/doc/html/rfc4253#section-8
+/** Calculate the handshake secret "K"
+ * The ephemeral keypair is used here to establish a common secret between client and server.
+ * The handshake secret(!) is an intermediary value that will be used later on to derive the traffic keydata from.
+ * The handshake secret will be calculated by the client and the server independently.  They should arrive at the same value.
+ * https://datatracker.ietf.org/doc/html/rfc4253#section-8 names this value "K".
  * Instead of using Diffie-Hellman, libsodium uses a hash function by default. 
+ * \param public_key_ephemeral_peer epthemeral pubkey of the other party
+ * \param isClient client=true, server=false.  This is used to reconstruct the handshake secret from libsodium's "traffic keys".
  */
 bool Micro_tls::calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isClient)
 {
@@ -92,14 +113,20 @@ bool Micro_tls::calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isC
     return true;
 }
 
-/**
+/** Calculate the exchange hash H
+ * H is also an intermediate value used to derive traffic keydata from.  Both client and server will generate this hash.  They should independently 
+ * arrive at the same value.
  * https://datatracker.ietf.org/doc/html/rfc4253#section-8
  * The exchange hash H is considered secret data.
+ * \param peerId id of the other party
+ * \param peerCookie cookie of the other party
+ * \param serverCertificate client passes in certificate of the server.  The server fills in a nullptr here.
+ * \param isClient true for client, false for server.
  */
-bool Micro_tls::calcExchangeHash(uint8_t *peerId, uint8_t *peerCookie, uint8_t *peerCertificate, bool isClient)
+bool Micro_tls::calcExchangeHash(uint8_t *peerId, uint8_t *peerCookie, uint8_t *serverCertificate, bool isClient)
 {
     certificateData peerCert;
-    if (isClient && !importCertificate(peerCertificate, &peerCert))
+    if (isClient && !importCertificate(serverCertificate, &peerCert))
     {
         return false;
     }
@@ -123,8 +150,8 @@ size_t Micro_tls::getSignatureLength()
     return crypto_sign_BYTES;
 }
 
-/**
- * Sign the exchange hash with the private host key
+/** Sign the exchange hash with the private host key
+ * According to the SSH protocol key exchange (https://datatracker.ietf.org/doc/html/rfc4253#section-8)
  */
 void Micro_tls::signExchangeHash(uint8_t *signature)
 {
@@ -136,7 +163,10 @@ size_t Micro_tls::getCertificateLength()
     return sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing + getSignatureLength();
 }
 
-// Export certificate data as self-signed certificate.
+/** Export certificate data as self-signed certificate.
+ * Cryptographically self-signed certificates don't mean much.  Everyone could simply replace the pubkey and sign the certificate again
+ * with the private key that matches the replacing pubkey.  Self-signing only assures that the certificate data is still valid.
+ */
 void Micro_tls::exportCertificate(uint8_t *certificate)
 {
     uint8_t message[sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing];
@@ -148,6 +178,7 @@ void Micro_tls::exportCertificate(uint8_t *certificate)
     printArray("Certificate: ", certificate, getCertificateLength());
 }
 
+// Import and check self-signed certificate
 bool Micro_tls::importCertificate(uint8_t *certificate, certificateData *imported)
 {
     uint8_t cert_pub_key[sizeof _myCertificate.public_key_signing];
