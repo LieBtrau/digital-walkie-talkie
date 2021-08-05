@@ -132,14 +132,13 @@ void setup()
 	Micro_tls client(client_id.theBytes);
 	Micro_tls server(server_id.theBytes);
 	unsigned char serverCertificate[server.getCertificateLength()];
+	unsigned char clientCertificate[client.getCertificateLength()];
 
-	client.createSigningKeyPair();
-	server.createSigningKeyPair();
-	/**
-	 * We're not using certificate chains here, so the certificate must be provided by secure means to the client.  The client has to assume that
-	 * the certificate is legitimate.
-	 */
+	//We're not using certificate chains here, so the certificate must be distributed by secure means to the parties involved.
 	server.exportCertificate(serverCertificate);
+	client.exportCertificate(clientCertificate);
+	server.importCertificate(clientCertificate);
+	client.importCertificate(serverCertificate);
 
 	uint8_t e_pubkey_client[crypto_kx_PUBLICKEYBYTES];
 	uint8_t cookie_client[32];
@@ -147,24 +146,30 @@ void setup()
 	uint8_t cookie_server[32];
 	int cookielength, e_pubkey_length;
 
+	//Key exchange protocol
+	//Step 1 : Client sends ClientHello to server : (client_cookie | e)
 	client.generateHello(cookie_client, cookielength, e_pubkey_client, e_pubkey_length);
 	printArray("cookie_client: ", cookie_client, cookielength);
 	printArray("e: ", e_pubkey_client, e_pubkey_length);
 
+	//Step 2 : Server generates cookie and a public key for key exchange "f" 
 	server.generateHello(cookie_server, cookielength, f_pubkey_server, e_pubkey_length);
 	printArray("cookie_server: ", cookie_server, cookielength);
 	printArray("f: ", f_pubkey_server, e_pubkey_length);
 	
+	//Step 3 : Server calculates handshake secret and exchange hash and then signs the exchange hash
 	server.calcHandshakeSecret(e_pubkey_client, false);
-	client.calcHandshakeSecret(f_pubkey_server, true);
-
-	server.calcExchangeHash(client_id.theBytes, cookie_client, nullptr, false);
+	server.calcExchangeHash(cookie_client, false);
 	unsigned char sig[server.getSignatureLength()];
 	server.signExchangeHash(sig);
 	printArray("s: ", sig, sizeof sig);
 
+	//Step 4 : Server sends cookie, public key for key exchange "f" and signature to client : (server_cookie | f | s)
 
-	client.calcExchangeHash(server_id.theBytes, cookie_server, serverCertificate, true);
+	//Step 5 : Client calculates handshake secret and exchange hash and then verifies the signature of the exchange hash
+	client.calcHandshakeSecret(f_pubkey_server, true);
+	client.calcExchangeHash(cookie_server, true);
+	Serial.printf("Signature verification: %s\r\n", client.checkSignature(sig) ? "ok" : "fail");
 
 	Serial.println("setup done.");
 }

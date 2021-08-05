@@ -13,6 +13,11 @@ Micro_tls::Micro_tls(uint8_t *id)
             ;
     }
     memcpy(_myCertificate.id, id, sizeof _myCertificate.id);
+    /** Create a static key pair for the object.
+     * This should only be called once in the lifetime of the product.  The result should then be exported and saved in non-volatile memory.
+     * This key-pair is used to create a certificate, which will then be distributed among devices in the same group for authentication purposes.
+     */    
+    crypto_sign_keypair(_myCertificate.public_key_signing, _myCertificate.private_key_signing);
 }
 
 /** Create the object with the certificate and secret key
@@ -27,13 +32,12 @@ Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey)
         while (true)
             ;
     }
-    if (!importCertificate(certificate, &_myCertificate))
+    if (!importCertificate(certificate))
     {
         while (true)
             ;
     }
     memcpy(_myCertificate.private_key_signing, secretKey, sizeof _myCertificate.private_key_signing);
-    _isInitStaticKey = true;
 }
 
 //Clean up all sensitive data
@@ -45,15 +49,47 @@ Micro_tls::~Micro_tls()
     sodium_memzero(_handshakeSecret_K_part2, sizeof _handshakeSecret_K_part2);
 }
 
-/** Create a static key pair for the object.
- * This should only be called once in the lifetime of the product.  The result should then be exported and saved in non-volatile memory.
- * This key-pair is used to create a certificate, which will then be distributed among devices in the same group for authentication purposes.
- */
-void Micro_tls::createSigningKeyPair()
+size_t Micro_tls::getCertificateLength()
 {
-    crypto_sign_keypair(_myCertificate.public_key_signing, _myCertificate.private_key_signing);
-    _isInitStaticKey = true;
+    return sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing + getSignatureLength();
 }
+
+/** Export certificate data as self-signed certificate.
+ * Cryptographically self-signed certificates don't mean much.  Everyone could simply replace the pubkey and sign the certificate again
+ * with the private key that matches the replacing pubkey.  Self-signing only assures that the certificate data is still valid.
+ */
+void Micro_tls::exportCertificate(uint8_t *certificate)
+{
+    uint8_t message[sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing];
+    printArray("Export: id: ", _myCertificate.id, sizeof _myCertificate.id);
+    printArray("Export: pubkey: ", _myCertificate.public_key_signing, sizeof _myCertificate.public_key_signing);
+    memcpy(message, _myCertificate.id, sizeof _myCertificate.id);
+    memcpy(message + sizeof _myCertificate.id, _myCertificate.public_key_signing, sizeof _myCertificate.public_key_signing);
+    crypto_sign(certificate, nullptr, message, sizeof message, _myCertificate.private_key_signing);
+    printArray("Certificate: ", certificate, getCertificateLength());
+}
+
+// Import and check self-signed certificate
+bool Micro_tls::importCertificate(uint8_t *certificate)
+{
+    uint8_t cert_pub_key[sizeof _myCertificate.public_key_signing];
+    unsigned char unsigned_message[sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing];
+    unsigned long long unsigned_message_len;
+    printArray("Import: id: ", certificate + getSignatureLength(), sizeof _myCertificate.id);
+    printArray("Import: pubkey: ", certificate + getSignatureLength() + sizeof _myCertificate.id, sizeof _myCertificate.public_key_signing);
+    //Extract pubkey from certificate (signature | id | pubkey)
+    memcpy(cert_pub_key, certificate + getSignatureLength() + sizeof _myCertificate.id, sizeof _myCertificate.public_key_signing);
+    //Check imported certificate
+    if (crypto_sign_open(unsigned_message, &unsigned_message_len, certificate, getCertificateLength(), cert_pub_key) != 0)
+    {
+        /* Incorrect signature! */
+        return false;
+    }
+    memcpy(_peerCertificate.id, unsigned_message, sizeof _myCertificate.id);
+    memcpy(_peerCertificate.public_key_signing, cert_pub_key, sizeof cert_pub_key);
+    return true;
+}
+
 
 /** Generate the first message in the key exchange protocol.
  * It's the client who sends the output of this command to the server.
@@ -64,10 +100,6 @@ void Micro_tls::createSigningKeyPair()
  */
 bool Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength)
 {
-    if (!_isInitStaticKey)
-    {
-        return false;
-    }
     //Generate random
     randombytes_buf(_random, sizeof _random);
     //Generate ephemeral key pair
@@ -123,20 +155,15 @@ bool Micro_tls::calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isC
  * \param serverCertificate client passes in certificate of the server.  The server fills in a nullptr here.
  * \param isClient true for client, false for server.
  */
-bool Micro_tls::calcExchangeHash(uint8_t *peerId, uint8_t *peerCookie, uint8_t *serverCertificate, bool isClient)
+bool Micro_tls::calcExchangeHash(uint8_t *peerCookie, bool isClient)
 {
-    certificateData peerCert;
-    if (isClient && !importCertificate(serverCertificate, &peerCert))
-    {
-        return false;
-    }
     crypto_generichash_state state;
     crypto_generichash_init(&state, _handshakeSecret_K_part1, sizeof _handshakeSecret_K_part1, sizeof _hash_H);
-    crypto_generichash_update(&state, isClient ? _myCertificate.id : peerId, sizeof _myCertificate.id);
-    crypto_generichash_update(&state, isClient ? peerId : _myCertificate.id, sizeof _myCertificate.id);
+    crypto_generichash_update(&state, isClient ? _myCertificate.id : _peerCertificate.id, sizeof _myCertificate.id);
+    crypto_generichash_update(&state, isClient ? _peerCertificate.id : _myCertificate.id, sizeof _myCertificate.id);
     crypto_generichash_update(&state, isClient ? _random : peerCookie, sizeof _random);
     crypto_generichash_update(&state, isClient ? peerCookie : _random, sizeof _random);
-    crypto_generichash_update(&state, isClient ? peerCert.public_key_signing : _myCertificate.public_key_signing, sizeof _myCertificate.public_key_signing);
+    crypto_generichash_update(&state, isClient ? _peerCertificate.public_key_signing : _myCertificate.public_key_signing, sizeof _myCertificate.public_key_signing);
     crypto_generichash_update(&state, isClient ? _public_key_ephemeral : _public_key_ephemeral_peer, sizeof _public_key_ephemeral);
     crypto_generichash_update(&state, isClient ? _public_key_ephemeral_peer : _public_key_ephemeral, sizeof _public_key_ephemeral);
     crypto_generichash_update(&state, _handshakeSecret_K_part2, sizeof _handshakeSecret_K_part2);
@@ -150,72 +177,21 @@ size_t Micro_tls::getSignatureLength()
     return crypto_sign_BYTES;
 }
 
+
 /** Sign the exchange hash with the private host key
  * According to the SSH protocol key exchange (https://datatracker.ietf.org/doc/html/rfc4253#section-8)
  */
 void Micro_tls::signExchangeHash(uint8_t *signature)
 {
-    crypto_sign_detached(signature, NULL, _hash_H, sizeof _hash_H, _myCertificate.private_key_signing);
+    crypto_sign_detached(signature, nullptr, _hash_H, sizeof _hash_H, _myCertificate.private_key_signing);
 }
 
-size_t Micro_tls::getCertificateLength()
-{
-    return sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing + getSignatureLength();
-}
 
-/** Export certificate data as self-signed certificate.
- * Cryptographically self-signed certificates don't mean much.  Everyone could simply replace the pubkey and sign the certificate again
- * with the private key that matches the replacing pubkey.  Self-signing only assures that the certificate data is still valid.
+/** Verify the signature using the public key provided by the certificate
+ * \param certificate The certificate of the remote party.  This certificate must be pre-installed on this device.
+ * \param signature The signature that must be verified.
  */
-void Micro_tls::exportCertificate(uint8_t *certificate)
+bool Micro_tls::checkSignature(uint8_t *signature)
 {
-    uint8_t message[sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing];
-    printArray("Export: id: ", _myCertificate.id, sizeof _myCertificate.id);
-    printArray("Export: pubkey: ", _myCertificate.public_key_signing, sizeof _myCertificate.public_key_signing);
-    memcpy(message, _myCertificate.id, sizeof _myCertificate.id);
-    memcpy(message + sizeof _myCertificate.id, _myCertificate.public_key_signing, sizeof _myCertificate.public_key_signing);
-    crypto_sign(certificate, nullptr, message, sizeof message, _myCertificate.private_key_signing);
-    printArray("Certificate: ", certificate, getCertificateLength());
+    return (crypto_sign_verify_detached(signature, _hash_H, sizeof _hash_H, _peerCertificate.public_key_signing) == 0);
 }
-
-// Import and check self-signed certificate
-bool Micro_tls::importCertificate(uint8_t *certificate, certificateData *imported)
-{
-    uint8_t cert_pub_key[sizeof _myCertificate.public_key_signing];
-    unsigned char unsigned_message[sizeof _myCertificate.id + sizeof _myCertificate.public_key_signing];
-    unsigned long long unsigned_message_len;
-    printArray("Import: id: ", certificate + getSignatureLength(), sizeof _myCertificate.id);
-    printArray("Import: pubkey: ", certificate + getSignatureLength() + sizeof _myCertificate.id, sizeof _myCertificate.public_key_signing);
-    //Extract pubkey from certificate (signature | id | pubkey)
-    memcpy(cert_pub_key, certificate + getSignatureLength() + sizeof _myCertificate.id, sizeof _myCertificate.public_key_signing);
-    //Check imported certificate
-    if (crypto_sign_open(unsigned_message, &unsigned_message_len, certificate, getCertificateLength(), cert_pub_key) != 0)
-    {
-        /* Incorrect signature! */
-        return false;
-    }
-    memcpy(imported->id, unsigned_message, sizeof _myCertificate.id);
-    memcpy(imported->public_key_signing, cert_pub_key, sizeof cert_pub_key);
-    return true;
-}
-
-// /** Extract the public key from the certificate and use it to verify the signature.
-//  * \param certificate The certificate of the remote party.  This certificate must be pre-installed on this device.
-//  * \param signature The signature that must be verified.
-//  */
-// bool Micro_tls::checkSignature(uint8_t *certificate, uint8_t *signature)
-// {
-//     unsigned char unsigned_message[sizeof _myCertificate.id];
-//     unsigned long long unsigned_message_len;
-//     if (crypto_sign_open(unsigned_message, &unsigned_message_len, certificate, getCertificateLength(), publicKey) != 0)
-//     {
-//         /* Incorrect signature! */
-//         return false;
-//     }
-//     if (sodium_compare(unsigned_message, peerId, sizeof _myCertificate.id) != 0)
-//     {
-//         //This certificate belongs to another ID.
-//         return false;
-//     }
-//     return true;
-// }
