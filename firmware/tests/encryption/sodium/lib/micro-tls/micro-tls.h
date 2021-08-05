@@ -19,15 +19,16 @@ public:
     size_t getCertificateLength();
     void generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength);
     bool signExchangeHash(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature);
-    bool checkSignature(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature);
-    void signExchangeHash(uint8_t *signature);
-    bool checkSignature(uint8_t *signature);
+    bool finishKeyExchange(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature);
+    bool signExchangeHash(uint8_t *signature);
+    bool finishKeyExchange(uint8_t *signature, bool isClient);
     ~Micro_tls();
 
 private:
+    Micro_tls();
     bool calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isClient);
     void calcExchangeHash(uint8_t *peerCookie, bool isClient);
-
+    void deriveKey(char c, uint8_t *key, size_t keyLength);
     uint8_t _public_key_ephemeral[crypto_kx_PUBLICKEYBYTES];
     uint8_t _public_key_ephemeral_peer[crypto_kx_PUBLICKEYBYTES];
     uint8_t _private_key_ephemeral[crypto_kx_SECRETKEYBYTES];
@@ -37,4 +38,8 @@ private:
     uint8_t _hash_H[crypto_generichash_BYTES];
     certificateData _myCertificate;
     certificateData _peerCertificate;
+    uint8_t traffic_iv_tx[crypto_secretbox_NONCEBYTES];
+    uint8_t traffic_iv_rx[crypto_secretbox_NONCEBYTES];
+    uint8_t traffic_key_tx[crypto_secretbox_KEYBYTES];
+    uint8_t traffic_key_rx[crypto_secretbox_KEYBYTES];
 };

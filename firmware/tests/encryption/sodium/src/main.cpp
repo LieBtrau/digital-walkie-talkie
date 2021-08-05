@@ -68,48 +68,6 @@ uint32_t getEsp32UniqueId()
 	return chipId;
 }
 
-// void micro_tls()
-// {
-// 	//Client preparation
-// 	unsigned char client_random[32];
-// 	unsigned char client_pk[crypto_kx_PUBLICKEYBYTES], client_sk[crypto_kx_SECRETKEYBYTES];
-
-// 	//ClientHello : client_random & client_pk to server
-
-// 	//Server preparation
-// 	unsigned char server_random[32];
-// 	unsigned char server_pk[crypto_kx_PUBLICKEYBYTES], server_sk[crypto_kx_SECRETKEYBYTES];
-
-// 	randombytes_buf(server_random, sizeof server_random);
-// 	crypto_kx_keypair(server_pk, server_sk);
-
-// 	//Server calculates "Handshake secret"
-// 	unsigned char server_rx[crypto_kx_SESSIONKEYBYTES], server_tx[crypto_kx_SESSIONKEYBYTES];
-// 	if (crypto_kx_server_session_keys(server_rx, server_tx, server_pk, server_sk, client_pk) != 0)
-// 	{
-// 		/* Suspicious client public key, bail out */
-// 		Serial.println("Server: client public key error");
-// 		return;
-// 	}
-
-// 	//Calculate hash of ClientHello|ServerHello
-// 	unsigned char hash[crypto_generichash_BYTES];
-// 	crypto_generichash_state state;
-// 	crypto_generichash_init(&state, server_rx, crypto_kx_SESSIONKEYBYTES, sizeof hash);
-// 	crypto_generichash_update(&state, client_random, 32);
-// 	crypto_generichash_update(&state, client_pk, crypto_kx_PUBLICKEYBYTES);
-// 	crypto_generichash_update(&state, server_random, 32);
-// 	crypto_generichash_update(&state, server_pk, crypto_kx_PUBLICKEYBYTES);
-// 	crypto_generichash_final(&state, hash, sizeof hash);
-// 	//Derive traffic secrets
-// 	unsigned char server_handshake_iv[crypto_secretbox_NONCEBYTES];
-// 	unsigned char server_handshake_key[crypto_secretbox_KEYBYTES];
-
-// 	//crypto_kdf_KEYBYTES equal to crypto_generichash_BYTES ?
-// 	crypto_kdf_derive_from_key(server_handshake_iv, sizeof server_handshake_iv, 1, "key_s_trf", hash);
-// 	crypto_kdf_derive_from_key(server_handshake_key, sizeof server_handshake_key, 1, "iv_s__trf", hash);
-// }
-
 union mix_t
 {
 	uint32_t theDWord;
@@ -164,7 +122,7 @@ void setup()
 	//Step 4 : Server sends cookie, public key for key exchange "f" and signature to client : (server_cookie | f | s)
 
 	//Step 5 : Client calculates handshake secret and exchange hash and then verifies the signature of the exchange hash
-	bool sigOk = client.checkSignature(f_pubkey_server, cookie_server, true, sig);
+	bool sigOk = client.finishKeyExchange(f_pubkey_server, cookie_server, true, sig);
 	Serial.printf("Signature verification: %s\r\n", sigOk ? "ok" : "fail");
 	if (!sigOk)
 	{
@@ -178,7 +136,7 @@ void setup()
 	//Step 7 : Clients sends its signature to the server : (s)
 
 	//Step 8 : The server checks the client's signature
-	sigOk = server.checkSignature(sig);
+	sigOk = server.finishKeyExchange(sig, false);
 	Serial.printf("Signature verification: %s\r\n", sigOk ? "ok" : "fail");
 	if (!sigOk)
 	{

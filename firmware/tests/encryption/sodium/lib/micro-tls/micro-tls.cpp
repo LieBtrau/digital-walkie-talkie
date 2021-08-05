@@ -4,7 +4,7 @@
 //to be removed later on, only for debug
 extern void printArray(const char *str, const uint8_t *buf, size_t nbytes);
 
-Micro_tls::Micro_tls(uint8_t *id)
+Micro_tls::Micro_tls()
 {
     if (sodium_init() < 0)
     {
@@ -12,6 +12,11 @@ Micro_tls::Micro_tls(uint8_t *id)
         while (true)
             ;
     }
+    sodium_memzero(_hash_H, sizeof _hash_H);
+}
+
+Micro_tls::Micro_tls(uint8_t *id): Micro_tls()
+{
     memcpy(_myCertificate.id, id, sizeof _myCertificate.id);
     /** Create a static key pair for the object.
      * This should only be called once in the lifetime of the product.  The result should then be exported and saved in non-volatile memory.
@@ -24,14 +29,8 @@ Micro_tls::Micro_tls(uint8_t *id)
  * \param certificate : contains id, pubkey and self-signed signature
  * \param secret key : secret key belonging to pubkey in the certificate
  */
-Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey)
+Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey): Micro_tls()
 {
-    if (sodium_init() < 0)
-    {
-        /* panic! the library couldn't be initialized, it is not safe to use */
-        while (true)
-            ;
-    }
     if (!importCertificate(certificate))
     {
         while (true)
@@ -144,7 +143,7 @@ bool Micro_tls::calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isC
     return true;
 }
 
-/** Calculate the exchange hash H
+/** Calculate the exchange hash H.
  * H is also an intermediate value used to derive traffic keydata from.  Both client and server will generate this hash.  They should independently 
  * arrive at the same value.
  * https://datatracker.ietf.org/doc/html/rfc4253#section-8
@@ -180,42 +179,71 @@ size_t Micro_tls::getSignatureLength()
  */
 bool Micro_tls::signExchangeHash(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature)
 {
-    if(!calcHandshakeSecret(public_key_ephemeral_peer, isClient))
+    if (!calcHandshakeSecret(public_key_ephemeral_peer, isClient))
     {
         return false;
     }
     calcExchangeHash(peerCookie, isClient);
-    signExchangeHash(signature);
-    return true;
+    return signExchangeHash(signature);
 }
 
 /** Sign the exchange hash
  * The hash should have been generated beforehand.
  */
-void Micro_tls::signExchangeHash(uint8_t *signature)
+bool Micro_tls::signExchangeHash(uint8_t *signature)
 {
+    if(sodium_is_zero(_hash_H, sizeof _hash_H)==1)
+    {
+        return false;
+    }
     crypto_sign_detached(signature, nullptr, _hash_H, sizeof _hash_H, _myCertificate.private_key_signing);
     printArray("s: ", signature, getSignatureLength());
+    return true;
 }
 
-/** Verify the signature using the public key provided by the certificate
+/** Verify the signature using the public key provided by the certificate.
  * \param certificate The certificate of the remote party.  This certificate must be pre-installed on this device.
  * \param signature The signature that must be verified.
  */
-bool Micro_tls::checkSignature(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature)
+bool Micro_tls::finishKeyExchange(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature)
 {
-    if(!calcHandshakeSecret(public_key_ephemeral_peer, isClient))
+    if (!calcHandshakeSecret(public_key_ephemeral_peer, isClient))
     {
         return false;
     }
     calcExchangeHash(peerCookie, isClient);
-    return checkSignature(signature);
+    return finishKeyExchange(signature, isClient);
 }
 
-/** Check the signature.  
+/** Check the signature and generate the traffic keys.
  * The needed hash should have been generated beforehand.
  */
-bool Micro_tls::checkSignature(uint8_t *signature)
+bool Micro_tls::finishKeyExchange(uint8_t *signature, bool isClient)
 {
-    return (crypto_sign_verify_detached(signature, _hash_H, sizeof _hash_H, _peerCertificate.public_key_signing) == 0);
+    if(crypto_sign_verify_detached(signature, _hash_H, sizeof _hash_H, _peerCertificate.public_key_signing) != 0)
+    {
+        return false;
+    }
+    deriveKey('A', isClient ? traffic_iv_tx : traffic_iv_rx, sizeof traffic_iv_tx);     //Initial IV client to server
+    deriveKey('B', isClient ? traffic_iv_rx : traffic_iv_tx, sizeof traffic_iv_tx);     //Initial IV server to client
+    deriveKey('C', isClient ? traffic_key_tx : traffic_key_rx, sizeof traffic_key_tx);  //Encryption key client to server
+    deriveKey('D', isClient ? traffic_key_rx : traffic_key_tx, sizeof traffic_key_tx);  //Encryption key server to client
+    return true;
+}
+
+/** Derive the traffic key data
+ * https://datatracker.ietf.org/doc/html/rfc4253#section-7.2
+ */
+void Micro_tls::deriveKey(char c, uint8_t *key, size_t keyLength)
+{
+    crypto_generichash_state state;
+    crypto_generichash_init(&state, nullptr, 0, keyLength);
+    crypto_generichash_update(&state, _handshakeSecret_K_part1, sizeof _handshakeSecret_K_part1);
+    crypto_generichash_update(&state, _handshakeSecret_K_part2, sizeof _handshakeSecret_K_part2);
+    crypto_generichash_update(&state, _hash_H, sizeof _hash_H);
+    crypto_generichash_update(&state, (uint8_t*)&c, 1);
+    crypto_generichash_final(&state, key, keyLength);
+    char buf[10];
+    sprintf(buf, "%c key: ", c);
+    printArray(buf, key, keyLength);
 }
