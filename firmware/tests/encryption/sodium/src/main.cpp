@@ -68,14 +68,11 @@ uint32_t getEsp32UniqueId()
 	return chipId;
 }
 
-
 // void micro_tls()
 // {
 // 	//Client preparation
 // 	unsigned char client_random[32];
 // 	unsigned char client_pk[crypto_kx_PUBLICKEYBYTES], client_sk[crypto_kx_SECRETKEYBYTES];
-
-	
 
 // 	//ClientHello : client_random & client_pk to server
 
@@ -115,8 +112,8 @@ uint32_t getEsp32UniqueId()
 
 union mix_t
 {
-    uint32_t theDWord;
-    uint8_t theBytes[4];
+	uint32_t theDWord;
+	uint8_t theBytes[4];
 };
 
 void setup()
@@ -128,7 +125,7 @@ void setup()
 
 	mix_t client_id, server_id;
 	client_id.theDWord = getEsp32UniqueId();
-	server_id.theDWord = getEsp32UniqueId()+1;
+	server_id.theDWord = getEsp32UniqueId() + 1;
 	Micro_tls client(client_id.theBytes);
 	Micro_tls server(server_id.theBytes);
 	unsigned char serverCertificate[server.getCertificateLength()];
@@ -152,13 +149,16 @@ void setup()
 	printArray("cookie_client: ", cookie_client, cookielength);
 	printArray("e: ", e_pubkey_client, e_pubkey_length);
 
-	//Step 2 : Server generates cookie and a public key for key exchange "f" 
+	//Step 2 : Server generates cookie and a public key for key exchange "f"
 	server.generateHello(cookie_server, cookielength, f_pubkey_server, e_pubkey_length);
 	printArray("cookie_server: ", cookie_server, cookielength);
 	printArray("f: ", f_pubkey_server, e_pubkey_length);
-	
+
 	//Step 3 : Server calculates handshake secret and exchange hash and then signs the exchange hash
-	server.calcHandshakeSecret(e_pubkey_client, false);
+	if(!server.calcHandshakeSecret(e_pubkey_client, false))
+	{
+		return;
+	}
 	server.calcExchangeHash(cookie_client, false);
 	unsigned char sig[server.getSignatureLength()];
 	server.signExchangeHash(sig);
@@ -167,9 +167,18 @@ void setup()
 	//Step 4 : Server sends cookie, public key for key exchange "f" and signature to client : (server_cookie | f | s)
 
 	//Step 5 : Client calculates handshake secret and exchange hash and then verifies the signature of the exchange hash
-	client.calcHandshakeSecret(f_pubkey_server, true);
+	if(!client.calcHandshakeSecret(f_pubkey_server, true))
+	{
+		return;
+	}
 	client.calcExchangeHash(cookie_server, true);
-	Serial.printf("Signature verification: %s\r\n", client.checkSignature(sig) ? "ok" : "fail");
+	bool sigOk = client.checkSignature(sig);
+	Serial.printf("Signature verification: %s\r\n", sigOk ? "ok" : "fail");
+	if(!sigOk)
+	{
+		return;
+	}
+	//At this point, the client knows that the server is authentic.
 
 	Serial.println("setup done.");
 }

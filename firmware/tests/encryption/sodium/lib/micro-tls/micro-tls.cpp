@@ -98,7 +98,7 @@ bool Micro_tls::importCertificate(uint8_t *certificate)
  * \param public_ephemeral_key public key for key exchange purposes.  Short lifetime.
  * \param keyLength size of the public ephemeral key
  */
-bool Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength)
+void Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength)
 {
     //Generate random
     randombytes_buf(_random, sizeof _random);
@@ -109,7 +109,6 @@ bool Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *publi
     cookieLength = sizeof _random;
     memcpy(public_ephemeral_key, _public_key_ephemeral, sizeof _public_key_ephemeral);
     keyLength = sizeof _public_key_ephemeral;
-    return true;
 }
 
 /** Calculate the handshake secret "K"
@@ -120,6 +119,7 @@ bool Micro_tls::generateHello(uint8_t *cookie, int &cookieLength, uint8_t *publi
  * Instead of using Diffie-Hellman, libsodium uses a hash function by default. 
  * \param public_key_ephemeral_peer epthemeral pubkey of the other party
  * \param isClient client=true, server=false.  This is used to reconstruct the handshake secret from libsodium's "traffic keys".
+ * \return true when public key of the remote party is valid
  */
 bool Micro_tls::calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isClient)
 {
@@ -155,7 +155,7 @@ bool Micro_tls::calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isC
  * \param serverCertificate client passes in certificate of the server.  The server fills in a nullptr here.
  * \param isClient true for client, false for server.
  */
-bool Micro_tls::calcExchangeHash(uint8_t *peerCookie, bool isClient)
+void Micro_tls::calcExchangeHash(uint8_t *peerCookie, bool isClient)
 {
     crypto_generichash_state state;
     crypto_generichash_init(&state, _handshakeSecret_K_part1, sizeof _handshakeSecret_K_part1, sizeof _hash_H);
@@ -169,7 +169,6 @@ bool Micro_tls::calcExchangeHash(uint8_t *peerCookie, bool isClient)
     crypto_generichash_update(&state, _handshakeSecret_K_part2, sizeof _handshakeSecret_K_part2);
     crypto_generichash_final(&state, _hash_H, sizeof _hash_H);
     printArray("Exchange hash H: ", _hash_H, sizeof _hash_H);
-    return true;
 }
 
 size_t Micro_tls::getSignatureLength()

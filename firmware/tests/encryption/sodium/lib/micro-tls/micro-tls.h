@@ -17,9 +17,9 @@ public:
     bool importCertificate(uint8_t *certificate);
     size_t getSignatureLength();
     size_t getCertificateLength();
-    bool generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength);
+    void generateHello(uint8_t *cookie, int &cookieLength, uint8_t *public_ephemeral_key, int &keyLength);
     bool calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isClient);
-    bool calcExchangeHash(uint8_t *peerCookie, bool isClient); //todo: this shouldn't be a public function
+    void calcExchangeHash(uint8_t *peerCookie, bool isClient); //todo: this shouldn't be a public function
     void signExchangeHash(uint8_t *signature);
     bool checkSignature(uint8_t *signature);
     ~Micro_tls();
