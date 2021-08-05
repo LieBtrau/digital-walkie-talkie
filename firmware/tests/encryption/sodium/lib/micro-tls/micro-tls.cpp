@@ -16,7 +16,7 @@ Micro_tls::Micro_tls(uint8_t *id)
     /** Create a static key pair for the object.
      * This should only be called once in the lifetime of the product.  The result should then be exported and saved in non-volatile memory.
      * This key-pair is used to create a certificate, which will then be distributed among devices in the same group for authentication purposes.
-     */    
+     */
     crypto_sign_keypair(_myCertificate.public_key_signing, _myCertificate.private_key_signing);
 }
 
@@ -89,7 +89,6 @@ bool Micro_tls::importCertificate(uint8_t *certificate)
     memcpy(_peerCertificate.public_key_signing, cert_pub_key, sizeof cert_pub_key);
     return true;
 }
-
 
 /** Generate the first message in the key exchange protocol.
  * It's the client who sends the output of this command to the server.
@@ -176,15 +175,14 @@ size_t Micro_tls::getSignatureLength()
     return crypto_sign_BYTES;
 }
 
-
 /** Sign the exchange hash with the private host key
  * According to the SSH protocol key exchange (https://datatracker.ietf.org/doc/html/rfc4253#section-8)
  */
 void Micro_tls::signExchangeHash(uint8_t *signature)
 {
     crypto_sign_detached(signature, nullptr, _hash_H, sizeof _hash_H, _myCertificate.private_key_signing);
+    printArray("s: ", signature, getSignatureLength());
 }
-
 
 /** Verify the signature using the public key provided by the certificate
  * \param certificate The certificate of the remote party.  This certificate must be pre-installed on this device.

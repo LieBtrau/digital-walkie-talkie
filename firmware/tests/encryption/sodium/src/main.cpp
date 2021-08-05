@@ -162,7 +162,6 @@ void setup()
 	server.calcExchangeHash(cookie_client, false);
 	unsigned char sig[server.getSignatureLength()];
 	server.signExchangeHash(sig);
-	printArray("s: ", sig, sizeof sig);
 
 	//Step 4 : Server sends cookie, public key for key exchange "f" and signature to client : (server_cookie | f | s)
 
@@ -180,7 +179,20 @@ void setup()
 	}
 	//At this point, the client knows that the server is authentic.
 
-	Serial.println("setup done.");
+	//Step 6 : To provide mutual authentication, the client will also generate a signature, signed by its own private key
+	client.signExchangeHash(sig);
+
+	//Step 7 : Clients sends its signature to the server : (s)
+
+	//Step 8 : The server checks the client's signature
+	sigOk = server.checkSignature(sig);
+	Serial.printf("Signature verification: %s\r\n", sigOk ? "ok" : "fail");
+	if(!sigOk)
+	{
+		return;
+	}
+
+	Serial.println("Mutual authentication established");
 }
 
 void loop()
