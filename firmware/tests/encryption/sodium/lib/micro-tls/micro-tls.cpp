@@ -178,6 +178,20 @@ size_t Micro_tls::getSignatureLength()
 /** Sign the exchange hash with the private host key
  * According to the SSH protocol key exchange (https://datatracker.ietf.org/doc/html/rfc4253#section-8)
  */
+bool Micro_tls::signExchangeHash(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature)
+{
+    if(!calcHandshakeSecret(public_key_ephemeral_peer, isClient))
+    {
+        return false;
+    }
+    calcExchangeHash(peerCookie, isClient);
+    signExchangeHash(signature);
+    return true;
+}
+
+/** Sign the exchange hash
+ * The hash should have been generated beforehand.
+ */
 void Micro_tls::signExchangeHash(uint8_t *signature)
 {
     crypto_sign_detached(signature, nullptr, _hash_H, sizeof _hash_H, _myCertificate.private_key_signing);
@@ -187,6 +201,19 @@ void Micro_tls::signExchangeHash(uint8_t *signature)
 /** Verify the signature using the public key provided by the certificate
  * \param certificate The certificate of the remote party.  This certificate must be pre-installed on this device.
  * \param signature The signature that must be verified.
+ */
+bool Micro_tls::checkSignature(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature)
+{
+    if(!calcHandshakeSecret(public_key_ephemeral_peer, isClient))
+    {
+        return false;
+    }
+    calcExchangeHash(peerCookie, isClient);
+    return checkSignature(signature);
+}
+
+/** Check the signature.  
+ * The needed hash should have been generated beforehand.
  */
 bool Micro_tls::checkSignature(uint8_t *signature)
 {

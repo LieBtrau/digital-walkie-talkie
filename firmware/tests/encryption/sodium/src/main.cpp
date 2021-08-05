@@ -155,31 +155,24 @@ void setup()
 	printArray("f: ", f_pubkey_server, e_pubkey_length);
 
 	//Step 3 : Server calculates handshake secret and exchange hash and then signs the exchange hash
-	if(!server.calcHandshakeSecret(e_pubkey_client, false))
+	unsigned char sig[server.getSignatureLength()];
+	if (!server.signExchangeHash(e_pubkey_client, cookie_client, false, sig))
 	{
 		return;
 	}
-	server.calcExchangeHash(cookie_client, false);
-	unsigned char sig[server.getSignatureLength()];
-	server.signExchangeHash(sig);
 
 	//Step 4 : Server sends cookie, public key for key exchange "f" and signature to client : (server_cookie | f | s)
 
 	//Step 5 : Client calculates handshake secret and exchange hash and then verifies the signature of the exchange hash
-	if(!client.calcHandshakeSecret(f_pubkey_server, true))
-	{
-		return;
-	}
-	client.calcExchangeHash(cookie_server, true);
-	bool sigOk = client.checkSignature(sig);
+	bool sigOk = client.checkSignature(f_pubkey_server, cookie_server, true, sig);
 	Serial.printf("Signature verification: %s\r\n", sigOk ? "ok" : "fail");
-	if(!sigOk)
+	if (!sigOk)
 	{
 		return;
 	}
 	//At this point, the client knows that the server is authentic.
 
-	//Step 6 : To provide mutual authentication, the client will also generate a signature, signed by its own private key
+	//Step 6 : To provide mutual authentication, the client will also generate a signature, signed by its own private key.
 	client.signExchangeHash(sig);
 
 	//Step 7 : Clients sends its signature to the server : (s)
@@ -187,7 +180,7 @@ void setup()
 	//Step 8 : The server checks the client's signature
 	sigOk = server.checkSignature(sig);
 	Serial.printf("Signature verification: %s\r\n", sigOk ? "ok" : "fail");
-	if(!sigOk)
+	if (!sigOk)
 	{
 		return;
 	}
