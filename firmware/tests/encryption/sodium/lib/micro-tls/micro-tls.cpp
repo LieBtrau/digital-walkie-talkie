@@ -15,7 +15,7 @@ Micro_tls::Micro_tls()
     sodium_memzero(_hash_H, sizeof _hash_H);
 }
 
-Micro_tls::Micro_tls(uint8_t *id): Micro_tls()
+Micro_tls::Micro_tls(uint8_t *id) : Micro_tls()
 {
     memcpy(_myCertificate.id, id, sizeof _myCertificate.id);
     /** Create a static key pair for the object.
@@ -29,7 +29,7 @@ Micro_tls::Micro_tls(uint8_t *id): Micro_tls()
  * \param certificate : contains id, pubkey and self-signed signature
  * \param secret key : secret key belonging to pubkey in the certificate
  */
-Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey): Micro_tls()
+Micro_tls::Micro_tls(uint8_t *certificate, uint8_t *secretKey) : Micro_tls()
 {
     if (!importCertificate(certificate))
     {
@@ -192,7 +192,7 @@ bool Micro_tls::signExchangeHash(uint8_t *public_key_ephemeral_peer, uint8_t *pe
  */
 bool Micro_tls::signExchangeHash(uint8_t *signature)
 {
-    if(sodium_is_zero(_hash_H, sizeof _hash_H)==1)
+    if (sodium_is_zero(_hash_H, sizeof _hash_H) == 1)
     {
         return false;
     }
@@ -220,14 +220,15 @@ bool Micro_tls::finishKeyExchange(uint8_t *public_key_ephemeral_peer, uint8_t *p
  */
 bool Micro_tls::finishKeyExchange(uint8_t *signature, bool isClient)
 {
-    if(crypto_sign_verify_detached(signature, _hash_H, sizeof _hash_H, _peerCertificate.public_key_signing) != 0)
+    if (crypto_sign_verify_detached(signature, _hash_H, sizeof _hash_H, _peerCertificate.public_key_signing) != 0)
     {
         return false;
     }
-    deriveKey('A', isClient ? traffic_iv_tx : traffic_iv_rx, sizeof traffic_iv_tx);     //Initial IV client to server
-    deriveKey('B', isClient ? traffic_iv_rx : traffic_iv_tx, sizeof traffic_iv_tx);     //Initial IV server to client
-    deriveKey('C', isClient ? traffic_key_tx : traffic_key_rx, sizeof traffic_key_tx);  //Encryption key client to server
-    deriveKey('D', isClient ? traffic_key_rx : traffic_key_tx, sizeof traffic_key_tx);  //Encryption key server to client
+    deriveKey('A', isClient ? traffic_iv_tx : traffic_iv_rx, sizeof traffic_iv_tx);    //Initial IV client to server
+    deriveKey('B', isClient ? traffic_iv_rx : traffic_iv_tx, sizeof traffic_iv_tx);    //Initial IV server to client
+    deriveKey('C', isClient ? traffic_key_tx : traffic_key_rx, sizeof traffic_key_tx); //Encryption key client to server
+    deriveKey('D', isClient ? traffic_key_rx : traffic_key_tx, sizeof traffic_key_tx); //Encryption key server to client
+    sodium_memzero(traffic_ctr_tx, sizeof traffic_ctr_tx);
     return true;
 }
 
@@ -241,9 +242,61 @@ void Micro_tls::deriveKey(char c, uint8_t *key, size_t keyLength)
     crypto_generichash_update(&state, _handshakeSecret_K_part1, sizeof _handshakeSecret_K_part1);
     crypto_generichash_update(&state, _handshakeSecret_K_part2, sizeof _handshakeSecret_K_part2);
     crypto_generichash_update(&state, _hash_H, sizeof _hash_H);
-    crypto_generichash_update(&state, (uint8_t*)&c, 1);
+    crypto_generichash_update(&state, (uint8_t *)&c, 1);
     crypto_generichash_final(&state, key, keyLength);
     char buf[10];
     sprintf(buf, "%c key: ", c);
     printArray(buf, key, keyLength);
+}
+
+/** Generate a unique nonce based on the initial nonce (= initialization vector, IV) and a counter.
+ * Instead of adding the counter to the IV, an XOR-operation is used here, which is simpler to implement.
+ */
+void Micro_tls::generateNonce(uint8_t *nonce, size_t nonceLength, uint8_t *initial_iv, uint8_t *ctr, size_t ctrLength)
+{
+    memcpy(nonce, initial_iv, nonceLength);
+    for (int i = 0; i < ctrLength; i++)
+    {
+        nonce[i] ^= ctr[i];
+    }
+    printArray("Ctr: ", ctr, ctrLength);
+    printArray("Nonce: ", nonce, nonceLength);
+}
+
+/** Encrypt plain text using the traffic_tx key data.
+ * A unique nonce will be generated for every encryption using an incrementing counter.
+ * The counter value is appended to the cipher text.
+ * The encryption adds an authentication tag and an "IV counter value".
+ */
+bool Micro_tls::encrypt(uint8_t *plaintext, size_t plaintextLength, uint8_t *ciphertext, size_t &ciphertextLength)
+{
+    if (sodium_is_zero(traffic_key_tx, sizeof traffic_key_tx) == 1)
+    {
+        return false;
+    }
+    ciphertextLength = crypto_secretbox_MACBYTES + plaintextLength + sizeof traffic_ctr_tx;
+    uint8_t nonce[sizeof traffic_iv_tx];
+    generateNonce(nonce, sizeof nonce, traffic_iv_tx, traffic_ctr_tx, sizeof traffic_ctr_tx);
+    crypto_secretbox_easy(ciphertext, plaintext, plaintextLength, nonce, traffic_key_tx);
+    memcpy(ciphertext + crypto_secretbox_MACBYTES + plaintextLength, traffic_ctr_tx, sizeof traffic_ctr_tx);
+    sodium_increment(traffic_ctr_tx, sizeof traffic_ctr_tx);
+    return true;
+}
+
+/** Decrypt a message that has previously been encrypted using the encrypt() function
+ * The IV-counter is first stripped from the encrypted message.  This is used to calculate the nonce.
+ * The encryption and authentication is performed using the traffic_rx key and the generated nonce.
+ */
+bool Micro_tls::decrypt(uint8_t *ciphertext, size_t ciphertextLength, uint8_t *plaintext, size_t &plaintextLength)
+{
+    if (sodium_is_zero(traffic_key_rx, sizeof traffic_key_rx) == 1)
+    {
+        return false;
+    }
+    plaintextLength = ciphertextLength - crypto_secretbox_MACBYTES - sizeof traffic_ctr_tx;
+    uint8_t nonce[sizeof traffic_iv_rx];
+    uint8_t traffic_ctr_rx[4];
+    memcpy(traffic_ctr_rx, ciphertext + crypto_secretbox_MACBYTES + plaintextLength, sizeof traffic_ctr_tx);
+    generateNonce(nonce, sizeof nonce, traffic_iv_rx, traffic_ctr_rx, sizeof traffic_ctr_tx);
+    return crypto_secretbox_open_easy(plaintext, ciphertext, crypto_secretbox_MACBYTES + plaintextLength, nonce, traffic_key_rx) == 0;
 }

@@ -16,48 +16,6 @@ void printArray(const char *str, const uint8_t *buf, size_t nbytes)
 	Serial.println();
 }
 
-// void authenticatedSymmetricEncryption()
-// {
-// 	const unsigned char *MESSAGE = (const unsigned char *)"test";
-// 	size_t MESSAGE_LEN = strlen((const char *)MESSAGE); //4
-// 	size_t CIPHERTEXT_LEN = crypto_secretbox_MACBYTES + MESSAGE_LEN;
-// 	unsigned char key[crypto_secretbox_KEYBYTES];
-
-// 	unsigned char ciphertext[CIPHERTEXT_LEN];
-
-// 	//Generate nonce
-// 	unsigned char nonce[crypto_secretbox_NONCEBYTES];
-// 	randombytes_buf(nonce, sizeof nonce);
-
-// 	//Generate key
-// 	crypto_secretbox_keygen(key);
-
-// 	//Encryption
-// 	//The trailing zero of the string doesn't get encrypted.
-// 	crypto_secretbox_easy(ciphertext, MESSAGE, MESSAGE_LEN, nonce, key);
-
-// 	printArray("key:", key, crypto_secretbox_KEYBYTES);
-// 	printArray("nonce:", nonce, crypto_secretbox_NONCEBYTES);
-// 	//Decryption
-// 	unsigned char decrypted[MESSAGE_LEN + 1]; //add room for a trailing zero.
-// 	if (crypto_secretbox_open_easy(decrypted, ciphertext, CIPHERTEXT_LEN, nonce, key) != 0)
-// 	{
-// 		/* message forged! */
-// 		Serial.println("message forged");
-// 	}
-// 	Serial.println((const char *)decrypted);
-
-// 	/**
-// 	 * If another encryption is needed, then use another nonce.  Simple solution: nonce++
-// 	 * This makes is possible to avoid having to send the complete nonce for every encryption.
-// 	 * We can suffice by sending the offset from the original value.  That will take less bits.
-// 	 */
-// 	sodium_increment(nonce, sizeof nonce);
-
-// 	//Clear sensitive data
-// 	sodium_memzero(key, crypto_secretbox_KEYBYTES);
-// }
-
 uint32_t getEsp32UniqueId()
 {
 	uint32_t chipId = 0;
@@ -142,8 +100,27 @@ void setup()
 	{
 		return;
 	}
-
 	Serial.println("Mutual authentication established");
+
+	//Symmetric keys have been securely exchanged.  Time to use them...
+	uint8_t plaintext[] = {1, 2, 3, 4, 5};
+	uint8_t decrypted[20];
+	uint8_t ciphertext[100];
+	size_t ciphertextlength, decryptedLength;
+	//Ciphertext should be different although we're encrypting the same data.
+	for (int i = 0; i < 3; i++)
+	{
+		if (!client.encrypt(plaintext, sizeof plaintext, ciphertext, ciphertextlength))
+		{
+			return;
+		}
+		printArray("CipherText: ", ciphertext, ciphertextlength);
+		if (!server.decrypt(ciphertext, ciphertextlength, decrypted, decryptedLength))
+		{
+			return;
+		}
+		printArray("Decrypted: ", decrypted, decryptedLength);
+	}
 }
 
 void loop()

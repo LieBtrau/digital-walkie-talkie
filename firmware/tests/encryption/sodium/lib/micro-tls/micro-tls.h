@@ -22,6 +22,8 @@ public:
     bool finishKeyExchange(uint8_t *public_key_ephemeral_peer, uint8_t *peerCookie, bool isClient, uint8_t *signature);
     bool signExchangeHash(uint8_t *signature);
     bool finishKeyExchange(uint8_t *signature, bool isClient);
+    bool encrypt(uint8_t* plaintext, size_t plaintextLength, uint8_t* ciphertext, size_t& ciphertextLength);
+    bool decrypt(uint8_t* ciphertext, size_t ciphertextLength, uint8_t* plaintext, size_t& plaintextLength);
     ~Micro_tls();
 
 private:
@@ -29,6 +31,7 @@ private:
     bool calcHandshakeSecret(uint8_t *public_key_ephemeral_peer, bool isClient);
     void calcExchangeHash(uint8_t *peerCookie, bool isClient);
     void deriveKey(char c, uint8_t *key, size_t keyLength);
+    void generateNonce(uint8_t* nonce, size_t nonceLength, uint8_t* initial_iv, uint8_t* ctr, size_t ctrLength);
     uint8_t _public_key_ephemeral[crypto_kx_PUBLICKEYBYTES];
     uint8_t _public_key_ephemeral_peer[crypto_kx_PUBLICKEYBYTES];
     uint8_t _private_key_ephemeral[crypto_kx_SECRETKEYBYTES];
@@ -38,8 +41,9 @@ private:
     uint8_t _hash_H[crypto_generichash_BYTES];
     certificateData _myCertificate;
     certificateData _peerCertificate;
-    uint8_t traffic_iv_tx[crypto_secretbox_NONCEBYTES];
-    uint8_t traffic_iv_rx[crypto_secretbox_NONCEBYTES];
-    uint8_t traffic_key_tx[crypto_secretbox_KEYBYTES];
-    uint8_t traffic_key_rx[crypto_secretbox_KEYBYTES];
+    uint8_t traffic_iv_tx[crypto_secretbox_NONCEBYTES]={0};
+    uint8_t traffic_iv_rx[crypto_secretbox_NONCEBYTES]={0};
+    uint8_t traffic_key_tx[crypto_secretbox_KEYBYTES]={0};
+    uint8_t traffic_key_rx[crypto_secretbox_KEYBYTES]={0};
+    uint8_t traffic_ctr_tx[4]={0};  //!< Increased by one when a packet is sent
 };
