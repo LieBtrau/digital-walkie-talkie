@@ -107,7 +107,7 @@ void setup()
 	uint8_t decrypted[20];
 	uint8_t ciphertext[100];
 	size_t ciphertextlength, decryptedLength;
-	//Ciphertext should be different although we're encrypting the same data.
+	//Ciphertext should be different each run, although we're encrypting the same data.
 	for (int i = 0; i < 3; i++)
 	{
 		if (!client.encrypt(plaintext, sizeof plaintext, ciphertext, ciphertextlength))
@@ -115,6 +115,7 @@ void setup()
 			return;
 		}
 		printArray("CipherText: ", ciphertext, ciphertextlength);
+		Serial.printf("Ciphertext length: %d\r\n", ciphertextlength);
 		if (!server.decrypt(ciphertext, ciphertextlength, decrypted, decryptedLength))
 		{
 			return;

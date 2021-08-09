@@ -7,12 +7,13 @@ static Codec2Interface *ci;
  */
 void codec2task(void *pvParameters)
 {
+    const int AUDIO_BUFFER_PACKET_COUNT = 5;
     ci->codec2 = codec2_create(ci->mode);
     codec2_set_natural_or_gray(ci->codec2, 0);
 
     ci->nsam = codec2_samples_per_frame(ci->codec2);
-    ci->xEncoderAudioIn = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
-    ci->xDecoderAudioOut = xQueueCreate(3, sizeof(int16_t) * ci->nsam);
+    ci->xEncoderAudioIn = xQueueCreate(AUDIO_BUFFER_PACKET_COUNT, sizeof(int16_t) * ci->nsam);
+    ci->xDecoderAudioOut = xQueueCreate(AUDIO_BUFFER_PACKET_COUNT, sizeof(int16_t) * ci->nsam);
     if (ci->xEncoderAudioIn == NULL || ci->xDecoderAudioOut == NULL)
     {
         Serial.println("Can't create xAudioSamplesQueue");
@@ -21,8 +22,8 @@ void codec2task(void *pvParameters)
     }
 
     ci->nbyte = (codec2_bits_per_frame(ci->codec2) + 7) / 8;
-    ci->xEncoderCodec2Out = xQueueCreate(3, ci->nbyte);
-    ci->xDecoderCodec2In = xQueueCreate(3, ci->nbyte);
+    ci->xEncoderCodec2Out = xQueueCreate(AUDIO_BUFFER_PACKET_COUNT, ci->nbyte);
+    ci->xDecoderCodec2In = xQueueCreate(AUDIO_BUFFER_PACKET_COUNT, ci->nbyte);
     if (ci->xEncoderCodec2Out == NULL || ci->xDecoderCodec2In == NULL)
     {
         Serial.println("Can't create xCodec2SamplesQueue");
@@ -108,9 +109,9 @@ bool Codec2Interface::getEncodedAudio(byte *bits)
     return xQueueReceive(xEncoderCodec2Out, bits, 1000) == pdTRUE;
 }
 
-bool Codec2Interface::isEncodedFrameAvailable()
+int Codec2Interface::cntEncodedFramesAvailable()
 {
-    return uxQueueMessagesWaiting(xEncoderCodec2Out) > 0;
+    return uxQueueMessagesWaiting(xEncoderCodec2Out);
 }
 
 bool Codec2Interface::isEncoderInputBufferSpaceLeft()

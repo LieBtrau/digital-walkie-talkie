@@ -164,13 +164,13 @@ void sendPacket()
 		state = 1;
 		break;
 	case 1:
-		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + 1))
+		if (c2i.cntEncodedFramesAvailable()>0 && c2i.getEncodedAudio(data + 1))
 		{
 			state = 2;
 		}
 		break;
 	case 2:
-		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + nbyte + 1))
+		if (c2i.cntEncodedFramesAvailable()>0 && c2i.getEncodedAudio(data + nbyte + 1))
 		{
 			state = 3;
 		}

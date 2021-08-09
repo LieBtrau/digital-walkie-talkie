@@ -24,7 +24,7 @@ public:
     int getCodec2PacketSize();
     bool startEncodingAudio(short *buf);
     bool isEncoderInputBufferSpaceLeft();
-    bool isEncodedFrameAvailable();
+    int cntEncodedFramesAvailable();
     bool getEncodedAudio(byte *bits);
     bool isDecodingInputBufferSpaceLeft();
     bool startDecodingAudio(byte *bits);

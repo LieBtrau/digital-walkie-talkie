@@ -70,30 +70,22 @@ void setup()
 	Serial.println("Ready to roll");
 }
 
-int txstate = 0;
+const int PAYLOAD_CODEC2_PACKET_COUNT = 2;
 void sendPacket()
 {
-	switch (txstate)
+	if (c2i.cntEncodedFramesAvailable() >= 2)
 	{
-	case 0:
-		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data))
+		uint8_t *ptr = data;
+		for (int i = 0; i < PAYLOAD_CODEC2_PACKET_COUNT; i++)
 		{
-			txstate = 1;
+			if (!c2i.getEncodedAudio(ptr))
+			{
+				Serial.println("error getting encoded frames");
+				return;
+			}
+			ptr += c2i.getCodec2PacketSize();
 		}
-		break;
-	case 1:
-		if (c2i.isEncodedFrameAvailable() && c2i.getEncodedAudio(data + c2i.getCodec2PacketSize()))
-		{
-			txstate = 2;
-		}
-		break;
-	case 2:
 		ri.sendPacket(data);
-		txstate = 0;
-		break;
-	default:
-		txstate = 0;
-		break;
 	}
 }
 
@@ -133,7 +125,7 @@ void loop()
 	{
 	case LISTENING:
 		receivePacket();
-		if (pttSwitch.read()==LOW)
+		if (pttSwitch.read() == LOW)
 		{
 			//PTT-pushed
 			Serial.println("PTT-pushed");
@@ -145,7 +137,7 @@ void loop()
 		break;
 	case SPEAKING:
 		sendPacket();
-		if (pttSwitch.read()==HIGH)
+		if (pttSwitch.read() == HIGH)
 		{
 			//PTT-released
 			Serial.println("PTT-released");
