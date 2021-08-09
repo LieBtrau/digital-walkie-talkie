@@ -26,7 +26,7 @@ public:
     bool isEncoderInputBufferSpaceLeft();
     int cntEncodedFramesAvailable();
     bool getEncodedAudio(byte *bits);
-    bool isDecodingInputBufferSpaceLeft();
+    int cntDecodingInputBufferSpaceLeft();
     bool startDecodingAudio(byte *bits);
     bool getDecodedAudio(short *buf);
 };

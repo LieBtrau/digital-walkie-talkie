@@ -78,7 +78,12 @@ bool RadioInterface::init()
 	return true;
 }
 
-int RadioInterface::getPacketLength()
+int RadioInterface::getRxPacketLength()
 {
 	return radio.getPacketLength();
+}
+
+int RadioInterface::getMaxPacketLength()
+{
+	return PACKET_SIZE;
 }

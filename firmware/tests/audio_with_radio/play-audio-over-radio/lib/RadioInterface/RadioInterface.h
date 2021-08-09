@@ -5,7 +5,7 @@
 class RadioInterface
 {
 private:
-    static const int PACKET_SIZE = 20; //in bytes
+    static const int PACKET_SIZE = 60; //in bytes
     Si446x radio=nullptr;
     QueueHandle_t txPacketsQueue = NULL;
     QueueHandle_t rxPacketsQueue = NULL;
@@ -17,5 +17,6 @@ public:
     bool init();
     bool sendPacket(byte *data);
     bool receivePacket(byte *data);
-    int getPacketLength();
+    int getRxPacketLength();
+    int getMaxPacketLength();
 };

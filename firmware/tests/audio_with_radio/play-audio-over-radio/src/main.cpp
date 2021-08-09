@@ -190,7 +190,7 @@ void serverloop()
 
 	if (ri.receivePacket(data))
 	{
-		totalBytes += ri.getPacketLength();
+		totalBytes += ri.getRxPacketLength();
 		Serial.printf("%d-", packetCount);
 		packetCount++;
 		//averageRssi += rf24.lastRssi();

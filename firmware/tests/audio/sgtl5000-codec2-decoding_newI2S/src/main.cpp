@@ -90,7 +90,7 @@ void loop()
 		digitalWrite(LED_BUILTIN, isPlaying ? HIGH : LOW);
 		isPlaying = !isPlaying;
 	}
-	if (isPlaying && c2i.isDecodingInputBufferSpaceLeft())
+	if (isPlaying && c2i.cntDecodingInputBufferSpaceLeft()>0)
 	{
 		//Decoding loop
 		byte bits[nbyte];

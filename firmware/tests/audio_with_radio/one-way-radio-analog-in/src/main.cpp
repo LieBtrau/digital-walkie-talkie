@@ -10,9 +10,6 @@
 #include "RadioInterface.h"
 #include "Bounce2.h"
 
-const int PACKET_INTERVAL_ms = 80; //in ms
-const int PACKET_SIZE = 20;
-
 Codec2Interface c2i;
 Codec2Decoder c2d(&c2i);
 Codec2Encoder c2e(&c2i);
@@ -26,7 +23,7 @@ static i2s_pin_config_t i2s_pin_config = {
 	.data_out_num = PIN_SDOUT, // data out to audio codec
 	.data_in_num = PIN_SDIN	   // data from audio codec
 };
-uint8_t data[PACKET_SIZE];
+
 int nsam_ctr;
 short *buf;
 Bounce pttSwitch = Bounce();
@@ -70,12 +67,13 @@ void setup()
 	Serial.println("Ready to roll");
 }
 
-const int PAYLOAD_CODEC2_PACKET_COUNT = 2;
+const int PAYLOAD_CODEC2_PACKET_COUNT = 4;
 void sendPacket()
 {
-	if (c2i.cntEncodedFramesAvailable() >= 2)
+	uint8_t txdata[ri.getMaxPacketLength()];
+	if (c2i.cntEncodedFramesAvailable() >= PAYLOAD_CODEC2_PACKET_COUNT)
 	{
-		uint8_t *ptr = data;
+		uint8_t *ptr = txdata;
 		for (int i = 0; i < PAYLOAD_CODEC2_PACKET_COUNT; i++)
 		{
 			if (!c2i.getEncodedAudio(ptr))
@@ -85,32 +83,37 @@ void sendPacket()
 			}
 			ptr += c2i.getCodec2PacketSize();
 		}
-		ri.sendPacket(data);
+		ri.sendPacket(txdata);
 	}
 }
 
+uint8_t rxdata[100];
 int rxstate = 0;
 void receivePacket()
 {
 	switch (rxstate)
 	{
 	case 0:
-		if (ri.receivePacket(data))
+		if (ri.receivePacket(rxdata))
 		{
 			rxstate = 1;
 		}
 		break;
 	case 1:
-		if (c2i.isDecodingInputBufferSpaceLeft() && c2i.startDecodingAudio(data))
+		if ((c2i.cntDecodingInputBufferSpaceLeft() >= PAYLOAD_CODEC2_PACKET_COUNT))
 		{
-			rxstate = 2;
+			uint8_t *ptr = rxdata;
+			for (int i = 0; i < PAYLOAD_CODEC2_PACKET_COUNT; i++)
+			{
+				if (!c2i.startDecodingAudio(ptr))
+				{
+					Serial.println("error putting encoded frames");
+					return;
+				}
+				ptr += c2i.getCodec2PacketSize();
+			}
 		}
-		break;
-	case 2:
-		if (c2i.isDecodingInputBufferSpaceLeft() && c2i.startDecodingAudio(data + c2i.getCodec2PacketSize()))
-		{
-			rxstate = 0;
-		}
+		rxstate = 0;
 		break;
 	default:
 		rxstate = 0;

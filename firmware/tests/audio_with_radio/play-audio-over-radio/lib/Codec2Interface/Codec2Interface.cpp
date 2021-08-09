@@ -80,6 +80,7 @@ bool Codec2Interface::init()
     return true;
 }
 
+//Get the number of audio samples in a codec2 frame
 int Codec2Interface::getAudioSampleCount()
 {
     while (!codec2initOk)
@@ -87,6 +88,7 @@ int Codec2Interface::getAudioSampleCount()
     return nsam;
 }
 
+//Get the number of bytes in a codec2 frame
 int Codec2Interface::getCodec2PacketSize()
 {
     while (!codec2initOk)
@@ -119,9 +121,9 @@ bool Codec2Interface::isEncoderInputBufferSpaceLeft()
     return uxQueueSpacesAvailable(xEncoderAudioIn) > 0;
 }
 
-bool Codec2Interface::isDecodingInputBufferSpaceLeft()
+int Codec2Interface::cntDecodingInputBufferSpaceLeft()
 {
-    return uxQueueSpacesAvailable(xDecoderCodec2In) > 0;
+    return uxQueueSpacesAvailable(xDecoderCodec2In);
 }
 
 bool Codec2Interface::startDecodingAudio(byte *bits)
