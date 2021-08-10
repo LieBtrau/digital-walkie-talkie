@@ -161,10 +161,10 @@ byte Si446x::si446x_get_fastResponse(byte reg)
  */
 void Si446x::si446x_change_state(byte NEXT_STATE1)
 {
-    Pro2Cmd[0] = SI446X_CMD_ID_CHANGE_STATE;
-    Pro2Cmd[1] = NEXT_STATE1;
+	Pro2Cmd[0] = SI446X_CMD_ID_CHANGE_STATE;
+	Pro2Cmd[1] = NEXT_STATE1;
 
-    radio_comm_SendCmd( SI446X_CMD_ARG_COUNT_CHANGE_STATE, Pro2Cmd );
+	radio_comm_SendCmd(SI446X_CMD_ARG_COUNT_CHANGE_STATE, Pro2Cmd);
 }
 
 /*!
@@ -173,10 +173,10 @@ void Si446x::si446x_change_state(byte NEXT_STATE1)
  */
 void Si446x::si446x_fifo_info_fast_reset(byte FIFO)
 {
-    Pro2Cmd[0] = SI446X_CMD_ID_FIFO_INFO;
-    Pro2Cmd[1] = FIFO;
+	Pro2Cmd[0] = SI446X_CMD_ID_FIFO_INFO;
+	Pro2Cmd[1] = FIFO;
 
-    radio_comm_SendCmd( 2, Pro2Cmd );
+	radio_comm_SendCmd(2, Pro2Cmd);
 }
 
 /*!
@@ -185,9 +185,12 @@ void Si446x::si446x_fifo_info_fast_reset(byte FIFO)
  * @param numBytes  Data length to be read.
  * @param pRxData   Pointer to the buffer location.
  */
-void Si446x::si446x_read_rx_fifo(byte numBytes, byte* pRxData)
+void Si446x::si446x_read_rx_fifo(byte numBytes, byte *pRxData)
 {
-  radio_comm_ReadData( SI446X_CMD_ID_READ_RX_FIFO, 0, numBytes, pRxData );
+	/*This command does not cause CTS to go low, and can be sent while CTS is low. 
+	This command has no response to be read and thus there is no need to monitor CTS after sending this command.
+	*/
+	radio_comm_ReadData(SI446X_CMD_ID_READ_RX_FIFO, false, numBytes, pRxData);
 }
 
 /*!
@@ -196,9 +199,9 @@ void Si446x::si446x_read_rx_fifo(byte numBytes, byte* pRxData)
  * @param numBytes  Data length to be load.
  * @param pTxData   Pointer to the data (U8*).
  */
-void Si446x::si446x_write_tx_fifo(byte numBytes, byte* pTxData)
+void Si446x::si446x_write_tx_fifo(byte numBytes, byte *pTxData)
 {
-  radio_comm_WriteData( SI446X_CMD_ID_WRITE_TX_FIFO, 0, numBytes, pTxData );
+	radio_comm_WriteData(SI446X_CMD_ID_WRITE_TX_FIFO, 0, numBytes, pTxData);
 }
 
 /*!
@@ -213,16 +216,16 @@ void Si446x::si446x_write_tx_fifo(byte numBytes, byte* pTxData)
  */
 void Si446x::si446x_start_rx(byte CHANNEL, byte CONDITION, word RX_LEN, byte NEXT_STATE1, byte NEXT_STATE2, byte NEXT_STATE3)
 {
-    Pro2Cmd[0] = SI446X_CMD_ID_START_RX;
-    Pro2Cmd[1] = CHANNEL;
-    Pro2Cmd[2] = CONDITION;
-    Pro2Cmd[3] = highByte(RX_LEN);
-    Pro2Cmd[4] = lowByte(RX_LEN);
-    Pro2Cmd[5] = NEXT_STATE1;
-    Pro2Cmd[6] = NEXT_STATE2;
-    Pro2Cmd[7] = NEXT_STATE3;
+	Pro2Cmd[0] = SI446X_CMD_ID_START_RX;
+	Pro2Cmd[1] = CHANNEL;
+	Pro2Cmd[2] = CONDITION;
+	Pro2Cmd[3] = highByte(RX_LEN);
+	Pro2Cmd[4] = lowByte(RX_LEN);
+	Pro2Cmd[5] = NEXT_STATE1;
+	Pro2Cmd[6] = NEXT_STATE2;
+	Pro2Cmd[7] = NEXT_STATE3;
 
-    radio_comm_SendCmd( SI446X_CMD_ARG_COUNT_START_RX, Pro2Cmd );
+	radio_comm_SendCmd(SI446X_CMD_ARG_COUNT_START_RX, Pro2Cmd);
 }
 
 /*! Sends START_TX command to the radio.
@@ -233,11 +236,11 @@ void Si446x::si446x_start_rx(byte CHANNEL, byte CONDITION, word RX_LEN, byte NEX
  */
 void Si446x::si446x_start_tx(byte CHANNEL, byte CONDITION, word TX_LEN)
 {
-    Pro2Cmd[0] = SI446X_CMD_ID_START_TX;
-    Pro2Cmd[1] = CHANNEL;
-    Pro2Cmd[2] = CONDITION;
-    Pro2Cmd[3] = highByte(TX_LEN);
-    Pro2Cmd[4] = lowByte(TX_LEN);
+	Pro2Cmd[0] = SI446X_CMD_ID_START_TX;
+	Pro2Cmd[1] = CHANNEL;
+	Pro2Cmd[2] = CONDITION;
+	Pro2Cmd[3] = highByte(TX_LEN);
+	Pro2Cmd[4] = lowByte(TX_LEN);
 
-    radio_comm_SendCmd( 5, Pro2Cmd );
+	radio_comm_SendCmd(5, Pro2Cmd);
 }
