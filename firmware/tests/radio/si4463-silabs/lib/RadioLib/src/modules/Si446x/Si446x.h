@@ -67,6 +67,7 @@ public:
 	int16_t startTransmit(uint8_t *data, size_t len, uint8_t addr = 0);
 	int16_t startReceive();
 	int16_t readData(uint8_t *data, size_t len);
+	float getLatchedRssi();
 	uint8_t random() { return -1; };
 	int16_t sleep();
 	void setTxPower(uint8_t pwr);
@@ -92,6 +93,8 @@ private:
 	byte Pro2Cmd[16];
 	void si446x_reset(void);
 	bool si446x_part_info(void);
+	bool si446x_current_rssi(float* rssi);
+	float rssi_regval_to_dBm(byte regVal);
 	void clearIRQFlags();
 	bool si446x_get_int_status(byte PH_CLR_PEND, byte MODEM_CLR_PEND, byte CHIP_CLR_PEND);
 	byte si446x_configuration_init(const byte *pSetPropCmd);

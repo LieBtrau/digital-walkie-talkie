@@ -16,6 +16,33 @@ void Si446x::si446x_reset(void)
 	radio_comm_ClearCTS();
 }
 
+/**
+ * The current RSSI value represents the signal strength at the instant in time the GET_MODEM_STATUS command is 
+ * processed and may be read multiple times per packet. Reading the RSSI in the GET_MODEM_STATUS command takes 
+ * longer than reading the RSSI out of the fast response register. After the initial command, it will take 33 μs 
+ * for CTS to be set and then the four or five bytes of SPI clock cycles to read out the respective current or 
+ * latched RSSI values.
+ * \param rssi upon return : rssi value in dBm
+ * \return true when command could be executed, else false.
+*/
+bool Si446x::si446x_current_rssi(float *rssi)
+{
+	Pro2Cmd[0] = SI446X_CMD_ID_GET_MODEM_STATUS;
+	Pro2Cmd[1] = 0xFF; //MODEM_CLR_PEND : bit value 0 =clear interrupt, 1 = leave pending
+	byte ctsVal = radio_comm_SendCmdGetResp(SI446X_CMD_ARG_COUNT_GET_MODEM_STATUS,
+											Pro2Cmd,
+											SI446X_CMD_REPLY_COUNT_GET_MODEM_STATUS,
+											Pro2Cmd);
+	*rssi = rssi_regval_to_dBm(Pro2Cmd[2] );
+	return ctsVal == 0xFF;
+}
+
+float Si446x::rssi_regval_to_dBm(byte regVal)
+{
+	const float RSSIcal = 130;
+	return (regVal / 2) - RSSIcal;
+}
+
 /*! This function sends the PART_INFO command to the radio and receives the answer
  *  into @Si446xCmd union.
  */

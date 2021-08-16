@@ -119,7 +119,7 @@ void serverloop()
 	{
 		totalBytes += radio.getPacketLength();
 		packetCount++;
-		//averageRssi += rf24.lastRssi();
+		averageRssi += radio.getLatchedRssi();
 		if (data[0] == 0)
 		{
 			int bitrate = (totalBytes << 3) * 1000 / (millis() - startInterval);

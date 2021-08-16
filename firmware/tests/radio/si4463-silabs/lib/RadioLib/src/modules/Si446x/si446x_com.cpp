@@ -81,12 +81,12 @@ void Si446x::radio_comm_SendCmd(byte byteCount, byte *pData)
 }
 
 /*!
- * Gets a command response from the radio chip
+ * Send a command to the radio chip
  *
  * @param cmd           Command ID
  * @param pollCts       Set to poll CTS
- * @param byteCount     Number of bytes to get from the radio chip
- * @param pData         Pointer to where to put the data
+ * @param byteCount     Number of bytes to send to the radio chip
+ * @param pData         Pointer to where to get the data
  */
 void Si446x::radio_comm_WriteData(byte cmd, bool pollCts, byte byteCount, byte *pData)
 {

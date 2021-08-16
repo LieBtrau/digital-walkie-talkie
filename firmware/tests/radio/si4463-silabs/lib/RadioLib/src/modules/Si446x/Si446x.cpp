@@ -126,6 +126,18 @@ si446x_state_t Si446x::getState(void)
     return (si446x_state_t)state;
 }
 
+/** Read the RSSI value that has been latched according to config file.
+ * The config is setup in such a way that the latched RSSI is available in fast register A.
+ * The advantage over using "si446x_current_rssi" is that it's faster and it returns an RSSI value that is always sampled
+ * in the same interval of the package (e.g. immediately after sync detect).  This should yield more consistent
+ * results.
+ */
+float Si446x::getLatchedRssi()
+{
+    byte rssiRegval = si446x_get_fastResponse(SI446X_CMD_ID_FRR_A_READ);
+    return rssi_regval_to_dBm(rssiRegval);
+}
+
 int16_t Si446x::startReceive()
 {
     const byte SI446X_PKT_FIELD_2_LENGTH_LOW = 0x12;
