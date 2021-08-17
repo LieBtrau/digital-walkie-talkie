@@ -129,10 +129,10 @@ void serverloop()
 		{
 			measurementIntervalTimer.repeat();
 			int bitrate = (totalBytes << 3) * 1000 / MEASUREMENT_INTERVAL_ms;
-			Serial.printf("Total bytes : %d\tPacket loss : %.2f%%\tBitrate : %d bps", totalBytes, packetLoss*100.0f, bitrate);
+			Serial.printf("Total bytes : %d\tPacket loss : %.0f%%\tBitrate : %d bps", totalBytes, packetLoss*100.0f, bitrate);
 			if (packetCount > 0)
 			{
-				Serial.printf("\tAverage RSSI : %.2f\r\n", averageRssi / packetCount);
+				Serial.printf("\tAverage RSSI : %.2fdBm\r\n", averageRssi / packetCount);
 			}
 			else
 			{
