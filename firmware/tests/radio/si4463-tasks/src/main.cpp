@@ -35,7 +35,7 @@ void vRadioTask(void *pvParameters)
 		while (true)
 			;
 	}
-	//radio.setTxPower(SI446X_MAX_TX_POWER);
+	radio.setTxPower(22);//about 10dbm
 	txPacketsQueue = xQueueCreate(3, PACKET_SIZE);
 	if (txPacketsQueue == NULL)
 	{
