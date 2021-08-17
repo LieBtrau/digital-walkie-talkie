@@ -4,19 +4,21 @@
 #include "pinconfig.h"
 
 Si446x radio = new Module(PIN_CS, PIN_IRQ, PIN_SDN);
-AsyncDelay wperfTimer;
+AsyncDelay packetIntervalTimer;
+AsyncDelay measurementIntervalTimer;
 unsigned long startInterval = 0;
-const int PACKET_INTERVAL_ms = 80; //in ms
-const int PACKET_SIZE = 20;		   //in bytes
+
+const int PACKET_INTERVAL_ms = 160;		  //in ms
+const int MEASUREMENT_INTERVAL_ms = 8000; //in ms
+const int PACKET_SIZE = 60;				  //in bytes
 const int MAX_PACKET = 100;
 int packetCount = 0;
 float averageRssi = 0;
-float averageSNR = 0;
 int totalBytes = 0;
 bool isClient = false;
 QueueHandle_t txPacketsQueue;
 QueueHandle_t rxPacketsQueue;
-volatile bool vRadioTaskReady=false;
+volatile bool vRadioTaskReady = false;
 
 void vRadioTask(void *pvParameters)
 {
@@ -48,7 +50,7 @@ void vRadioTask(void *pvParameters)
 		while (true)
 			;
 	}
-	vRadioTaskReady=true;
+	vRadioTaskReady = true;
 	for (;;)
 	{
 		byte packet[PACKET_SIZE];
@@ -84,24 +86,26 @@ void setup()
 	isClient = digitalRead(PIN_MODE_SELECT) == HIGH ? true : false;
 	if (isClient)
 	{
-		wperfTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
+		packetIntervalTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
 		Serial.println("client mode");
 	}
 	else
 	{
+		measurementIntervalTimer.start(MEASUREMENT_INTERVAL_ms, AsyncDelay::MILLIS);
 		Serial.println("server mode");
 	}
 	xTaskCreate(vRadioTask, "RadioTask", 2000, NULL, 2, NULL);
-	while(!vRadioTaskReady);
+	while (!vRadioTaskReady)
+		;
 	Serial.println("Ready for looping");
 }
 
 void clientloop()
 {
 	uint8_t data[PACKET_SIZE];
-	if (wperfTimer.isExpired())
+	if (packetIntervalTimer.isExpired())
 	{
-		wperfTimer.repeat();
+		packetIntervalTimer.repeat();
 		data[0] = packetCount++;
 		if (packetCount == MAX_PACKET)
 		{
@@ -120,13 +124,15 @@ void serverloop()
 		totalBytes += radio.getPacketLength();
 		packetCount++;
 		averageRssi += radio.getLatchedRssi();
-		if (data[0] == 0)
+		float packetLoss = 1.0f - packetCount * PACKET_INTERVAL_ms / (float)MEASUREMENT_INTERVAL_ms;
+		if (measurementIntervalTimer.isExpired())
 		{
-			int bitrate = (totalBytes << 3) * 1000 / (millis() - startInterval);
-			Serial.printf("Total bytes : %d\tTotal packets : %d\tBitrate : %d bps", totalBytes, packetCount, bitrate);
+			measurementIntervalTimer.repeat();
+			int bitrate = (totalBytes << 3) * 1000 / MEASUREMENT_INTERVAL_ms;
+			Serial.printf("Total bytes : %d\tPacket loss : %.2f%%\tBitrate : %d bps", totalBytes, packetLoss*100.0f, bitrate);
 			if (packetCount > 0)
 			{
-				Serial.printf("\tAverage RSSI : %.2f\tAverage SNR : %.2f\r\n", averageRssi / packetCount, averageSNR / packetCount);
+				Serial.printf("\tAverage RSSI : %.2f\r\n", averageRssi / packetCount);
 			}
 			else
 			{
@@ -134,7 +140,6 @@ void serverloop()
 			}
 			packetCount = 0;
 			averageRssi = 0;
-			averageSNR = 0;
 			totalBytes = 0;
 			startInterval = millis();
 		}
