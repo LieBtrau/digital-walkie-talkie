@@ -20,6 +20,8 @@ void setup()
   lcd.print("Hello, world!");
   lcd.setCursor(0,1);
   lcd.print("Ywrobot Arduino!");
+  delay(2000);
+  lcd.clear();
 }
 
 
