@@ -4,13 +4,15 @@
 #include "pinconfig.h"
 #include "Wire.h" //For I2C LCD
 #include "LiquidCrystal_I2C.h"
+#include "BluetoothSerial.h"
 
 Si446x radio = new Module(PIN_CS, PIN_IRQ, PIN_SDN);
 AsyncDelay packetIntervalTimer;
 AsyncDelay measurementIntervalTimer;
-AsyncDelay displayTimer;
 unsigned long startInterval = 0;
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
 
 const int PACKET_INTERVAL_ms = 160;		  //in ms
 const int MEASUREMENT_INTERVAL_ms = 8000; //in ms
@@ -23,6 +25,7 @@ bool isClient = false;
 QueueHandle_t txPacketsQueue;
 QueueHandle_t rxPacketsQueue;
 volatile bool vRadioTaskReady = false;
+BluetoothSerial SerialBT;
 
 void vRadioTask(void *pvParameters)
 {
@@ -93,24 +96,18 @@ void setup()
 	{
 		packetIntervalTimer.start(PACKET_INTERVAL_ms, AsyncDelay::MILLIS);
 		Serial.println("client mode");
+		SerialBT.begin("client");
 	}
 	else
 	{
 		measurementIntervalTimer.start(MEASUREMENT_INTERVAL_ms, AsyncDelay::MILLIS);
 		Serial.println("server mode");
-		lcd.init();
-		lcd.backlight();
+		SerialBT.begin("server");
 	}
 	xTaskCreate(vRadioTask, "RadioTask", 2000, NULL, 2, NULL);
 	while (!vRadioTaskReady)
 		;
 	Serial.println("Ready for looping");
-	if (!isClient)
-	{
-		lcd.setCursor(0, 0);
-		lcd.print("Ready");
-		displayTimer.start(10000, AsyncDelay::MILLIS);
-	}
 }
 
 void clientloop()
@@ -143,21 +140,16 @@ void serverloop()
 			measurementIntervalTimer.restart();
 			int bitrate = (totalBytes << 3) * 1000 / MEASUREMENT_INTERVAL_ms;
 			Serial.printf("Total bytes : %d\tPacket loss : %.0f%%\tBitrate : %d bps", totalBytes, packetLoss * 100.0f, bitrate);
-			//After some time, the lcd data gets corrupted.  Using init() might be a workaround.
-			//lcd.init();//slows down comms too much: packet loss never < 8%
+			SerialBT.printf("Total bytes : %d\tPacket loss : %.0f%%\tBitrate : %d bps", totalBytes, packetLoss * 100.0f, bitrate);
 			if (packetCount > 0)
 			{
 				Serial.printf("\tAverage RSSI : %.2fdBm\r\n", averageRssi / packetCount);
-				lcd.setCursor(0, 0);
-				lcd.printf("RSSI : %.2fdBm", averageRssi / packetCount);
+				SerialBT.printf("\tAverage RSSI : %.2fdBm\r\n", averageRssi / packetCount);
 			}
 			else
 			{
 				Serial.println();
 			}
-			lcd.setCursor(0, 1);
-			lcd.printf("Pkt loss: %.0f%%  ", packetLoss * 100.0f);
-			displayTimer.restart();
 			packetCount = 0;
 			averageRssi = 0;
 			totalBytes = 0;
@@ -167,6 +159,7 @@ void serverloop()
 	else
 	{
 		Serial.println("recv failed");
+		SerialBT.println("recv failed");
 	}
 }
 
@@ -175,11 +168,6 @@ void loop()
 	if (!isClient)
 	{
 		serverloop();
-		if (displayTimer.isExpired())
-		{
-			lcd.clear();
-			displayTimer.restart();
-		}
 	}
 	else
 	{
