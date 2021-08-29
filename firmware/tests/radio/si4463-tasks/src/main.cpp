@@ -39,7 +39,8 @@ void vRadioTask(void *pvParameters)
 		while (true)
 			;
 	}
-	radio.setTxPower(22); //about 10dbm
+	//radio.setTxPower(22); //about 10dbm
+	radio.setTxPower(0); //about -32dbm
 	txPacketsQueue = xQueueCreate(3, PACKET_SIZE);
 	if (txPacketsQueue == NULL)
 	{
@@ -142,16 +143,18 @@ void serverloop()
 			measurementIntervalTimer.restart();
 			int bitrate = (totalBytes << 3) * 1000 / MEASUREMENT_INTERVAL_ms;
 			Serial.printf("Total bytes : %d\tPacket loss : %.0f%%\tBitrate : %d bps", totalBytes, packetLoss * 100.0f, bitrate);
+			//After some time, the lcd data gets corrupted.  Using init() might be a workaround.
+			//lcd.init();//slows down comms too much: packet loss never < 8%
 			if (packetCount > 0)
 			{
 				Serial.printf("\tAverage RSSI : %.2fdBm\r\n", averageRssi / packetCount);
+				lcd.setCursor(0, 0);
+				lcd.printf("RSSI : %.2fdBm", averageRssi / packetCount);
 			}
 			else
 			{
 				Serial.println();
 			}
-			lcd.setCursor(0, 0);
-			lcd.printf("Bitrate: %dbps   ", bitrate);
 			lcd.setCursor(0, 1);
 			lcd.printf("Pkt loss: %.0f%%  ", packetLoss * 100.0f);
 			displayTimer.restart();
