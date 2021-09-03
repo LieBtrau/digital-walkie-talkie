@@ -757,16 +757,9 @@ uint8_t Si446x::Si446x_dump(void* buff, uint8_t group)
 	return length;
 }
 
-#if defined(ARDUINO) || SI446X_INTERRUPTS == 0
 void Si446x_SERVICE()
-#else
-ISR(INT_VECTOR)
-#endif
 {
-#if defined(ARDUINO) && (SI446X_INTERRUPTS == 1 || SI446X_INT_SPI_COMMS == 1)
 	isrBusy = 1;
-#endif
-
 	uint8_t interrupts[8];
 	interrupt(interrupts);
 
@@ -799,18 +792,6 @@ ISR(INT_VECTOR)
 	// INVALID_SYNC detected, sometimes the radio gets messed up in this state and requires a RX restart
 //	if(interrupts[4] & (1<<SI446X_INVALID_SYNC_PEND))
 //		SI446X_CB_RXINVALIDSYNC();
-
-#if SI446X_ENABLE_ADDRMATCHING
-	// Address match success
-	// NOTE: This will still be called even if the packet failed the CRC
-	if(interrupts[2] & (1<<SI446X_FILTER_MATCH_PEND))
-		SI446X_CB_ADDRMATCH();
-
-	// Address match missed
-	// NOTE: This will still be called even if the packet failed the CRC
-	if(interrupts[2] & (1<<SI446X_FILTER_MISS_PEND))
-		SI446X_CB_ADDRMISS();
-#endif
 
 	// Valid packet
 	if(interrupts[2] & (1<<SI446X_PACKET_RX_PEND))
@@ -846,7 +827,5 @@ ISR(INT_VECTOR)
 	if(interrupts[6] & (1<<SI446X_WUT_PEND))
 		SI446X_CB_WUT();
 
-#if defined(ARDUINO) && (SI446X_INTERRUPTS == 1 || SI446X_INT_SPI_COMMS == 1)
 	isrBusy = 0;
-#endif
 }
