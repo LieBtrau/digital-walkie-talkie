@@ -134,13 +134,7 @@ static inline uint8_t cdeselect(void)
 // If an interrupt might do some SPI communications with another device then we
 // need to turn global interrupts off while communicating with the radio.
 // Otherwise, just turn off our own radio interrupt while doing SPI stuff.
-#if SI446X_INTERRUPTS == 0 && SI446X_INT_SPI_COMMS == 0
-#define SI446X_ATOMIC() ((void)(0));
-#elif defined(ARDUINO)
 #define SI446X_ATOMIC() for(uint8_t _cs2 = interrupt_off(); _cs2; _cs2 = interrupt_on())
-#else
-#define SI446X_ATOMIC()	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-#endif
 
 // When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
 uint8_t Si446x_irq_off()
@@ -403,7 +397,10 @@ void Si446x::Si446x_init()
 	enabledInterrupts[IRQ_PACKET] = (1<<SI446X_PACKET_RX_PEND) | (1<<SI446X_CRC_ERROR_PEND);
 	//enabledInterrupts[IRQ_MODEM] = (1<<SI446X_SYNC_DETECT_PEND);
 
-	Si446x_irq_on(1);
+	if(isrState_local > 0)
+		isrState_local--;
+	if(isrState_local == 0)
+		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x_SERVICE, FALLING);
 }
 
 void Si446x::Si446x_getInfo(si446x_info_t* info)
