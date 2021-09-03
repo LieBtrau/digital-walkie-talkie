@@ -11,6 +11,7 @@
 #include "SPI.h"
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "Si446x.h"
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
@@ -36,19 +37,14 @@
 	#endif
 #endif
 
-#ifdef ARDUINO
+
 #define	delay_ms(ms)			delay(ms)
 #define delay_us(us)			delayMicroseconds(us)
 #define spiSelect()				(digitalWrite(SI446X_CSN, LOW))
 #define spiDeselect()			(digitalWrite(SI446X_CSN, HIGH))
 #define spi_transfer_nr(data)	(SPI.transfer(data))
 #define spi_transfer(data)		(SPI.transfer(data))
-#else
-#define	delay_ms(ms)			_delay_ms(ms)
-#define delay_us(us)			_delay_us(us)
-#define spiSelect()				(CSN_PORT &= ~_BV(CSN_BIT))
-#define spiDeselect()			(CSN_PORT |= _BV(CSN_BIT))
-#endif
+
 
 static const uint8_t config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
 
@@ -152,43 +148,18 @@ static inline uint8_t cdeselect(void)
 // When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
 uint8_t Si446x_irq_off()
 {
-#if SI446X_INTERRUPTS != 0
-
-#ifdef ARDUINO
 	detachInterrupt(digitalPinToInterrupt(SI446X_IRQ));
 	isrState_local++;
 	return 0;
-#else
-	uint8_t origVal = SI446X_REG_EXTERNAL_INT;
-	SI446X_REG_EXTERNAL_INT &= ~_BV(SI446X_BIT_EXTERNAL_INT);
-	origVal = !!(origVal & _BV(SI446X_BIT_EXTERNAL_INT));
-	//origVal += 1; // We always want to return a non-zero value so the for() loop will loop TODO
-	return origVal;
-#endif
-
-#else
-	return 0;
-#endif
 }
 
 void Si446x_irq_on(uint8_t origVal)
 {
-#if SI446X_INTERRUPTS != 0
-
-#ifdef ARDUINO
 	((void)(origVal));
 	if(isrState_local > 0)
 		isrState_local--;
 	if(isrState_local == 0)
 		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x_SERVICE, FALLING);
-#else
-	if(origVal)// == 2) TODO
-		SI446X_REG_EXTERNAL_INT |= _BV(SI446X_BIT_EXTERNAL_INT);
-#endif
-
-#else
-	((void)(origVal));
-#endif
 }
 
 // Read CTS and if its ok then read the command buffer
@@ -378,31 +349,6 @@ static void clearFIFO(void)
 	doAPI((uint8_t*)clearFifo, sizeof(clearFifo), NULL, 0);
 }
 
-/*
-// Sometimes the Si446x gets all messed up if it receives a bad packet, so we have to enable the INVALID SYNC interrupt when
-// a new packet starts coming in. If the INVALID SYNC interrupt is triggered then RX mode is restarted. The interrupt is turned off again
-// if the packet is successfully received.
-void __attribute__((weak)) SI446X_CB_RXINVALIDSYNC(void)
-{
-	setState(IDLE_STATE);
-	clearFIFO();
-
-	uint8_t data = SI446X_CMD_START_RX; // Restart RX with same params as before (channel etc)
-	doAPI(&data, sizeof(data), NULL, 0);
-	
-	// TODO turn off interrupt?
-}
-*/
-
-// TODO use Si446x_setupCallback instead?
-/*static void fix_invalidSync_irq(uint8_t enable)
-{
-	uint8_t data = getProperty(SI446X_INT_CTL_MODEM_ENABLE);
-	enable ? (data |= 32) : (data &= ~32); // TODO use def for 32
-	enabledInterrupts[IRQ_MODEM] = data;
-	setProperty(SI446X_INT_CTL_MODEM_ENABLE, data);
-}
-*/
 // Read pending interrupts
 // Reading interrupts will also clear them
 // Buff should either be NULL (just clear interrupts) or a buffer of atleast 8 bytes for storing statuses
@@ -427,28 +373,11 @@ static void interrupt2(void* buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t 
 // Reset the RF chip
 static void resetDevice(void)
 {
-#ifdef ARDUINO
 	digitalWrite(SI446X_SDN, HIGH);
 	delay_ms(50);
 	digitalWrite(SI446X_SDN, LOW);
 	delay_ms(50);
-#else
-	SDN_PORT |= _BV(SDN_BIT);
-	delay_ms(50);
-	SDN_PORT &= ~_BV(SDN_BIT);
-	delay_ms(50);
-#endif
 }
-
-/*
-// TODO
-// External version of interrupt()
-void Si446x_interrupt(uint8_t* buff)
-{
-	uint8_t data[4] = {SI446X_CMD_GET_INT_STATUS, 0xff, 0xff, 0xff};
-	doAPI(&data, sizeof(data), buff, 8);
-}
-*/
 
 // Apply the radio configuration
 static void applyStartupConfig(void)
@@ -465,30 +394,10 @@ static void applyStartupConfig(void)
 void Si446x::Si446x_init()
 {
 	spiDeselect();
-#ifdef ARDUINO
 	pinMode(SI446X_CSN, OUTPUT);
 	pinMode(SI446X_SDN, OUTPUT);
-#if SI446X_IRQ != -1
 	pinMode(SI446X_IRQ, INPUT_PULLUP);
-#endif
-	
 	SPI.begin();
-#else
-	CSN_DDR |= _BV(CSN_BIT);
-	SDN_DDR |= _BV(SDN_BIT);
-
-#ifdef IRQ_BIT
-	// Interrupt pin (input with pullup)
-#if defined(PUEA) || defined(PUEB) || defined(PUEC) || defined(PUED) || defined(PUEE)
-	IRQ_PUE |= _BV(IRQ_BIT);
-#else
-	IRQ_PORT |= _BV(IRQ_BIT);
-#endif
-#endif
-
-	spi_init();
-#endif
-
 	resetDevice();
 	applyStartupConfig();
 	interrupt(NULL);
@@ -496,10 +405,6 @@ void Si446x::Si446x_init()
 
 	enabledInterrupts[IRQ_PACKET] = (1<<SI446X_PACKET_RX_PEND) | (1<<SI446X_CRC_ERROR_PEND);
 	//enabledInterrupts[IRQ_MODEM] = (1<<SI446X_SYNC_DETECT_PEND);
-
-#ifndef ARDUINO
-	// TODO Interrupt should trigger on low level, not falling edge?
-#endif
 
 	Si446x_irq_on(1);
 }
@@ -549,41 +454,6 @@ void Si446x::Si446x_setTxPower(uint8_t pwr)
 {
 	setProperty(SI446X_PA_PWR_LVL, pwr);
 }
-
-#if SI446X_ENABLE_ADDRMATCHING
-// API docs say that you can match on the same byte, but programming guide says you can't!
-// Truth is that you can't match on the same byte (that means broadcast flag needs to be on a separate byte than the address :/)
-void Si446x_setAddress(si446x_addrMode_t mode, uint8_t address)
-{
-	uint8_t data[] = {
-		address,
-		0xFF,
-		SI446X_MATCH_EN | 1,
-
-		0x80,
-		0x80,
-		2,
-
-		0x00,
-		0x00,
-		3,
-
-		0x00,
-		0x00,
-		4
-	};
-
-	if(mode == SI446X_ADDRMODE_DISABLE) // Set everything to 0 to disable address matching
-		memset(data, 0, sizeof(data));
-	else if(mode == SI446X_ADDRMODE_ADDR) // Disable matching for the 2nd byte
-	{
-		data[3] = 0x00;
-		data[4] = 0x00;
-	}
-
-	setProperties(SI446X_MATCH_VALUE_1, data, sizeof(data));
-}
-#endif
 
 void Si446x::Si446x_setLowBatt(uint16_t voltage)
 {
@@ -683,15 +553,6 @@ void Si446x::Si446x_setupCallback(uint16_t callbacks, uint8_t state)
 		enabledInterrupts[IRQ_MODEM] = data[1];
 		setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 	}
-/*
-	// TODO remove
-	uint8_t data[4];
-	data[0] = 0xFF;
-	data[1] = 0b11111100;
-	data[2] = 0b11111011;
-	data[3] = 0xff;
-	setProperties(SI446X_INT_CTL_ENABLE, data, sizeof(data));
-*/
 }
 
 uint8_t Si446x::Si446x_sleep()
@@ -714,29 +575,6 @@ void Si446x_read(void* buff, uint8_t len)
 		}
 	}
 }
-/*
-// TODO maybe
-void Si446x_write(void* buff, uint8_t len)
-{
-	// if we are going to do this then we need dual FIFO so we can stay in RX mode while filling TX FIFO
-	// also need a public clearFIFO for TX and RX
-	// this will also allow multiple transmissions without writing FIFO again
-	// however, we wont know if the packet is corrupt until the whole thing has been transmitted/received - might run out of memory if its a large packet, unless its written to some external SPI RAM as its being received
-
-	SI446X_ATOMIC()
-	{
-		// Load data to FIFO
-		CHIPSELECT()
-		{
-			spi_transfer_nr(SI446X_CMD_WRITE_TX_FIFO);
-			for(uint8_t i=0;i<len;i++)
-				spi_transfer_nr(((uint8_t*)buff)[i]);
-		}
-	}
-}
-*/
-
-#include <stdio.h>
 
 uint8_t Si446x::Si446x_TX(void* packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish)
 {

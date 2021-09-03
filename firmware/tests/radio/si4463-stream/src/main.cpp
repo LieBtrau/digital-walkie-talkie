@@ -20,7 +20,7 @@
 #define PACKET_NONE 0
 #define PACKET_OK 1
 #define PACKET_INVALID 2
-const int MODE_SELECT_PIN = 25;
+const int MODE_SELECT_PIN = 27;
 bool isClient = false;
 Si446x si4463;
 
