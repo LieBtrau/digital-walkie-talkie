@@ -37,9 +37,6 @@
 	#endif
 #endif
 
-
-#define	delay_ms(ms)			delay(ms)
-#define delay_us(us)			delayMicroseconds(us)
 #define spiSelect()				(digitalWrite(SI446X_CSN, LOW))
 #define spiDeselect()			(digitalWrite(SI446X_CSN, HIGH))
 #define spi_transfer_nr(data)	(SPI.transfer(data))
@@ -195,7 +192,7 @@ static uint8_t waitForResponse(void* out, uint8_t outLen, uint8_t useTimeout)
 	uint16_t timeout = 40000;
 	while(!getResponse(out, outLen))
 	{
-		delay_us(10);
+		delayMicroseconds(10);
 		if(useTimeout && !--timeout)
 		{
 			SI446X_CB_CMDTIMEOUT();
@@ -374,9 +371,9 @@ static void interrupt2(void* buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t 
 static void resetDevice(void)
 {
 	digitalWrite(SI446X_SDN, HIGH);
-	delay_ms(50);
+	delay(50);
 	digitalWrite(SI446X_SDN, LOW);
-	delay_ms(50);
+	delay(50);
 }
 
 // Apply the radio configuration
@@ -494,7 +491,7 @@ void Si446x::Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 		if(getProperty(SI446X_GLOBAL_CLK_CFG) != SI446X_DIVIDED_CLK_32K_SEL_RC)
 		{
 			setProperty(SI446X_GLOBAL_CLK_CFG, SI446X_DIVIDED_CLK_32K_SEL_RC);
-			delay_us(300); // Need to wait 300us for clock source to stabilize, see GLOBAL_WUT_CONFIG:WUT_EN info
+			delayMicroseconds(300); // Need to wait 300us for clock source to stabilize, see GLOBAL_WUT_CONFIG:WUT_EN info
 		}
 
 		// Setup WUT
