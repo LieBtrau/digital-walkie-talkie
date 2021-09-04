@@ -198,8 +198,7 @@ static uint8_t waitForResponse(void* out, uint8_t outLen, uint8_t useTimeout)
 
 static void doAPI(void* data, uint8_t len, void* out, uint8_t outLen)
 {
-	SI446X_NO_INTERRUPT()
-	{
+	Si446x_irq_off();
 		if(waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
 		{
 			SI446X_ATOMIC()
@@ -216,7 +215,7 @@ static void doAPI(void* data, uint8_t len, void* out, uint8_t outLen)
 			else if(out != NULL) // If we have an output buffer then read command response into it
 				waitForResponse(out, outLen, 1);
 		}
-	}
+	Si446x_irq_on(0);
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
@@ -467,7 +466,7 @@ void Si446x::Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 	if(!(config & (SI446X_WUT_RUN | SI446X_WUT_BATT | SI446X_WUT_RX)))
 		return;
 
-	SI446X_NO_INTERRUPT()
+	Si446x_irq_off();
 	{
 		// Disable WUT
 		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
@@ -502,15 +501,17 @@ void Si446x::Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 		properties[4] = ldc;
 		setProperties(SI446X_GLOBAL_WUT_CONFIG, properties, sizeof(properties));
 	}
+	Si446x_irq_on(0);
 }
 
 void Si446x::Si446x_disableWUT()
 {
-	SI446X_NO_INTERRUPT()
+	Si446x_irq_off();
 	{
 		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
 		setProperty(SI446X_GLOBAL_CLK_CFG, 0);
 	}
+	Si446x_irq_on(0);
 }
 
 // TODO
@@ -524,7 +525,7 @@ void Si446x::Si446x_disableWUT()
 // INVALID SYNC (the fix thing)
 void Si446x::Si446x_setupCallback(uint16_t callbacks, uint8_t state)
 {
-	SI446X_NO_INTERRUPT()
+	Si446x_irq_off();
 	{
 		uint8_t data[2];
 		getProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
@@ -547,6 +548,7 @@ void Si446x::Si446x_setupCallback(uint16_t callbacks, uint8_t state)
 		enabledInterrupts[IRQ_MODEM] = data[1];
 		setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 	}
+	Si446x_irq_on(0);
 }
 
 uint8_t Si446x::Si446x_sleep()
@@ -579,10 +581,13 @@ uint8_t Si446x::Si446x_TX(void* packet, uint8_t len, uint8_t channel, si446x_sta
 	((void)(len));
 #endif
 
-	SI446X_NO_INTERRUPT()
+	Si446x_irq_off();
 	{
 		if(getState() == SI446X_STATE_TX) // Already transmitting
+		{
+			Si446x_irq_on(0);
 			return 0;
+		}
 
 		// TODO collision avoid or maybe just do collision detect (RSSI jump)
 
@@ -629,12 +634,13 @@ uint8_t Si446x::Si446x_TX(void* packet, uint8_t len, uint8_t channel, si446x_sta
 		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
 #endif
 	}
+	Si446x_irq_on(0);
 	return 1;
 }
 
 void Si446x::Si446x_RX(uint8_t channel)
 {
-	SI446X_NO_INTERRUPT()
+	Si446x_irq_off();
 	{
 		setState(IDLE_STATE);
 		clearFIFO();
@@ -657,6 +663,7 @@ void Si446x::Si446x_RX(uint8_t channel)
 		};
 		doAPI(data, sizeof(data), NULL, 0);
 	}
+	Si446x_irq_on(0);
 }
 
 uint16_t Si446x::Si446x_adc_gpio(uint8_t pin)

@@ -559,40 +559,6 @@ extern "C"
 */
 	void Si446x_irq_on(uint8_t origVal);
 
-#if DOXYGEN || SI446X_INTERRUPTS != 0
-
-#if !defined(DOXYGEN)
-	static inline void _Si446x_iRestore(const uint8_t *__s)
-	{
-		Si446x_irq_on(*__s);
-		__asm__ volatile("" ::
-							 : "memory");
-	}
-#endif
-
-/**
-* @brief Disable Si446x interrupts for code inside this block
-*
-* When communicating with other SPI devices on the same bus as the radio then you should wrap those sections in a ::SI446X_NO_INTERRUPT() block, this will stop the Si446x interrupt from running and trying to use the bus at the same time.
-* This macro is based on the code from avr/atomic.h, and wraps the ::Si446x_irq_off() and ::Si446x_irq_on() functions instead of messing with global interrupts. It is safe to return, break or continue inside an ::SI446X_NO_INTERRUPT() block.
-*
-* Example:
-*
-* Si446x_RX(63);\n
-* SI446X_NO_INTERRUPT()\n
-* {\n
-* 	OLED.write("blah", 2, 10); // Communicate with SPI OLED display\n
-* }\n
-*/
-#define SI446X_NO_INTERRUPT()                                                                  \
-	for (uint8_t si446x_irq __attribute__((__cleanup__(_Si446x_iRestore))) = Si446x_irq_off(), \
-							si446x_tmp = 1;                                                    \
-		 si446x_tmp; si446x_tmp = 0)
-
-#else
-#define SI446X_NO_INTERRUPT() ((void)(0));
-#endif
-
 #if defined(__cplusplus)
 }
 #endif
