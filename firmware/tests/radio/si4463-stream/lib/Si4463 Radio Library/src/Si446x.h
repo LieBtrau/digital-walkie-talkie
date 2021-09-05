@@ -259,225 +259,30 @@ class Si446x
 {
 public:
 	Si446x();
-	/**
-* @brief Initialise, must be called before anything else!
-*
-* @return (none)
-*/
 	void Si446x_init(void);
-
-	/**
-* @brief Get chip info, see ::si446x_info_t
-*
-* @see ::si446x_info_t
-* @param [info] Pointer to allocated ::si446x_info_t struct to place data into
-* @return (none)
-*/
 	void Si446x_getInfo(si446x_info_t *info);
-
-	/**
-* @brief Get the current RSSI, the chip needs to be in receive mode for this to work
-*
-* @return The current RSSI in dBm (usually between -130 and 0)
-*/
 	int16_t Si446x_getRSSI(void);
-
-	/**
-* @brief Set the transmit power. The output power does not follow the \p pwr value, see the Si446x datasheet for a pretty graph
-*
-* 0 = -32dBm (<1uW)\n
-* 7 = 0dBm (1mW)\n
-* 12 = 5dBm (3.2mW)\n
-* 22 = 10dBm (10mW)\n
-* 40 = 15dBm (32mW)\n
-* 100 = 20dBm (100mW)
-*
-* @param [pwr] A value from 0 to 127
-* @return (none)
-*/
 	void Si446x_setTxPower(uint8_t pwr);
-
-	/**
-* @brief Enable or disable callbacks. This is mainly to configure what events should wake the microcontroller up.
-*
-* @param [callbacks] The callbacks to configure (multiple callbacks should be bitewise OR'd together)
-* @param [state] Enable or disable the callbacks passed in \p callbacks parameter (1 = Enable, 0 = Disable)
-* @return (none)
-*/
 	void Si446x_setupCallback(uint16_t callbacks, uint8_t state);
-
-	/**
-* @brief Transmit a packet
-*
-* @param [packet] Pointer to packet data
-* @param [len] Number of bytes to transmit, maximum of ::SI446X_MAX_PACKET_LEN If configured for fixed length packets then this parameter is ignored and the length is set by ::SI446X_FIXED_LENGTH in Si446x_config.h
-* @param [channel] Channel to transmit data on (0 - 255)
-* @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
-* @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
-*/
 	uint8_t Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish);
-
-	/**
-* @brief Enter receive mode
-*
-* Entering RX mode will abort any transmissions happening at the time
-*
-* @param [channel] Channel to listen to (0 - 255)
-* @return (none)
-*/
 	void Si446x_RX(uint8_t channel);
-
-	/*-*
-* @brief Changes will be applied next time the radio enters RX mode (NOT SUPPORTED)
-*
-* @param [mode] TODO
-* @param [address] TODO
-* @return (none)
-*/
-	//void Si446x_setAddress(si446x_addrMode_t mode, uint8_t address);
-
-	/**
-* @brief Set the low battery voltage alarm
-*
-* The ::SI446X_CB_LOWBATT() callback will be ran when the supply voltage drops below this value. The WUT must be configured with ::Si446x_setupWUT() to enable periodically checking the battery level.
-*
-* @param [voltage] The low battery threshold in millivolts (1050 - 3050).
-* @return (none)
-*/
 	void Si446x_setLowBatt(uint16_t voltage);
-
-	/**
-* @brief Configure the wake up timer
-* 
-* This function will also reset the timer.\n
-*\n
-* The Wake Up Timer (WUT) can be used to periodically run a number of features:\n
-* ::SI446X_WUT_RUN Simply wake up the microcontroller when the WUT expires and run the ::SI446X_CB_WUT() callback.\n
-* ::SI446X_WUT_BATT Check battery voltage - If the battery voltage is below the threshold set by ::Si446x_setLowBatt() then wake up the microcontroller and run the ::SI446X_CB_LOWBATT() callback.\n
-* ::SI446X_WUT_RX Enter receive mode for a length of time determinded by the ldc and r parameters (NOT SUPPORTED YET! dont use this option)\n
-*\n
-* For more info see the GLOBAL_WUT_M, GLOBAL_WUT_R and GLOBAL_WUT_LDC properties in the Si446x API docs.\n
-*
-* @note When first turning on the WUT this function will take around 300us to complete
-* @param [r] Exponent value for WUT and LDC (Maximum valus is 20)
-* @param [m] Mantissia value for WUT
-* @param [ldc] Mantissia value for LDC (NOT SUPPORTED YET, just pass 0 for now)
-* @param [config] Which WUT features to enable ::SI446X_WUT_RUN ::SI446X_WUT_BATT ::SI446X_WUT_RX These can be bitwise OR'ed together to enable multiple features.
-* @return (none)
-*/
 	void Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config);
-
-	/**
-* @brief Disable the wake up timer
-*
-* @return (none)
-*/
 	void Si446x_disableWUT(void);
-
-	/**
-* @brief Enter sleep mode
-*
-* If WUT is enabled then the radio will keep the internal 32KHz RC enabled with a current consumption of 740nA, otherwise the current consumption will be 40nA without WUT.
-* Sleep will fail if the radio is currently transmitting.
-*
-* @note Any SPI communications with the radio will wake the radio into ::SI446X_STATE_SPI_ACTIVE mode. ::Si446x_sleep() will need to called again to put it back into sleep mode.
-*
-* @return 0 on failure (busy transmitting something), 1 on success
-*/
 	uint8_t Si446x_sleep(void);
-
-	/**
-* @brief Get the radio status
-*
-* @see ::si446x_state_t
-* @return The current radio status
-*/
 	si446x_state_t Si446x_getState(void);
-
-	/**
-* @brief Read pin ADC value
-*
-* @param [pin] The GPIO pin number (0 - 3)
-* @return ADC value (0 - 2048, where 2048 is 3.6V)
-*/
 	uint16_t Si446x_adc_gpio(uint8_t pin);
-
-	/**
-* @brief Read supply voltage
-*
-* @return Supply voltage in millivolts
-*/
 	uint16_t Si446x_adc_battery(void);
-
-	/**
-* @brief Read temperature
-*
-* @return Temperature in C
-*/
 	float Si446x_adc_temperature(void);
-
-	/**
-* @brief Configure GPIO/NIRQ/SDO pin
-*
-* @note NIRQ and SDO pins should not be changed, unless you really know what you're doing. 2 of the GPIO pins (usually 0 and 1) are also usually used for the RX/TX RF switch and should also be left alone.
-*
-* @param [pin] The pin, this can only take a single pin (don't use bitwise OR), see ::si446x_gpio_t
-* @param [value] The new pin mode, this can be bitwise OR'd with the ::SI446X_PIN_PULL_EN option, see ::si446x_gpio_mode_t ::si446x_nirq_mode_t ::si446x_sdo_mode_t
-* @return (none)
-*/
 	void Si446x_writeGPIO(si446x_gpio_t pin, uint8_t value);
-
-	/**
-* @brief Read GPIO pin states
-*
-* @return The pin states. Use ::si446x_gpio_t to mask the value to get the state for the desired pin.
-*/
 	uint8_t Si446x_readGPIO(void);
-
-	/**
-* @brief Get all values of a property group
-*
-* @param [buff] Pointer to memory to place group values, if this is NULL then nothing will be dumped, just the group size is returned
-* @param [group] The group to dump
-* @return Size of the property group
-*/
 	uint8_t Si446x_dump(void *buff, uint8_t group);
-	/**
-* @brief Read received data from FIFO
-*
-* @param [buff] Pointer to buffer to place data
-* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
-* @return (none)
-*/
 	void Si446x_read(void *buff, uint8_t len);
 
 private:
-	/**
-* @brief If interrupts are disabled (::SI446X_INTERRUPTS in Si446x_config.h) then this function should be called as often as possible to process any events
-*
-* @return (none)
-*/
 	static void Si446x_SERVICE(void);
 	void handleInterrupt(void);
-	/**
-* @brief When using interrupts use this to disable them for the Si446x
-*
-* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_on()
-*
-* @see ::Si446x_irq_on() and ::SI446X_NO_INTERRUPT()
-* @return The previous interrupt status; 1 if interrupt was enabled, 0 if it was already disabled
-*/
 	uint8_t Si446x_irq_off(void);
-
-	/**
-* @brief When using interrupts use this to re-enable them for the Si446x
-*
-* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_off()
-*
-* @see ::Si446x_irq_off() and ::SI446X_NO_INTERRUPT()
-* @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
-* @return (none)
-*/
 	void Si446x_irq_on(uint8_t origVal);
 	void doAPI(void *data, uint8_t len, void *out, uint8_t outLen);
 	void setProperties(uint16_t prop, void *values, uint8_t len);
