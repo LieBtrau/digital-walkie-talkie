@@ -45,7 +45,7 @@ void SI446X_CB_RXCOMPLETE(uint8_t length, int16_t rssi)
 	pingInfo.rssi = rssi;
 	pingInfo.length = length;
 
-	Si446x_read((uint8_t *)pingInfo.buffer, length);
+	si4463.Si446x_read((uint8_t *)pingInfo.buffer, length);
 
 	// Radio will now be in idle mode
 }

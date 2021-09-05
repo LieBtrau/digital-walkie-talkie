@@ -255,7 +255,8 @@ typedef enum
 #define SI446X_CBS_RXBEGIN _BV(0) ///< Enable/disable packet receive begin callback
 //#define SI446X_CBS_INVALIDSYNC		_BV(5) ///< Don't use this, it's used internally by the library
 
-class Si446x{
+class Si446x
+{
 public:
 	Si446x();
 	/**
@@ -304,7 +305,6 @@ public:
 * @return (none)
 */
 	void Si446x_setupCallback(uint16_t callbacks, uint8_t state);
-
 
 	/**
 * @brief Transmit a packet
@@ -442,9 +442,17 @@ public:
 * @return Size of the property group
 */
 	uint8_t Si446x_dump(void *buff, uint8_t group);
+	/**
+* @brief Read received data from FIFO
+*
+* @param [buff] Pointer to buffer to place data
+* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
+* @return (none)
+*/
+	void Si446x_read(void *buff, uint8_t len);
 
 private:
-/**
+	/**
 * @brief If interrupts are disabled (::SI446X_INTERRUPTS in Si446x_config.h) then this function should be called as often as possible to process any events
 *
 * @return (none)
@@ -483,12 +491,3 @@ private:
 	void interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP);
 	void applyStartupConfig(void);
 };
-
-	/**
-* @brief Read received data from FIFO
-*
-* @param [buff] Pointer to buffer to place data
-* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
-* @return (none)
-*/
-	void Si446x_read(void *buff, uint8_t len);

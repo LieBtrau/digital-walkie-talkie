@@ -541,7 +541,7 @@ uint8_t Si446x::Si446x_sleep()
 	return 1;
 }
 
-void Si446x_read(void *buff, uint8_t len)
+void Si446x::Si446x_read(void *buff, uint8_t len)
 {
 	interrupt_off();
 	{
