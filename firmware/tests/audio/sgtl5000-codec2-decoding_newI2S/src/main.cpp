@@ -100,7 +100,7 @@ void loop()
 			nbit_ctr = nbit_ctr + nbyte < lookdave_bit_len ? nbit_ctr + nbyte : 0;
 		}
 	}
-	if (!isPlaying && c2i.cntEncodedFrameAvailable()>0)
+	if (!isPlaying && c2i.cntEncodedFramesAvailable()>0)
 	{
 		//Encoding loop
 		byte bits[nbyte];
