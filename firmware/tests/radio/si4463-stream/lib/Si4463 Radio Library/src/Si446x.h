@@ -249,21 +249,6 @@ typedef enum
 	SI446X_STATE_RX = 0x08
 } si446x_state_t;
 
-#if SI446X_ENABLE_ADDRMATCHING
-/*-*
-* @brief Address modes (NOT SUPPORTED)
-*/
-typedef enum
-{
-	SI446X_ADDRMODE_DISABLE,	  ///< Disable address matching
-	SI446X_ADDRMODE_ADDR,		  ///< Only match exact address (contained in the first byte of the received data)
-	SI446X_ADDRMODE_ADDRBROADCAST ///< Match exact address or broadcast flag (broascast flag is the MSB bit of the second byte in the received data)
-} si446x_addrMode_t;
-
-#define SI446X_CBS_ADDRMATCH _BV(7 + 8)
-#define SI446X_CBS_ADDRMISS _BV(6 + 8)
-#endif
-
 #define SI446X_CBS_SENT _BV(5 + 8) ///< Enable/disable packet sent callback
 //#define SI446X_CBS_RXCOMPLETE		_BV(4+8)
 //#define SI446X_CBS_RXINVALID		_BV(3+8)
@@ -272,6 +257,7 @@ typedef enum
 
 class Si446x{
 public:
+	Si446x();
 	/**
 * @brief Initialise, must be called before anything else!
 *
@@ -477,58 +463,6 @@ public:
 	void Si446x_SERVICE(void);
 #else
 #define Si446x_SERVICE() ((void)(0))
-#endif
-
-#if SI446X_ENABLE_ADDRMATCHING
-/*-*
-* @brief Set the address in the first byte of the payload TODO
-*
-* @return (none)
-*/
-//inline void Si446x_setPacketAddress(uint8_t* data, uint8_t addr)
-//{
-//	data[0] = addr;
-//}
-
-/*-*
-* @brief Set the MSB in the 2nd byte of the payload to signify that this is a broadcast transmission TODO
-*
-* @return (none)
-*/
-//inline void Si446x_setBroadcast(uint8_t* data)
-//{
-//	data[1] |= 0x80;
-//}
-
-/*-*
-* @brief TODO (NOT SUPPORTED)
-*
-* @return (none)
-*/
-//inline void Si446x_clearBroadcast(uint8_t* data)
-//{
-//	data[1] &= ~(0x80);
-//}
-
-/*-*
-* @brief TODO (NOT SUPPORTED)
-*
-* @return TODO
-*/
-//inline uint8_t Si446x_isBroadcast(uint8_t* data)
-//{
-//	return !!(data[1] & 0x80);
-//}
-
-/*-*
-* @brief TODO (NOT SUPPORTED)
-*
-* @return The destination address of the packet
-*/
-//inline uint8_t Si446x_getPacketAddress(uint8_t* data)
-//{
-//	return data[0];
-//}
 #endif
 
 

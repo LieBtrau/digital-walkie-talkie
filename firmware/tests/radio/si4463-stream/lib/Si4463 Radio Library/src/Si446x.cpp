@@ -28,13 +28,7 @@
 
 #define rssi_dBm(val) ((val / 2) - 134)
 
-#if SI446X_INTERRUPTS != 0
-#if defined(ARDUINO) && SI446X_IRQ == -1
-#error "SI446X_INTERRUPTS is 1, but SI446X_IRQ is set to -1!"
-#elif !defined(ARDUINO) && !defined(IRQ_BIT)
-#error "SI446X_INTERRUPTS is 1, but SI446X_IRQ_PORT or SI446X_IRQ_BIT has not been set!"
-#endif
-#endif
+static Si446x* pSi446x=nullptr;
 
 #define spiSelect() (digitalWrite(SI446X_CSN, LOW))
 #define spiDeselect() (digitalWrite(SI446X_CSN, HIGH))
@@ -74,17 +68,13 @@ void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_ADDRMATCH(void)
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_ADDRMISS(void);
 #endif
 
-// TODO
-//void __attribute__((weak)) SI446X_CB_DEBUG(uint8_t* interrupts){(void)(interrupts);}
+Si446x::Si446x()
+{
+	pSi446x = this;
+}
 
-// http://www.nongnu.org/avr-libc/user-manual/atomic_8h_source.html
-
-#if SI446X_INTERRUPTS != 0
 // It's not possible to get the current interrupt enabled state in Arduino (SREG only works for AVR based Arduinos, and no way of getting attachInterrupt() status), so we use a counter thing instead
 static volatile uint8_t isrState_local;
-#endif
-
-#if SI446X_INTERRUPTS == 1 || SI446X_INT_SPI_COMMS == 1
 static volatile uint8_t isrState;
 static volatile uint8_t isrBusy; // Don't mess with global interrupts if we're inside an ISR
 
@@ -109,7 +99,7 @@ static inline uint8_t interrupt_on(void)
 	}
 	return 0;
 }
-#endif
+
 
 static inline uint8_t cselect(void)
 {
