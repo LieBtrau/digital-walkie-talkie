@@ -16,6 +16,12 @@
 #include "Si446x_defs.h"
 #include "radio_config.h"
 
+#if (ESP8266 || ESP32)
+    #define ISR_PREFIX ICACHE_RAM_ATTR
+#else
+    #define ISR_PREFIX
+#endif
+
 #define IDLE_STATE SI446X_IDLE_MODE
 
 // When FIFOs are combined it becomes a 129 byte FiFO
@@ -63,10 +69,6 @@ void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXINVALID(int16
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_SENT(void);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_WUT(void);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_LOWBATT(void);
-#if SI446X_ENABLE_ADDRMATCHING
-void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_ADDRMATCH(void);
-void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_ADDRMISS(void);
-#endif
 
 Si446x::Si446x()
 {
@@ -123,20 +125,20 @@ static inline uint8_t cdeselect(void)
 // Global (SI446X_ATOMIC()): Disable all interrupts, don't use waitForResponse() inside here as it can take a while to complete. These blocks are to make sure no other interrupts use the SPI bus.
 
 // When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
-uint8_t Si446x_irq_off()
+uint8_t Si446x::Si446x_irq_off()
 {
 	detachInterrupt(digitalPinToInterrupt(SI446X_IRQ));
 	isrState_local++;
 	return 0;
 }
 
-void Si446x_irq_on(uint8_t origVal)
+void Si446x::Si446x_irq_on(uint8_t origVal)
 {
 	((void)(origVal));
 	if (isrState_local > 0)
 		isrState_local--;
 	if (isrState_local == 0)
-		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x_SERVICE, FALLING);
+		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::Si446x_SERVICE, FALLING);
 }
 
 // Read CTS and if its ok then read the command buffer
@@ -183,7 +185,7 @@ static uint8_t waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout)
 	return 1;
 }
 
-static void doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
+void Si446x::doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
 {
 	Si446x_irq_off();
 	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
@@ -206,7 +208,7 @@ static void doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
-static void setProperties(uint16_t prop, void *values, uint8_t len)
+void Si446x::setProperties(uint16_t prop, void *values, uint8_t len)
 {
 	// len must not be greater than 12
 
@@ -223,7 +225,7 @@ static void setProperties(uint16_t prop, void *values, uint8_t len)
 }
 
 // Set a single property
-static inline void setProperty(uint16_t prop, uint8_t value)
+inline void Si446x::setProperty(uint16_t prop, uint8_t value)
 {
 	setProperties(prop, &value, 1);
 }
@@ -236,7 +238,7 @@ static void setProperty16(uint16_t prop, uint16_t value)
 }
 */
 // Read a bunch of properties
-static void getProperties(uint16_t prop, void *values, uint8_t len)
+void Si446x::getProperties(uint16_t prop, void *values, uint8_t len)
 {
 	uint8_t data[] = {
 		SI446X_CMD_GET_PROPERTY,
@@ -248,7 +250,7 @@ static void getProperties(uint16_t prop, void *values, uint8_t len)
 }
 
 // Read a single property
-static inline uint8_t getProperty(uint16_t prop)
+inline uint8_t Si446x::getProperty(uint16_t prop)
 {
 	uint8_t val;
 	getProperties(prop, &val, 1);
@@ -256,7 +258,7 @@ static inline uint8_t getProperty(uint16_t prop)
 }
 
 // Do an ADC conversion
-static uint16_t getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part)
+uint16_t Si446x::getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part)
 {
 	uint8_t data[6] = {
 		SI446X_CMD_GET_ADC_READING,
@@ -304,7 +306,7 @@ static si446x_state_t getState(void)
 }
 
 // Set new state
-static void setState(si446x_state_t newState)
+void Si446x::setState(si446x_state_t newState)
 {
 	uint8_t data[] = {
 		SI446X_CMD_CHANGE_STATE,
@@ -313,7 +315,7 @@ static void setState(si446x_state_t newState)
 }
 
 // Clear RX and TX FIFOs
-static void clearFIFO(void)
+void Si446x::clearFIFO(void)
 {
 	// 'static const' saves 20 bytes of flash here, but uses 2 bytes of RAM
 	static const uint8_t clearFifo[] = {
@@ -325,14 +327,14 @@ static void clearFIFO(void)
 // Read pending interrupts
 // Reading interrupts will also clear them
 // Buff should either be NULL (just clear interrupts) or a buffer of atleast 8 bytes for storing statuses
-static void interrupt(void *buff)
+void Si446x::interrupt(void *buff)
 {
 	uint8_t data = SI446X_CMD_GET_INT_STATUS;
 	doAPI(&data, sizeof(data), buff, 8);
 }
 
 // Similar to interrupt() but with the option of not clearing certain interrupt flags
-static void interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP)
+void Si446x::interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP)
 {
 	uint8_t data[] = {
 		SI446X_CMD_GET_INT_STATUS,
@@ -352,7 +354,7 @@ static void resetDevice(void)
 }
 
 // Apply the radio configuration
-static void applyStartupConfig(void)
+void Si446x::applyStartupConfig(void)
 {
 	uint8_t buff[17];
 	for (uint16_t i = 0; i < sizeof(config); i++)
@@ -736,7 +738,13 @@ uint8_t Si446x::Si446x_dump(void *buff, uint8_t group)
 	return length;
 }
 
-void Si446x_SERVICE()
+
+ISR_PREFIX void Si446x::Si446x_SERVICE()
+{
+  pSi446x->handleInterrupt();
+}
+
+void Si446x::handleInterrupt()
 {
 	isrBusy = 1;
 	uint8_t interrupts[8];

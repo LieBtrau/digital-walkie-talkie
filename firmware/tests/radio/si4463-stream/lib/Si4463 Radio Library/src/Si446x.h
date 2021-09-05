@@ -443,35 +443,14 @@ public:
 */
 	uint8_t Si446x_dump(void *buff, uint8_t group);
 
-};
-
-	/**
-* @brief Read received data from FIFO
-*
-* @param [buff] Pointer to buffer to place data
-* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
-* @return (none)
-*/
-	void Si446x_read(void *buff, uint8_t len);
-
+private:
 /**
 * @brief If interrupts are disabled (::SI446X_INTERRUPTS in Si446x_config.h) then this function should be called as often as possible to process any events
 *
 * @return (none)
 */
-#if DOXYGEN || defined(ARDUINO) || SI446X_INTERRUPTS == 0
-	void Si446x_SERVICE(void);
-#else
-#define Si446x_SERVICE() ((void)(0))
-#endif
-
-
-#if defined(__cplusplus)
-extern "C"
-{
-#endif
-
-
+	static void Si446x_SERVICE(void);
+	void handleInterrupt(void);
 	/**
 * @brief When using interrupts use this to disable them for the Si446x
 *
@@ -492,7 +471,24 @@ extern "C"
 * @return (none)
 */
 	void Si446x_irq_on(uint8_t origVal);
+	void doAPI(void *data, uint8_t len, void *out, uint8_t outLen);
+	void setProperties(uint16_t prop, void *values, uint8_t len);
+	void setProperty(uint16_t prop, uint8_t value);
+	void getProperties(uint16_t prop, void *values, uint8_t len);
+	uint8_t getProperty(uint16_t prop);
+	uint16_t getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part);
+	void setState(si446x_state_t newState);
+	void clearFIFO(void);
+	void interrupt(void *buff);
+	void interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP);
+	void applyStartupConfig(void);
+};
 
-#if defined(__cplusplus)
-}
-#endif
+	/**
+* @brief Read received data from FIFO
+*
+* @param [buff] Pointer to buffer to place data
+* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
+* @return (none)
+*/
+	void Si446x_read(void *buff, uint8_t len);
