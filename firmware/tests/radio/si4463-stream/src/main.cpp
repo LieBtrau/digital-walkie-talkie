@@ -35,7 +35,7 @@ typedef struct
 
 static volatile pingInfo_t pingInfo;
 
-void SI446X_CB_RXCOMPLETE(byte length)
+void onReceive(byte length)
 {
 	if (length > MAX_PACKET_SIZE)
 		length = MAX_PACKET_SIZE;
@@ -72,7 +72,7 @@ void setup()
 
 	// Put into receive mode
 	si4463.RX(CHANNEL);
-	si4463.onReceive(SI446X_CB_RXCOMPLETE);
+	si4463.onReceive(onReceive);
 }
 
 void clientloop()

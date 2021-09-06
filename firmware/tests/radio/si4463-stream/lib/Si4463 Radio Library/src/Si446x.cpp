@@ -60,11 +60,6 @@ extern "C"
 
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_CMDTIMEOUT(void);
 void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXBEGIN(short rssi);
-/*void __attribute__((weak)) SI446X_CB_RXCOMPLETE(byte length, short rssi)
-{
-	(void)(length);
-	(void)(rssi);
-}*/
 void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXINVALID(short rssi);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_SENT(void);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_WUT(void);
@@ -717,13 +712,12 @@ byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
 	((void)(len));
 #endif
 
-	irq_off();
 	if (getState() == SI446X_STATE_TX) // Already transmitting
 	{
-		irq_on();
 		return 0;
 	}
 
+	irq_off();
 	// TODO collision avoid or maybe just do collision detect (RSSI jump)
 
 	setState(IDLE_STATE);
