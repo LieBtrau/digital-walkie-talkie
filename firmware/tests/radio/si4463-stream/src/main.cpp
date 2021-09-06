@@ -30,22 +30,22 @@ typedef struct
 	uint32_t timestamp;
 	int16_t rssi;
 	uint8_t length;
-	uint8_t buffer[MAX_PACKET_SIZE];
+	byte buffer[MAX_PACKET_SIZE];
 } pingInfo_t;
 
 static volatile pingInfo_t pingInfo;
 
-void SI446X_CB_RXCOMPLETE(uint8_t length, int16_t rssi)
+void SI446X_CB_RXCOMPLETE(byte length)
 {
 	if (length > MAX_PACKET_SIZE)
 		length = MAX_PACKET_SIZE;
 
 	pingInfo.ready = PACKET_OK;
 	pingInfo.timestamp = millis();
-	pingInfo.rssi = rssi;
+	pingInfo.rssi = si4463.getLatchedRSSI();
 	pingInfo.length = length;
 
-	si4463.read((uint8_t *)pingInfo.buffer, length);
+	si4463.read((byte*)pingInfo.buffer, length);
 
 	// Radio will now be in idle mode
 }
@@ -72,6 +72,7 @@ void setup()
 
 	// Put into receive mode
 	si4463.RX(CHANNEL);
+	si4463.onReceive(SI446X_CB_RXCOMPLETE);
 }
 
 void clientloop()

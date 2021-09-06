@@ -206,18 +206,18 @@ typedef enum
 */
 typedef struct
 {
-	byte chipRev;   ///< Chip revision
-	word part;	   ///< Part ID
+	byte chipRev;	///< Chip revision
+	word part;		///< Part ID
 	byte partBuild; ///< Part build
-	word id;	   ///< ID
-	byte customer;  ///< Customer
-	byte romId;	   ///< ROM ID (3 = revB1B, 6 = revC2A)
+	word id;		///< ID
+	byte customer;	///< Customer
+	byte romId;		///< ROM ID (3 = revB1B, 6 = revC2A)
 
 	byte revExternal; ///< Revision external
-	byte revBranch;	 ///< Revision branch
+	byte revBranch;	  ///< Revision branch
 	byte revInternal; ///< Revision internal
-	word patch;		 ///< Patch
-	byte func;		 ///< Function
+	word patch;		  ///< Patch
+	byte func;		  ///< Function
 } si446x_info_t;
 
 /**
@@ -261,6 +261,7 @@ public:
 	Si446x();
 	void init(void);
 	void getInfo(si446x_info_t *info);
+	short getLatchedRSSI(void);
 	short getRSSI(void);
 	void setTxPower(byte pwr);
 	void setupCallback(word callbacks, byte state);
@@ -277,6 +278,7 @@ public:
 	byte readGPIO(void);
 	byte dump(byte *buff, byte group);
 	void read(byte *buff, byte len);
+	void onReceive(void (*callback)(byte));
 
 private:
 	byte interrupt_off(void);
@@ -294,7 +296,6 @@ private:
 	byte getProperty(word prop);
 	word getADC(byte adc_en, byte adc_cfg, byte part);
 	byte getFRR(byte reg);
-	short getLatchedRSSI(void);
 	si446x_state_t getState(void);
 	void setState(si446x_state_t newState);
 	void clearFIFO(void);
@@ -302,4 +303,5 @@ private:
 	void interrupt2(void *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);
 	void applyStartupConfig(void);
+	void (*_onReceive)(byte) = nullptr;
 };

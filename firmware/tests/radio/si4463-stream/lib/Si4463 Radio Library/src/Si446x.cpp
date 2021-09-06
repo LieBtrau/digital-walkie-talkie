@@ -60,11 +60,11 @@ extern "C"
 
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_CMDTIMEOUT(void);
 void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXBEGIN(short rssi);
-void __attribute__((weak)) SI446X_CB_RXCOMPLETE(byte length, short rssi)
+/*void __attribute__((weak)) SI446X_CB_RXCOMPLETE(byte length, short rssi)
 {
 	(void)(length);
 	(void)(rssi);
-}
+}*/
 void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXINVALID(short rssi);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_SENT(void);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_WUT(void);
@@ -73,6 +73,11 @@ void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_LOWBATT(void);
 Si446x::Si446x()
 {
 	pSi446x = this;
+}
+
+void Si446x::onReceive(void (*callback)(byte))
+{
+	_onReceive = callback;
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
@@ -663,7 +668,10 @@ void Si446x::handleIrqFall()
 #else
 		byte len = SI446X_FIXED_LENGTH;
 #endif
-		SI446X_CB_RXCOMPLETE(len, getLatchedRSSI());
+		if (_onReceive)
+		{
+			_onReceive(len);
+		}
 	}
 
 	// Corrupted packet
