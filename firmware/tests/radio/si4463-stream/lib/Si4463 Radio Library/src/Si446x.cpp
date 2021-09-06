@@ -40,6 +40,13 @@ static const byte config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
 
 static volatile byte enabledInterrupts[3];
 
+
+// It's not possible to get the current interrupt enabled state in Arduino (SREG only works for AVR based Arduinos, and no way of getting attachInterrupt() status), so we use a counter thing instead
+static volatile byte isrState_local;
+static volatile byte isrState;
+static volatile byte isrBusy; // Don't mess with global interrupts if we're inside an ISR
+
+
 // http://stackoverflow.com/questions/10802324/aliasing-a-function-on-a-c-interface-within-a-c-application-on-linux
 #if defined(__cplusplus)
 extern "C"
@@ -70,90 +77,10 @@ Si446x::Si446x()
 	pSi446x = this;
 }
 
-// It's not possible to get the current interrupt enabled state in Arduino (SREG only works for AVR based Arduinos, and no way of getting attachInterrupt() status), so we use a counter thing instead
-static volatile byte isrState_local;
-static volatile byte isrState;
-static volatile byte isrBusy; // Don't mess with global interrupts if we're inside an ISR
-
-inline byte Si446x::interrupt_off(void)
-{
-	if (!isrBusy)
-	{
-		noInterrupts();
-		isrState++;
-	}
-	return 1;
-}
-
-inline byte Si446x::interrupt_on(void)
-{
-	if (!isrBusy)
-	{
-		if (isrState > 0)
-			isrState--;
-		if (isrState == 0)
-			interrupts();
-	}
-	return 0;
-}
-
-static inline byte cselect(void)
-{
-	//	spi_enable();
-	digitalWrite(SI446X_CSN, LOW);
-	return 1;
-}
-
-static inline byte cdeselect(void)
-{
-	digitalWrite(SI446X_CSN, HIGH);
-	//	spi_disable();
-	return 0;
-}
-
-/**
-* @brief When using interrupts use this to disable them for the Si446x
-*
-* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_on()
-*
-* @see ::Si446x_irq_on() and ::SI446X_NO_INTERRUPT()
-* @return The previous interrupt status; 1 if interrupt was enabled, 0 if it was already disabled
-*/
-// TODO
-// 2 types of interrupt blocks
-// Local (SI446X_NO_INTERRUPT()): Disables the pin interrupt so the ISR does not run while normal code is busy in the Si446x code, however another interrupt can enter the code which would be bad.
-// Global (SI446X_ATOMIC()): Disable all interrupts, don't use waitForResponse() inside here as it can take a while to complete. These blocks are to make sure no other interrupts use the SPI bus.
-
-// When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
-void Si446x::irq_off()
-{
-	detachInterrupt(digitalPinToInterrupt(SI446X_IRQ));
-	isrState_local++;
-}
-
-/**
-* @brief When using interrupts use this to re-enable them for the Si446x
-*
-* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_off()
-*
-* @see ::Si446x_irq_off() and ::SI446X_NO_INTERRUPT()
-* @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
-* @return (none)
-*/
-void Si446x::irq_on()
-{
-	if (isrState_local > 0)
-		isrState_local--;
-	if (isrState_local == 0)
-		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::onIrqFalling, FALLING);
-}
-
-
 // Configure a bunch of properties (up to 12 properties in one go)
 void Si446x::setProperties(word prop, void *values, byte len)
 {
 	// len must not be greater than 12
-
 	byte data[16] = {
 		SI446X_CMD_SET_PROPERTY,
 		(byte)(prop >> 8),
@@ -203,18 +130,6 @@ word Si446x::getADC(byte adc_en, byte adc_cfg, byte part)
 	return (data[part] << 8 | data[part + 1]);
 }
 
-// Read a fast response register
-byte Si446x::getFRR(byte reg)
-{
-	byte frr = 0;
-	interrupt_off();
-	digitalWrite(SI446X_CSN, LOW);
-	SPI.transfer(reg);
-	frr = SPI.transfer(0xFF);
-	digitalWrite(SI446X_CSN, HIGH);
-	interrupt_on();
-	return frr;
-}
 
 // Get the patched RSSI from the beginning of the packet
 short Si446x::getLatchedRSSI(void)
@@ -544,95 +459,6 @@ byte Si446x::sleep()
 	return 1;
 }
 
-/**
-* @brief Read received data from FIFO
-*
-* @param [buff] Pointer to buffer to place data
-* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
-* @return (none)
-*/
-void Si446x::read(void *buff, byte len)
-{
-	interrupt_off();
-	digitalWrite(SI446X_CSN, LOW);
-	SPI.transfer(SI446X_CMD_READ_RX_FIFO);
-	for (byte i = 0; i < len; i++)
-		((byte *)buff)[i] = SPI.transfer(0xFF);
-	digitalWrite(SI446X_CSN, HIGH);
-	interrupt_on();
-}
-
-/**
-* @brief Transmit a packet
-*
-* @param [packet] Pointer to packet data
-* @param [len] Number of bytes to transmit, maximum of ::SI446X_MAX_PACKET_LEN If configured for fixed length packets then this parameter is ignored and the length is set by ::SI446X_FIXED_LENGTH in Si446x_config.h
-* @param [channel] Channel to transmit data on (0 - 255)
-* @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
-* @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
-*/
-byte Si446x::TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish)
-{
-	// TODO what happens if len is 0?
-
-#if SI446X_FIXED_LENGTH
-	// Stop the unused parameter warning
-	((void)(len));
-#endif
-
-	irq_off();
-	{
-		if (getState() == SI446X_STATE_TX) // Already transmitting
-		{
-			irq_on();
-			return 0;
-		}
-
-		// TODO collision avoid or maybe just do collision detect (RSSI jump)
-
-		setState(IDLE_STATE);
-		clearFIFO();
-		interrupt2(NULL, 0, 0, 0xFF);
-
-		interrupt_off();
-		// Load data to FIFO
-		digitalWrite(SI446X_CSN, LOW);
-		SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-#if !SI446X_FIXED_LENGTH
-		SPI.transfer(len);
-		for (byte i = 0; i < len; i++)
-			SPI.transfer(((byte *)packet)[i]);
-#else
-		for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
-			SPI.transfer(((byte *)packet)[i]);
-#endif
-		digitalWrite(SI446X_CSN, HIGH);
-		interrupt_on();
-
-#if !SI446X_FIXED_LENGTH
-		// Set packet length
-		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, len);
-#endif
-
-		// Begin transmit
-		byte data[] = {
-			SI446X_CMD_START_TX,
-			channel,
-			(byte)(onTxFinish << 4),
-			0,
-			SI446X_FIXED_LENGTH,
-			0,
-			0};
-		doAPI(data, sizeof(data), NULL, 0);
-
-#if !SI446X_FIXED_LENGTH
-		// Reset packet length back to max for receive mode
-		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
-#endif
-	}
-	irq_on();
-	return 1;
-}
 
 /**
 * @brief Enter receive mode
@@ -879,6 +705,79 @@ void Si446x::handleIrqFall()
 	isrBusy = 0;
 }
 
+/**
+* @brief Transmit a packet
+*
+* @param [packet] Pointer to packet data
+* @param [len] Number of bytes to transmit, maximum of ::SI446X_MAX_PACKET_LEN If configured for fixed length packets then this parameter is ignored and the length is set by ::SI446X_FIXED_LENGTH in Si446x_config.h
+* @param [channel] Channel to transmit data on (0 - 255)
+* @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
+* @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
+*/
+byte Si446x::TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish)
+{
+	// TODO what happens if len is 0?
+
+#if SI446X_FIXED_LENGTH
+	// Stop the unused parameter warning
+	((void)(len));
+#endif
+
+	irq_off();
+	{
+		if (getState() == SI446X_STATE_TX) // Already transmitting
+		{
+			irq_on();
+			return 0;
+		}
+
+		// TODO collision avoid or maybe just do collision detect (RSSI jump)
+
+		setState(IDLE_STATE);
+		clearFIFO();
+		interrupt2(NULL, 0, 0, 0xFF);
+
+		interrupt_off();
+		// Load data to FIFO
+		digitalWrite(SI446X_CSN, LOW);
+		SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
+#if !SI446X_FIXED_LENGTH
+		SPI.transfer(len);
+		for (byte i = 0; i < len; i++)
+			SPI.transfer(((byte *)packet)[i]);
+#else
+		for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+			SPI.transfer(((byte *)packet)[i]);
+#endif
+		digitalWrite(SI446X_CSN, HIGH);
+		interrupt_on();
+
+#if !SI446X_FIXED_LENGTH
+		// Set packet length
+		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, len);
+#endif
+
+		// Begin transmit
+		byte data[] = {
+			SI446X_CMD_START_TX,
+			channel,
+			(byte)(onTxFinish << 4),
+			0,
+			SI446X_FIXED_LENGTH,
+			0,
+			0};
+		doAPI(data, sizeof(data), NULL, 0);
+
+#if !SI446X_FIXED_LENGTH
+		// Reset packet length back to max for receive mode
+		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
+#endif
+	}
+	irq_on();
+	return 1;
+}
+
+
 void Si446x::doAPI(void *data, byte len, void *out, byte outLen)
 {
 	irq_off();
@@ -937,4 +836,96 @@ byte Si446x::getResponse(void *buff, byte len)
 	digitalWrite(SI446X_CSN, HIGH);
 	interrupt_on();
 	return cts;
+}
+
+/**
+* @brief Read received data from FIFO
+*
+* @param [buff] Pointer to buffer to place data
+* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
+* @return (none)
+*/
+void Si446x::read(void *buff, byte len)
+{
+	interrupt_off();
+	digitalWrite(SI446X_CSN, LOW);
+	SPI.transfer(SI446X_CMD_READ_RX_FIFO);
+	for (byte i = 0; i < len; i++)
+	{
+		((byte *)buff)[i] = SPI.transfer(0xFF);
+	}
+	digitalWrite(SI446X_CSN, HIGH);
+	interrupt_on();
+}
+
+// Read a fast response register
+byte Si446x::getFRR(byte reg)
+{
+	byte frr = 0;
+	interrupt_off();
+	digitalWrite(SI446X_CSN, LOW);
+	SPI.transfer(reg);
+	frr = SPI.transfer(0xFF);
+	digitalWrite(SI446X_CSN, HIGH);
+	interrupt_on();
+	return frr;
+}
+
+inline byte Si446x::interrupt_off(void)
+{
+	if (!isrBusy)
+	{
+		noInterrupts();
+		isrState++;
+	}
+	return 1;
+}
+
+inline byte Si446x::interrupt_on(void)
+{
+	if (!isrBusy)
+	{
+		if (isrState > 0)
+			isrState--;
+		if (isrState == 0)
+			interrupts();
+	}
+	return 0;
+}
+
+/**
+* @brief When using interrupts use this to disable them for the Si446x
+*
+* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_on()
+*
+* @see ::Si446x_irq_on() and ::SI446X_NO_INTERRUPT()
+* @return The previous interrupt status; 1 if interrupt was enabled, 0 if it was already disabled
+*/
+// TODO
+// 2 types of interrupt blocks
+// Local (SI446X_NO_INTERRUPT()): Disables the pin interrupt so the ISR does not run while normal code is busy in the Si446x code, however another interrupt can enter the code which would be bad.
+// Global (SI446X_ATOMIC()): Disable all interrupts, don't use waitForResponse() inside here as it can take a while to complete. These blocks are to make sure no other interrupts use the SPI bus.
+
+// When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
+void Si446x::irq_off()
+{
+	detachInterrupt(digitalPinToInterrupt(SI446X_IRQ));
+	isrState_local++;
+}
+
+/**
+* @brief When using interrupts use this to re-enable them for the Si446x
+*
+* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_off()
+*
+* @see ::Si446x_irq_off() and ::SI446X_NO_INTERRUPT()
+* @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
+* @return (none)
+*/
+void Si446x::irq_on()
+{
+	if (isrState_local > 0)
+		isrState_local--;
+	if (isrState_local == 0)
+		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::onIrqFalling, FALLING);
 }
