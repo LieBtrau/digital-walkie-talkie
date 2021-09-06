@@ -40,12 +40,10 @@ static const byte config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
 
 static volatile byte enabledInterrupts[3];
 
-
 // It's not possible to get the current interrupt enabled state in Arduino (SREG only works for AVR based Arduinos, and no way of getting attachInterrupt() status), so we use a counter thing instead
 static volatile byte isrState_local;
 static volatile byte isrState;
 static volatile byte isrBusy; // Don't mess with global interrupts if we're inside an ISR
-
 
 // http://stackoverflow.com/questions/10802324/aliasing-a-function-on-a-c-interface-within-a-c-application-on-linux
 #if defined(__cplusplus)
@@ -129,7 +127,6 @@ word Si446x::getADC(byte adc_en, byte adc_cfg, byte part)
 	doAPI(data, 3, data, 6);
 	return (data[part] << 8 | data[part + 1]);
 }
-
 
 // Get the patched RSSI from the beginning of the packet
 short Si446x::getLatchedRSSI(void)
@@ -288,8 +285,6 @@ short Si446x::getRSSI()
 	return rssi;
 }
 
-
-
 /**
 * @brief Set the transmit power. The output power does not follow the \p pwr value, see the Si446x datasheet for a pretty graph
 *
@@ -354,40 +349,38 @@ void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 		return;
 
 	irq_off();
+	// Disable WUT
+	setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
+
+	byte doRun = !!(config & SI446X_WUT_RUN);
+	byte doBatt = !!(config & SI446X_WUT_BATT);
+	byte doRx = (config & SI446X_WUT_RX);
+
+	// Setup WUT interrupts
+	byte intChip = 0; //getProperty(SI446X_INT_CTL_CHIP_ENABLE); // No other CHIP interrupts are enabled so dont bother reading the current state
+	//intChip &= ~((1<<SI446X_INT_CTL_CHIP_LOW_BATT_EN)|(1<<SI446X_INT_CTL_CHIP_WUT_EN));
+	intChip |= doBatt << SI446X_INT_CTL_CHIP_LOW_BATT_EN;
+	intChip |= doRun << SI446X_INT_CTL_CHIP_WUT_EN;
+	enabledInterrupts[IRQ_CHIP] = intChip;
+	setProperty(SI446X_INT_CTL_CHIP_ENABLE, intChip);
+
+	// Set WUT clock source to internal 32KHz RC
+	if (getProperty(SI446X_GLOBAL_CLK_CFG) != SI446X_DIVIDED_CLK_32K_SEL_RC)
 	{
-		// Disable WUT
-		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
-
-		byte doRun = !!(config & SI446X_WUT_RUN);
-		byte doBatt = !!(config & SI446X_WUT_BATT);
-		byte doRx = (config & SI446X_WUT_RX);
-
-		// Setup WUT interrupts
-		byte intChip = 0; //getProperty(SI446X_INT_CTL_CHIP_ENABLE); // No other CHIP interrupts are enabled so dont bother reading the current state
-		//intChip &= ~((1<<SI446X_INT_CTL_CHIP_LOW_BATT_EN)|(1<<SI446X_INT_CTL_CHIP_WUT_EN));
-		intChip |= doBatt << SI446X_INT_CTL_CHIP_LOW_BATT_EN;
-		intChip |= doRun << SI446X_INT_CTL_CHIP_WUT_EN;
-		enabledInterrupts[IRQ_CHIP] = intChip;
-		setProperty(SI446X_INT_CTL_CHIP_ENABLE, intChip);
-
-		// Set WUT clock source to internal 32KHz RC
-		if (getProperty(SI446X_GLOBAL_CLK_CFG) != SI446X_DIVIDED_CLK_32K_SEL_RC)
-		{
-			setProperty(SI446X_GLOBAL_CLK_CFG, SI446X_DIVIDED_CLK_32K_SEL_RC);
-			delayMicroseconds(300); // Need to wait 300us for clock source to stabilize, see GLOBAL_WUT_CONFIG:WUT_EN info
-		}
-
-		// Setup WUT
-		byte properties[5];
-		properties[0] = doRx ? SI446X_GLOBAL_WUT_CONFIG_WUT_LDC_EN_RX : 0;
-		properties[0] |= doBatt << SI446X_GLOBAL_WUT_CONFIG_WUT_LBD_EN;
-		properties[0] |= (1 << SI446X_GLOBAL_WUT_CONFIG_WUT_EN);
-		properties[1] = m >> 8;
-		properties[2] = m;
-		properties[3] = r | SI446X_LDC_MAX_PERIODS_TWO | (1 << SI446X_WUT_SLEEP);
-		properties[4] = ldc;
-		setProperties(SI446X_GLOBAL_WUT_CONFIG, properties, sizeof(properties));
+		setProperty(SI446X_GLOBAL_CLK_CFG, SI446X_DIVIDED_CLK_32K_SEL_RC);
+		delayMicroseconds(300); // Need to wait 300us for clock source to stabilize, see GLOBAL_WUT_CONFIG:WUT_EN info
 	}
+
+	// Setup WUT
+	byte properties[5];
+	properties[0] = doRx ? SI446X_GLOBAL_WUT_CONFIG_WUT_LDC_EN_RX : 0;
+	properties[0] |= doBatt << SI446X_GLOBAL_WUT_CONFIG_WUT_LBD_EN;
+	properties[0] |= (1 << SI446X_GLOBAL_WUT_CONFIG_WUT_EN);
+	properties[1] = m >> 8;
+	properties[2] = m;
+	properties[3] = r | SI446X_LDC_MAX_PERIODS_TWO | (1 << SI446X_WUT_SLEEP);
+	properties[4] = ldc;
+	setProperties(SI446X_GLOBAL_WUT_CONFIG, properties, sizeof(properties));
 	irq_on();
 }
 
@@ -399,10 +392,8 @@ void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 void Si446x::disableWUT()
 {
 	irq_off();
-	{
-		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
-		setProperty(SI446X_GLOBAL_CLK_CFG, 0);
-	}
+	setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
+	setProperty(SI446X_GLOBAL_CLK_CFG, 0);
 	irq_on();
 }
 
@@ -416,28 +407,26 @@ void Si446x::disableWUT()
 void Si446x::setupCallback(word callbacks, byte state)
 {
 	irq_off();
+	byte data[2];
+	getProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
+
+	if (state)
 	{
-		byte data[2];
-		getProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
-
-		if (state)
-		{
-			data[0] |= callbacks >> 8;
-			data[1] |= callbacks;
-		}
-		else
-		{
-			data[0] &= ~(callbacks >> 8);
-			data[1] &= ~callbacks;
-		}
-
-		// TODO
-		// make sure RXCOMPELTE, RXINVALID and RXBEGIN? are always enabled
-
-		enabledInterrupts[IRQ_PACKET] = data[0];
-		enabledInterrupts[IRQ_MODEM] = data[1];
-		setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
+		data[0] |= callbacks >> 8;
+		data[1] |= callbacks;
 	}
+	else
+	{
+		data[0] &= ~(callbacks >> 8);
+		data[1] &= ~callbacks;
+	}
+
+	// TODO
+	// make sure RXCOMPELTE, RXINVALID and RXBEGIN? are always enabled
+
+	enabledInterrupts[IRQ_PACKET] = data[0];
+	enabledInterrupts[IRQ_MODEM] = data[1];
+	setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 	irq_on();
 }
 
@@ -459,7 +448,6 @@ byte Si446x::sleep()
 	return 1;
 }
 
-
 /**
 * @brief Enter receive mode
 *
@@ -471,28 +459,26 @@ byte Si446x::sleep()
 void Si446x::RX(byte channel)
 {
 	irq_off();
-	{
-		setState(IDLE_STATE);
-		clearFIFO();
-		//fix_invalidSync_irq(0);
-		//Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
-		//setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN); // TODO ?
-		interrupt2(NULL, 0, 0, 0xFF); // TODO needed?
+	setState(IDLE_STATE);
+	clearFIFO();
+	//fix_invalidSync_irq(0);
+	//Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
+	//setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN); // TODO ?
+	interrupt2(NULL, 0, 0, 0xFF); // TODO needed?
 
-		// TODO RX timeout to sleep if WUT LDC enabled
+	// TODO RX timeout to sleep if WUT LDC enabled
 
-		byte data[] = {
-			SI446X_CMD_START_RX,
-			channel,
-			0,
-			0,
-			SI446X_FIXED_LENGTH,
-			SI446X_STATE_NOCHANGE, // RX Timeout
-			IDLE_STATE,			   // RX Valid
-			SI446X_STATE_SLEEP	   // IDLE_STATE // RX Invalid (using SI446X_STATE_SLEEP for the INVALID_SYNC fix)
-		};
-		doAPI(data, sizeof(data), NULL, 0);
-	}
+	byte data[] = {
+		SI446X_CMD_START_RX,
+		channel,
+		0,
+		0,
+		SI446X_FIXED_LENGTH,
+		SI446X_STATE_NOCHANGE, // RX Timeout
+		IDLE_STATE,			   // RX Valid
+		SI446X_STATE_SLEEP	   // IDLE_STATE // RX Invalid (using SI446X_STATE_SLEEP for the INVALID_SYNC fix)
+	};
+	doAPI(data, sizeof(data), NULL, 0);
 	irq_on();
 }
 
@@ -724,59 +710,56 @@ byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
 #endif
 
 	irq_off();
+	if (getState() == SI446X_STATE_TX) // Already transmitting
 	{
-		if (getState() == SI446X_STATE_TX) // Already transmitting
-		{
-			irq_on();
-			return 0;
-		}
-
-		// TODO collision avoid or maybe just do collision detect (RSSI jump)
-
-		setState(IDLE_STATE);
-		clearFIFO();
-		interrupt2(NULL, 0, 0, 0xFF);
-
-		interrupt_off();
-		// Load data to FIFO
-		digitalWrite(SI446X_CSN, LOW);
-		SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-#if !SI446X_FIXED_LENGTH
-		SPI.transfer(len);
-		for (byte i = 0; i < len; i++)
-			SPI.transfer(packet[i]);
-#else
-		for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
-			SPI.transfer(packet[i]);
-#endif
-		digitalWrite(SI446X_CSN, HIGH);
-		interrupt_on();
-
-#if !SI446X_FIXED_LENGTH
-		// Set packet length
-		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, len);
-#endif
-
-		// Begin transmit
-		byte data[] = {
-			SI446X_CMD_START_TX,
-			channel,
-			(byte)(onTxFinish << 4),
-			0,
-			SI446X_FIXED_LENGTH,
-			0,
-			0};
-		doAPI(data, sizeof(data), NULL, 0);
-
-#if !SI446X_FIXED_LENGTH
-		// Reset packet length back to max for receive mode
-		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
-#endif
+		irq_on();
+		return 0;
 	}
+
+	// TODO collision avoid or maybe just do collision detect (RSSI jump)
+
+	setState(IDLE_STATE);
+	clearFIFO();
+	interrupt2(NULL, 0, 0, 0xFF);
+
+	interrupt_off();
+	// Load data to FIFO
+	digitalWrite(SI446X_CSN, LOW);
+	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
+#if !SI446X_FIXED_LENGTH
+	SPI.transfer(len);
+	for (byte i = 0; i < len; i++)
+		SPI.transfer(packet[i]);
+#else
+	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+		SPI.transfer(packet[i]);
+#endif
+	digitalWrite(SI446X_CSN, HIGH);
+	interrupt_on();
+
+#if !SI446X_FIXED_LENGTH
+	// Set packet length
+	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, len);
+#endif
+
+	// Begin transmit
+	byte data[] = {
+		SI446X_CMD_START_TX,
+		channel,
+		(byte)(onTxFinish << 4),
+		0,
+		SI446X_FIXED_LENGTH,
+		0,
+		0};
+	doAPI(data, sizeof(data), NULL, 0);
+
+#if !SI446X_FIXED_LENGTH
+	// Reset packet length back to max for receive mode
+	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
+#endif
 	irq_on();
 	return 1;
 }
-
 
 void Si446x::doAPI(void *data, byte len, void *out, byte outLen)
 {
