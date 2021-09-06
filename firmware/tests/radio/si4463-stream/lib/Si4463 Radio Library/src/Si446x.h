@@ -280,8 +280,12 @@ public:
 	void Si446x_read(void *buff, uint8_t len);
 
 private:
-	static void Si446x_SERVICE(void);
-	void handleInterrupt(void);
+	uint8_t interrupt_off(void);
+	uint8_t interrupt_on(void);
+	static void onIrqFalling(void);
+	void handleIrqFall(void);
+	uint8_t getResponse(void *buff, uint8_t len);
+	uint8_t waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout);
 	uint8_t Si446x_irq_off(void);
 	void Si446x_irq_on(uint8_t origVal);
 	void doAPI(void *data, uint8_t len, void *out, uint8_t outLen);
@@ -290,9 +294,13 @@ private:
 	void getProperties(uint16_t prop, void *values, uint8_t len);
 	uint8_t getProperty(uint16_t prop);
 	uint16_t getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part);
+	uint8_t getFRR(uint8_t reg);
+	int16_t getLatchedRSSI(void);
+	si446x_state_t getState(void);
 	void setState(si446x_state_t newState);
 	void clearFIFO(void);
 	void interrupt(void *buff);
 	void interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP);
+	void resetDevice(void);
 	void applyStartupConfig(void);
 };

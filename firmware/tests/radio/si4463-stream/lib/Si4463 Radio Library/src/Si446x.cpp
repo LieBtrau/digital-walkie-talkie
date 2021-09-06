@@ -36,11 +36,6 @@
 
 static Si446x *pSi446x = nullptr;
 
-#define spiSelect() (digitalWrite(SI446X_CSN, LOW))
-#define spiDeselect() (digitalWrite(SI446X_CSN, HIGH))
-#define spi_transfer_nr(data) (SPI.transfer(data))
-#define spi_transfer(data) (SPI.transfer(data))
-
 static const uint8_t config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
 
 static volatile uint8_t enabledInterrupts[3];
@@ -80,7 +75,7 @@ static volatile uint8_t isrState_local;
 static volatile uint8_t isrState;
 static volatile uint8_t isrBusy; // Don't mess with global interrupts if we're inside an ISR
 
-static inline uint8_t interrupt_off(void)
+inline uint8_t Si446x::interrupt_off(void)
 {
 	if (!isrBusy)
 	{
@@ -90,7 +85,7 @@ static inline uint8_t interrupt_off(void)
 	return 1;
 }
 
-static inline uint8_t interrupt_on(void)
+inline uint8_t Si446x::interrupt_on(void)
 {
 	if (!isrBusy)
 	{
@@ -105,17 +100,16 @@ static inline uint8_t interrupt_on(void)
 static inline uint8_t cselect(void)
 {
 	//	spi_enable();
-	spiSelect();
+	digitalWrite(SI446X_CSN, LOW);
 	return 1;
 }
 
 static inline uint8_t cdeselect(void)
 {
-	spiDeselect();
+	digitalWrite(SI446X_CSN, HIGH);
 	//	spi_disable();
 	return 0;
 }
-#define CHIPSELECT() for (uint8_t _cs = cselect(); _cs; _cs = cdeselect())
 
 /**
 * @brief When using interrupts use this to disable them for the Si446x
@@ -153,38 +147,35 @@ void Si446x::Si446x_irq_on(uint8_t origVal)
 	if (isrState_local > 0)
 		isrState_local--;
 	if (isrState_local == 0)
-		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::Si446x_SERVICE, FALLING);
+		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::onIrqFalling, FALLING);
 }
 
 // Read CTS and if its ok then read the command buffer
-static uint8_t getResponse(void *buff, uint8_t len)
+uint8_t Si446x::getResponse(void *buff, uint8_t len)
 {
 	uint8_t cts = 0;
 
 	interrupt_off();
+	digitalWrite(SI446X_CSN, LOW);
+	// Send command
+	SPI.transfer(SI446X_CMD_READ_CMD_BUFF);
+
+	// Get CTS value
+	cts = (SPI.transfer(0xFF) == 0xFF);
+
+	if (cts)
 	{
-		CHIPSELECT()
-		{
-			// Send command
-			spi_transfer_nr(SI446X_CMD_READ_CMD_BUFF);
-
-			// Get CTS value
-			cts = (spi_transfer(0xFF) == 0xFF);
-
-			if (cts)
-			{
-				// Get response data
-				for (uint8_t i = 0; i < len; i++)
-					((uint8_t *)buff)[i] = spi_transfer(0xFF);
-			}
-		}
+		// Get response data
+		for (uint8_t i = 0; i < len; i++)
+			((uint8_t *)buff)[i] = SPI.transfer(0xFF);
 	}
+	digitalWrite(SI446X_CSN, HIGH);
 	interrupt_on();
 	return cts;
 }
 
 // Keep trying to read the command buffer, with timeout of around 500ms
-static uint8_t waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout)
+uint8_t Si446x::waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout)
 {
 	// With F_CPU at 8MHz and SPI at 4MHz each check takes about 7us + 10us delay
 	uint16_t timeout = 40000;
@@ -206,13 +197,10 @@ void Si446x::doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
 	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
 	{
 		interrupt_off();
-		{
-			CHIPSELECT()
-			{
-				for (uint8_t i = 0; i < len; i++)
-					spi_transfer_nr(((uint8_t *)data)[i]); // (pgm_read_byte(&((uint8_t*)data)[i]));
-			}
-		}
+		digitalWrite(SI446X_CSN, LOW);
+		for (uint8_t i = 0; i < len; i++)
+			SPI.transfer(((uint8_t *)data)[i]); // (pgm_read_byte(&((uint8_t*)data)[i]));
+		digitalWrite(SI446X_CSN, HIGH);
 		interrupt_on();
 		if (((uint8_t *)data)[0] == SI446X_CMD_IRCAL) // If we're doing an IRCAL then wait for its completion without a timeout since it can sometimes take a few seconds
 			waitForResponse(NULL, 0, 0);
@@ -244,14 +232,7 @@ inline void Si446x::setProperty(uint16_t prop, uint8_t value)
 {
 	setProperties(prop, &value, 1);
 }
-/*
-// Set a 16bit property
-static void setProperty16(uint16_t prop, uint16_t value)
-{
-	uint8_t properties[] = {value>>8, value};
-	setProperties(prop, properties, sizeof(properties));
-}
-*/
+
 // Read a bunch of properties
 void Si446x::getProperties(uint16_t prop, void *values, uint8_t len)
 {
@@ -284,23 +265,20 @@ uint16_t Si446x::getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part)
 }
 
 // Read a fast response register
-static uint8_t getFRR(uint8_t reg)
+uint8_t Si446x::getFRR(uint8_t reg)
 {
 	uint8_t frr = 0;
 	interrupt_off();
-	{
-		CHIPSELECT()
-		{
-			spi_transfer_nr(reg);
-			frr = spi_transfer(0xFF);
-		}
-	}
+	digitalWrite(SI446X_CSN, LOW);
+	SPI.transfer(reg);
+	frr = SPI.transfer(0xFF);
+	digitalWrite(SI446X_CSN, HIGH);
 	interrupt_on();
 	return frr;
 }
 
-// Ge the patched RSSI from the beginning of the packet
-static int16_t getLatchedRSSI(void)
+// Get the patched RSSI from the beginning of the packet
+int16_t Si446x::getLatchedRSSI(void)
 {
 	uint8_t frr = getFRR(SI446X_CMD_READ_FRR_A);
 	int16_t rssi = rssi_dBm(frr);
@@ -308,7 +286,7 @@ static int16_t getLatchedRSSI(void)
 }
 
 // Get current radio state
-static si446x_state_t getState(void)
+si446x_state_t Si446x::getState(void)
 {
 	uint8_t state = getFRR(SI446X_CMD_READ_FRR_B);
 	if (state == SI446X_STATE_TX_TUNE)
@@ -360,7 +338,7 @@ void Si446x::interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t
 }
 
 // Reset the RF chip
-static void resetDevice(void)
+void Si446x::resetDevice(void)
 {
 	digitalWrite(SI446X_SDN, HIGH);
 	delay(50);
@@ -387,7 +365,7 @@ void Si446x::applyStartupConfig(void)
 */
 void Si446x::Si446x_init()
 {
-	spiDeselect();
+	digitalWrite(SI446X_CSN, HIGH);
 	pinMode(SI446X_CSN, OUTPUT);
 	pinMode(SI446X_SDN, OUTPUT);
 	pinMode(SI446X_IRQ, INPUT_PULLUP);
@@ -403,7 +381,7 @@ void Si446x::Si446x_init()
 	if (isrState_local > 0)
 		isrState_local--;
 	if (isrState_local == 0)
-		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x_SERVICE, FALLING);
+		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), onIrqFalling, FALLING);
 }
 
 /**
@@ -642,14 +620,11 @@ uint8_t Si446x::Si446x_sleep()
 void Si446x::Si446x_read(void *buff, uint8_t len)
 {
 	interrupt_off();
-	{
-		CHIPSELECT()
-		{
-			spi_transfer_nr(SI446X_CMD_READ_RX_FIFO);
-			for (uint8_t i = 0; i < len; i++)
-				((uint8_t *)buff)[i] = spi_transfer(0xFF);
-		}
-	}
+	digitalWrite(SI446X_CSN, LOW);
+	SPI.transfer(SI446X_CMD_READ_RX_FIFO);
+	for (uint8_t i = 0; i < len; i++)
+		((uint8_t *)buff)[i] = SPI.transfer(0xFF);
+	digitalWrite(SI446X_CSN, HIGH);
 	interrupt_on();
 }
 
@@ -686,21 +661,18 @@ uint8_t Si446x::Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_sta
 		interrupt2(NULL, 0, 0, 0xFF);
 
 		interrupt_off();
-		{
-			// Load data to FIFO
-			CHIPSELECT()
-			{
-				spi_transfer_nr(SI446X_CMD_WRITE_TX_FIFO);
+		// Load data to FIFO
+		digitalWrite(SI446X_CSN, LOW);
+		SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
 #if !SI446X_FIXED_LENGTH
-				spi_transfer_nr(len);
-				for (uint8_t i = 0; i < len; i++)
-					spi_transfer_nr(((uint8_t *)packet)[i]);
+		SPI.transfer(len);
+		for (uint8_t i = 0; i < len; i++)
+			SPI.transfer(((uint8_t *)packet)[i]);
 #else
-				for (uint8_t i = 0; i < SI446X_FIXED_LENGTH; i++)
-					spi_transfer_nr(((uint8_t *)packet)[i]);
+		for (uint8_t i = 0; i < SI446X_FIXED_LENGTH; i++)
+			SPI.transfer(((uint8_t *)packet)[i]);
 #endif
-			}
-		}
+		digitalWrite(SI446X_CSN, HIGH);
 		interrupt_on();
 
 #if !SI446X_FIXED_LENGTH
@@ -895,12 +867,12 @@ uint8_t Si446x::Si446x_dump(void *buff, uint8_t group)
 *
 * @return (none)
 */
-ISR_PREFIX void Si446x::Si446x_SERVICE()
+ISR_PREFIX void Si446x::onIrqFalling()
 {
-	pSi446x->handleInterrupt();
+	pSi446x->handleIrqFall();
 }
 
-void Si446x::handleInterrupt()
+void Si446x::handleIrqFall()
 {
 	isrBusy = 1;
 	uint8_t interrupts[8];
