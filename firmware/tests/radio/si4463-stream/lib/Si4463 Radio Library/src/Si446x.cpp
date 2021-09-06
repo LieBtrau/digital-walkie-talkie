@@ -577,7 +577,7 @@ byte Si446x::readGPIO()
 * @param [group] The group to dump
 * @return Size of the property group
 */
-byte Si446x::dump(void *buff, byte group)
+byte Si446x::dump(byte *buff, byte group)
 {
 	static const byte groupSizes[] PROGMEM = {
 		SI446X_PROP_GROUP_GLOBAL, 0x0A,
@@ -616,7 +616,7 @@ byte Si446x::dump(void *buff, byte group)
 		byte count = length - i;
 		if (count > 16)
 			count = 16;
-		getProperties((group << 8) | i, ((byte *)buff) + i, count);
+		getProperties((group << 8) | i, buff + i, count);
 	}
 
 	return length;
@@ -714,7 +714,7 @@ void Si446x::handleIrqFall()
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
-byte Si446x::TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish)
+byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
 {
 	// TODO what happens if len is 0?
 
@@ -744,10 +744,10 @@ byte Si446x::TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish)
 #if !SI446X_FIXED_LENGTH
 		SPI.transfer(len);
 		for (byte i = 0; i < len; i++)
-			SPI.transfer(((byte *)packet)[i]);
+			SPI.transfer(packet[i]);
 #else
 		for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
-			SPI.transfer(((byte *)packet)[i]);
+			SPI.transfer(packet[i]);
 #endif
 		digitalWrite(SI446X_CSN, HIGH);
 		interrupt_on();
@@ -845,14 +845,14 @@ byte Si446x::getResponse(void *buff, byte len)
 * @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
 * @return (none)
 */
-void Si446x::read(void *buff, byte len)
+void Si446x::read(byte *buff, byte len)
 {
 	interrupt_off();
 	digitalWrite(SI446X_CSN, LOW);
 	SPI.transfer(SI446X_CMD_READ_RX_FIFO);
 	for (byte i = 0; i < len; i++)
 	{
-		((byte *)buff)[i] = SPI.transfer(0xFF);
+		buff[i] = SPI.transfer(0xFF);
 	}
 	digitalWrite(SI446X_CSN, HIGH);
 	interrupt_on();

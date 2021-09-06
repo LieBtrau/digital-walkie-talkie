@@ -264,7 +264,7 @@ public:
 	short getRSSI(void);
 	void setTxPower(byte pwr);
 	void setupCallback(word callbacks, byte state);
-	byte TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish);
+	byte TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish);
 	void RX(byte channel);
 	void setLowBatt(word voltage);
 	void setupWUT(byte r, word m, byte ldc, byte config);
@@ -275,8 +275,8 @@ public:
 	float adc_temperature(void);
 	void writeGPIO(si446x_gpio_t pin, byte value);
 	byte readGPIO(void);
-	byte dump(void *buff, byte group);
-	void read(void *buff, byte len);
+	byte dump(byte *buff, byte group);
+	void read(byte *buff, byte len);
 
 private:
 	byte interrupt_off(void);

@@ -83,12 +83,12 @@ void clientloop()
 	static uint32_t invalids;
 
 	// Make data
-	char data[MAX_PACKET_SIZE] = {0};
-	sprintf_P(data, PSTR("test %hhu"), counter);
+	byte data[MAX_PACKET_SIZE] = {0};
+	sprintf_P((char*)data, PSTR("test %hhu"), counter);
 	counter++;
 
 	Serial.print(F("Client : Sending data"));
-	Serial.println(data);
+	Serial.println((char*)data);
 
 	uint32_t startTime = millis();
 
