@@ -206,18 +206,18 @@ typedef enum
 */
 typedef struct
 {
-	uint8_t chipRev;   ///< Chip revision
-	uint16_t part;	   ///< Part ID
-	uint8_t partBuild; ///< Part build
-	uint16_t id;	   ///< ID
-	uint8_t customer;  ///< Customer
-	uint8_t romId;	   ///< ROM ID (3 = revB1B, 6 = revC2A)
+	byte chipRev;   ///< Chip revision
+	word part;	   ///< Part ID
+	byte partBuild; ///< Part build
+	word id;	   ///< ID
+	byte customer;  ///< Customer
+	byte romId;	   ///< ROM ID (3 = revB1B, 6 = revC2A)
 
-	uint8_t revExternal; ///< Revision external
-	uint8_t revBranch;	 ///< Revision branch
-	uint8_t revInternal; ///< Revision internal
-	uint16_t patch;		 ///< Patch
-	uint8_t func;		 ///< Function
+	byte revExternal; ///< Revision external
+	byte revBranch;	 ///< Revision branch
+	byte revInternal; ///< Revision internal
+	word patch;		 ///< Patch
+	byte func;		 ///< Function
 } si446x_info_t;
 
 /**
@@ -261,45 +261,45 @@ public:
 	Si446x();
 	void init(void);
 	void getInfo(si446x_info_t *info);
-	int16_t getRSSI(void);
-	void setTxPower(uint8_t pwr);
-	void setupCallback(uint16_t callbacks, uint8_t state);
-	uint8_t TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish);
-	void RX(uint8_t channel);
-	void setLowBatt(uint16_t voltage);
-	void setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config);
+	short getRSSI(void);
+	void setTxPower(byte pwr);
+	void setupCallback(word callbacks, byte state);
+	byte TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish);
+	void RX(byte channel);
+	void setLowBatt(word voltage);
+	void setupWUT(byte r, word m, byte ldc, byte config);
 	void disableWUT(void);
-	uint8_t sleep(void);
-	uint16_t adc_gpio(uint8_t pin);
-	uint16_t adc_battery(void);
+	byte sleep(void);
+	word adc_gpio(byte pin);
+	word adc_battery(void);
 	float adc_temperature(void);
-	void writeGPIO(si446x_gpio_t pin, uint8_t value);
-	uint8_t readGPIO(void);
-	uint8_t dump(void *buff, uint8_t group);
-	void read(void *buff, uint8_t len);
+	void writeGPIO(si446x_gpio_t pin, byte value);
+	byte readGPIO(void);
+	byte dump(void *buff, byte group);
+	void read(void *buff, byte len);
 
 private:
-	uint8_t interrupt_off(void);
-	uint8_t interrupt_on(void);
+	byte interrupt_off(void);
+	byte interrupt_on(void);
 	static void onIrqFalling(void);
 	void handleIrqFall(void);
-	uint8_t getResponse(void *buff, uint8_t len);
-	uint8_t waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout);
+	byte getResponse(void *buff, byte len);
+	byte waitForResponse(void *out, byte outLen, byte useTimeout);
 	void irq_off(void);
 	void irq_on(void);
-	void doAPI(void *data, uint8_t len, void *out, uint8_t outLen);
-	void setProperties(uint16_t prop, void *values, uint8_t len);
-	void setProperty(uint16_t prop, uint8_t value);
-	void getProperties(uint16_t prop, void *values, uint8_t len);
-	uint8_t getProperty(uint16_t prop);
-	uint16_t getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part);
-	uint8_t getFRR(uint8_t reg);
-	int16_t getLatchedRSSI(void);
+	void doAPI(void *data, byte len, void *out, byte outLen);
+	void setProperties(word prop, void *values, byte len);
+	void setProperty(word prop, byte value);
+	void getProperties(word prop, void *values, byte len);
+	byte getProperty(word prop);
+	word getADC(byte adc_en, byte adc_cfg, byte part);
+	byte getFRR(byte reg);
+	short getLatchedRSSI(void);
 	si446x_state_t getState(void);
 	void setState(si446x_state_t newState);
 	void clearFIFO(void);
 	void interrupt(void *buff);
-	void interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP);
+	void interrupt2(void *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);
 	void applyStartupConfig(void);
 };

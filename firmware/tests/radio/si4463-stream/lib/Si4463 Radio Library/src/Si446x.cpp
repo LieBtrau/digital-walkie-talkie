@@ -36,9 +36,9 @@
 
 static Si446x *pSi446x = nullptr;
 
-static const uint8_t config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
+static const byte config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
 
-static volatile uint8_t enabledInterrupts[3];
+static volatile byte enabledInterrupts[3];
 
 // http://stackoverflow.com/questions/10802324/aliasing-a-function-on-a-c-interface-within-a-c-application-on-linux
 #if defined(__cplusplus)
@@ -48,19 +48,19 @@ extern "C"
 	static void __empty_callback0(void)
 	{
 	}
-	static void __empty_callback1(int16_t param1) { (void)(param1); }
+	static void __empty_callback1(short param1) { (void)(param1); }
 #if defined(__cplusplus)
 }
 #endif
 
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_CMDTIMEOUT(void);
-void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXBEGIN(int16_t rssi);
-void __attribute__((weak)) SI446X_CB_RXCOMPLETE(uint8_t length, int16_t rssi)
+void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXBEGIN(short rssi);
+void __attribute__((weak)) SI446X_CB_RXCOMPLETE(byte length, short rssi)
 {
 	(void)(length);
 	(void)(rssi);
 }
-void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXINVALID(int16_t rssi);
+void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXINVALID(short rssi);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_SENT(void);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_WUT(void);
 void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_LOWBATT(void);
@@ -71,11 +71,11 @@ Si446x::Si446x()
 }
 
 // It's not possible to get the current interrupt enabled state in Arduino (SREG only works for AVR based Arduinos, and no way of getting attachInterrupt() status), so we use a counter thing instead
-static volatile uint8_t isrState_local;
-static volatile uint8_t isrState;
-static volatile uint8_t isrBusy; // Don't mess with global interrupts if we're inside an ISR
+static volatile byte isrState_local;
+static volatile byte isrState;
+static volatile byte isrBusy; // Don't mess with global interrupts if we're inside an ISR
 
-inline uint8_t Si446x::interrupt_off(void)
+inline byte Si446x::interrupt_off(void)
 {
 	if (!isrBusy)
 	{
@@ -85,7 +85,7 @@ inline uint8_t Si446x::interrupt_off(void)
 	return 1;
 }
 
-inline uint8_t Si446x::interrupt_on(void)
+inline byte Si446x::interrupt_on(void)
 {
 	if (!isrBusy)
 	{
@@ -97,14 +97,14 @@ inline uint8_t Si446x::interrupt_on(void)
 	return 0;
 }
 
-static inline uint8_t cselect(void)
+static inline byte cselect(void)
 {
 	//	spi_enable();
 	digitalWrite(SI446X_CSN, LOW);
 	return 1;
 }
 
-static inline uint8_t cdeselect(void)
+static inline byte cdeselect(void)
 {
 	digitalWrite(SI446X_CSN, HIGH);
 	//	spi_disable();
@@ -148,76 +148,17 @@ void Si446x::irq_on()
 		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::onIrqFalling, FALLING);
 }
 
-// Read CTS and if its ok then read the command buffer
-uint8_t Si446x::getResponse(void *buff, uint8_t len)
-{
-	uint8_t cts = 0;
-
-	interrupt_off();
-	digitalWrite(SI446X_CSN, LOW);
-	// Send command
-	SPI.transfer(SI446X_CMD_READ_CMD_BUFF);
-
-	// Get CTS value
-	cts = (SPI.transfer(0xFF) == 0xFF);
-
-	if (cts)
-	{
-		// Get response data
-		for (uint8_t i = 0; i < len; i++)
-			((uint8_t *)buff)[i] = SPI.transfer(0xFF);
-	}
-	digitalWrite(SI446X_CSN, HIGH);
-	interrupt_on();
-	return cts;
-}
-
-// Keep trying to read the command buffer, with timeout of around 500ms
-uint8_t Si446x::waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout)
-{
-	// With F_CPU at 8MHz and SPI at 4MHz each check takes about 7us + 10us delay
-	uint16_t timeout = 40000;
-	while (!getResponse(out, outLen))
-	{
-		delayMicroseconds(10);
-		if (useTimeout && !--timeout)
-		{
-			SI446X_CB_CMDTIMEOUT();
-			return 0;
-		}
-	}
-	return 1;
-}
-
-void Si446x::doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
-{
-	irq_off();
-	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
-	{
-		interrupt_off();
-		digitalWrite(SI446X_CSN, LOW);
-		for (uint8_t i = 0; i < len; i++)
-			SPI.transfer(((uint8_t *)data)[i]); // (pgm_read_byte(&((uint8_t*)data)[i]));
-		digitalWrite(SI446X_CSN, HIGH);
-		interrupt_on();
-		if (((uint8_t *)data)[0] == SI446X_CMD_IRCAL) // If we're doing an IRCAL then wait for its completion without a timeout since it can sometimes take a few seconds
-			waitForResponse(NULL, 0, 0);
-		else if (out != NULL) // If we have an output buffer then read command response into it
-			waitForResponse(out, outLen, 1);
-	}
-	irq_on();
-}
 
 // Configure a bunch of properties (up to 12 properties in one go)
-void Si446x::setProperties(uint16_t prop, void *values, uint8_t len)
+void Si446x::setProperties(word prop, void *values, byte len)
 {
 	// len must not be greater than 12
 
-	uint8_t data[16] = {
+	byte data[16] = {
 		SI446X_CMD_SET_PROPERTY,
-		(uint8_t)(prop >> 8),
+		(byte)(prop >> 8),
 		len,
-		(uint8_t)prop};
+		(byte)prop};
 
 	// Copy values into data, starting at index 4
 	memcpy(data + 4, values, len);
@@ -226,35 +167,35 @@ void Si446x::setProperties(uint16_t prop, void *values, uint8_t len)
 }
 
 // Set a single property
-inline void Si446x::setProperty(uint16_t prop, uint8_t value)
+inline void Si446x::setProperty(word prop, byte value)
 {
 	setProperties(prop, &value, 1);
 }
 
 // Read a bunch of properties
-void Si446x::getProperties(uint16_t prop, void *values, uint8_t len)
+void Si446x::getProperties(word prop, void *values, byte len)
 {
-	uint8_t data[] = {
+	byte data[] = {
 		SI446X_CMD_GET_PROPERTY,
-		(uint8_t)(prop >> 8),
+		(byte)(prop >> 8),
 		len,
-		(uint8_t)prop};
+		(byte)prop};
 
 	doAPI(data, sizeof(data), values, len);
 }
 
 // Read a single property
-inline uint8_t Si446x::getProperty(uint16_t prop)
+inline byte Si446x::getProperty(word prop)
 {
-	uint8_t val;
+	byte val;
 	getProperties(prop, &val, 1);
 	return val;
 }
 
 // Do an ADC conversion
-uint16_t Si446x::getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part)
+word Si446x::getADC(byte adc_en, byte adc_cfg, byte part)
 {
-	uint8_t data[6] = {
+	byte data[6] = {
 		SI446X_CMD_GET_ADC_READING,
 		adc_en,
 		adc_cfg};
@@ -263,9 +204,9 @@ uint16_t Si446x::getADC(uint8_t adc_en, uint8_t adc_cfg, uint8_t part)
 }
 
 // Read a fast response register
-uint8_t Si446x::getFRR(uint8_t reg)
+byte Si446x::getFRR(byte reg)
 {
-	uint8_t frr = 0;
+	byte frr = 0;
 	interrupt_off();
 	digitalWrite(SI446X_CSN, LOW);
 	SPI.transfer(reg);
@@ -276,10 +217,10 @@ uint8_t Si446x::getFRR(uint8_t reg)
 }
 
 // Get the patched RSSI from the beginning of the packet
-int16_t Si446x::getLatchedRSSI(void)
+short Si446x::getLatchedRSSI(void)
 {
-	uint8_t frr = getFRR(SI446X_CMD_READ_FRR_A);
-	int16_t rssi = rssi_dBm(frr);
+	byte frr = getFRR(SI446X_CMD_READ_FRR_A);
+	short rssi = rssi_dBm(frr);
 	return rssi;
 }
 
@@ -291,7 +232,7 @@ int16_t Si446x::getLatchedRSSI(void)
 */
 si446x_state_t Si446x::getState(void)
 {
-	uint8_t state = getFRR(SI446X_CMD_READ_FRR_B);
+	byte state = getFRR(SI446X_CMD_READ_FRR_B);
 	if (state == SI446X_STATE_TX_TUNE)
 		state = SI446X_STATE_TX;
 	else if (state == SI446X_STATE_RX_TUNE)
@@ -304,7 +245,7 @@ si446x_state_t Si446x::getState(void)
 // Set new state
 void Si446x::setState(si446x_state_t newState)
 {
-	uint8_t data[] = {
+	byte data[] = {
 		SI446X_CMD_CHANGE_STATE,
 		newState};
 	doAPI(data, sizeof(data), NULL, 0);
@@ -314,10 +255,10 @@ void Si446x::setState(si446x_state_t newState)
 void Si446x::clearFIFO(void)
 {
 	// 'static const' saves 20 bytes of flash here, but uses 2 bytes of RAM
-	static const uint8_t clearFifo[] = {
+	static const byte clearFifo[] = {
 		SI446X_CMD_FIFO_INFO,
 		SI446X_FIFO_CLEAR_RX | SI446X_FIFO_CLEAR_TX};
-	doAPI((uint8_t *)clearFifo, sizeof(clearFifo), NULL, 0);
+	doAPI((byte *)clearFifo, sizeof(clearFifo), NULL, 0);
 }
 
 // Read pending interrupts
@@ -325,14 +266,14 @@ void Si446x::clearFIFO(void)
 // Buff should either be NULL (just clear interrupts) or a buffer of atleast 8 bytes for storing statuses
 void Si446x::interrupt(void *buff)
 {
-	uint8_t data = SI446X_CMD_GET_INT_STATUS;
+	byte data = SI446X_CMD_GET_INT_STATUS;
 	doAPI(&data, sizeof(data), buff, 8);
 }
 
 // Similar to interrupt() but with the option of not clearing certain interrupt flags
-void Si446x::interrupt2(void *buff, uint8_t clearPH, uint8_t clearMODEM, uint8_t clearCHIP)
+void Si446x::interrupt2(void *buff, byte clearPH, byte clearMODEM, byte clearCHIP)
 {
-	uint8_t data[] = {
+	byte data[] = {
 		SI446X_CMD_GET_INT_STATUS,
 		clearPH,
 		clearMODEM,
@@ -352,8 +293,8 @@ void Si446x::resetDevice(void)
 // Apply the radio configuration
 void Si446x::applyStartupConfig(void)
 {
-	uint8_t buff[17];
-	for (uint16_t i = 0; i < sizeof(config); i++)
+	byte buff[17];
+	for (word i = 0; i < sizeof(config); i++)
 	{
 		memcpy_P(buff, &config[i], sizeof(buff));
 		doAPI(&buff[1], buff[0], NULL, 0);
@@ -396,7 +337,7 @@ void Si446x::init()
 */
 void Si446x::getInfo(si446x_info_t *info)
 {
-	uint8_t data[8] = {
+	byte data[8] = {
 		SI446X_CMD_PART_INFO};
 	doAPI(data, 1, data, 8);
 
@@ -422,13 +363,13 @@ void Si446x::getInfo(si446x_info_t *info)
 *
 * @return The current RSSI in dBm (usually between -130 and 0)
 */
-int16_t Si446x::getRSSI()
+short Si446x::getRSSI()
 {
-	uint8_t data[3] = {
+	byte data[3] = {
 		SI446X_CMD_GET_MODEM_STATUS,
 		0xFF};
 	doAPI(data, 2, data, 3);
-	int16_t rssi = rssi_dBm(data[2]);
+	short rssi = rssi_dBm(data[2]);
 	return rssi;
 }
 
@@ -447,7 +388,7 @@ int16_t Si446x::getRSSI()
 * @param [pwr] A value from 0 to 127
 * @return (none)
 */
-void Si446x::setTxPower(uint8_t pwr)
+void Si446x::setTxPower(byte pwr)
 {
 	setProperty(SI446X_PA_PWR_LVL, pwr);
 }
@@ -460,10 +401,10 @@ void Si446x::setTxPower(uint8_t pwr)
 * @param [voltage] The low battery threshold in millivolts (1050 - 3050).
 * @return (none)
 */
-void Si446x::setLowBatt(uint16_t voltage)
+void Si446x::setLowBatt(word voltage)
 {
 	// voltage should be between 1500 and 3050
-	uint8_t batt = (voltage / 50) - 30; //((voltage * 2) - 3000) / 100;
+	byte batt = (voltage / 50) - 30; //((voltage * 2) - 3000) / 100;
 	setProperty(SI446X_GLOBAL_LOW_BATT_THRESH, batt);
 }
 
@@ -486,7 +427,7 @@ void Si446x::setLowBatt(uint16_t voltage)
 * @param [config] Which WUT features to enable ::SI446X_WUT_RUN ::SI446X_WUT_BATT ::SI446X_WUT_RX These can be bitwise OR'ed together to enable multiple features.
 * @return (none)
 */
-void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
+void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 {
 	// Maximum value of r is 20
 
@@ -502,12 +443,12 @@ void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 		// Disable WUT
 		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
 
-		uint8_t doRun = !!(config & SI446X_WUT_RUN);
-		uint8_t doBatt = !!(config & SI446X_WUT_BATT);
-		uint8_t doRx = (config & SI446X_WUT_RX);
+		byte doRun = !!(config & SI446X_WUT_RUN);
+		byte doBatt = !!(config & SI446X_WUT_BATT);
+		byte doRx = (config & SI446X_WUT_RX);
 
 		// Setup WUT interrupts
-		uint8_t intChip = 0; //getProperty(SI446X_INT_CTL_CHIP_ENABLE); // No other CHIP interrupts are enabled so dont bother reading the current state
+		byte intChip = 0; //getProperty(SI446X_INT_CTL_CHIP_ENABLE); // No other CHIP interrupts are enabled so dont bother reading the current state
 		//intChip &= ~((1<<SI446X_INT_CTL_CHIP_LOW_BATT_EN)|(1<<SI446X_INT_CTL_CHIP_WUT_EN));
 		intChip |= doBatt << SI446X_INT_CTL_CHIP_LOW_BATT_EN;
 		intChip |= doRun << SI446X_INT_CTL_CHIP_WUT_EN;
@@ -522,7 +463,7 @@ void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 		}
 
 		// Setup WUT
-		uint8_t properties[5];
+		byte properties[5];
 		properties[0] = doRx ? SI446X_GLOBAL_WUT_CONFIG_WUT_LDC_EN_RX : 0;
 		properties[0] |= doBatt << SI446X_GLOBAL_WUT_CONFIG_WUT_LBD_EN;
 		properties[0] |= (1 << SI446X_GLOBAL_WUT_CONFIG_WUT_EN);
@@ -557,11 +498,11 @@ void Si446x::disableWUT()
 * @param [state] Enable or disable the callbacks passed in \p callbacks parameter (1 = Enable, 0 = Disable)
 * @return (none)
 */
-void Si446x::setupCallback(uint16_t callbacks, uint8_t state)
+void Si446x::setupCallback(word callbacks, byte state)
 {
 	irq_off();
 	{
-		uint8_t data[2];
+		byte data[2];
 		getProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 
 		if (state)
@@ -595,7 +536,7 @@ void Si446x::setupCallback(uint16_t callbacks, uint8_t state)
 *
 * @return 0 on failure (busy transmitting something), 1 on success
 */
-uint8_t Si446x::sleep()
+byte Si446x::sleep()
 {
 	if (getState() == SI446X_STATE_TX)
 		return 0;
@@ -610,13 +551,13 @@ uint8_t Si446x::sleep()
 * @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
 * @return (none)
 */
-void Si446x::read(void *buff, uint8_t len)
+void Si446x::read(void *buff, byte len)
 {
 	interrupt_off();
 	digitalWrite(SI446X_CSN, LOW);
 	SPI.transfer(SI446X_CMD_READ_RX_FIFO);
-	for (uint8_t i = 0; i < len; i++)
-		((uint8_t *)buff)[i] = SPI.transfer(0xFF);
+	for (byte i = 0; i < len; i++)
+		((byte *)buff)[i] = SPI.transfer(0xFF);
 	digitalWrite(SI446X_CSN, HIGH);
 	interrupt_on();
 }
@@ -630,7 +571,7 @@ void Si446x::read(void *buff, uint8_t len)
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
-uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish)
+byte Si446x::TX(void *packet, byte len, byte channel, si446x_state_t onTxFinish)
 {
 	// TODO what happens if len is 0?
 
@@ -659,11 +600,11 @@ uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t on
 		SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
 #if !SI446X_FIXED_LENGTH
 		SPI.transfer(len);
-		for (uint8_t i = 0; i < len; i++)
-			SPI.transfer(((uint8_t *)packet)[i]);
+		for (byte i = 0; i < len; i++)
+			SPI.transfer(((byte *)packet)[i]);
 #else
-		for (uint8_t i = 0; i < SI446X_FIXED_LENGTH; i++)
-			SPI.transfer(((uint8_t *)packet)[i]);
+		for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+			SPI.transfer(((byte *)packet)[i]);
 #endif
 		digitalWrite(SI446X_CSN, HIGH);
 		interrupt_on();
@@ -674,10 +615,10 @@ uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t on
 #endif
 
 		// Begin transmit
-		uint8_t data[] = {
+		byte data[] = {
 			SI446X_CMD_START_TX,
 			channel,
-			(uint8_t)(onTxFinish << 4),
+			(byte)(onTxFinish << 4),
 			0,
 			SI446X_FIXED_LENGTH,
 			0,
@@ -701,7 +642,7 @@ uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t on
 * @param [channel] Channel to listen to (0 - 255)
 * @return (none)
 */
-void Si446x::RX(uint8_t channel)
+void Si446x::RX(byte channel)
 {
 	irq_off();
 	{
@@ -714,7 +655,7 @@ void Si446x::RX(uint8_t channel)
 
 		// TODO RX timeout to sleep if WUT LDC enabled
 
-		uint8_t data[] = {
+		byte data[] = {
 			SI446X_CMD_START_RX,
 			channel,
 			0,
@@ -735,9 +676,9 @@ void Si446x::RX(uint8_t channel)
 * @param [pin] The GPIO pin number (0 - 3)
 * @return ADC value (0 - 2048, where 2048 is 3.6V)
 */
-uint16_t Si446x::adc_gpio(uint8_t pin)
+word Si446x::adc_gpio(byte pin)
 {
-	uint16_t result = getADC(SI446X_ADC_CONV_GPIO | pin, (SI446X_ADC_SPEED << 4) | SI446X_ADC_RANGE_3P6, 0);
+	word result = getADC(SI446X_ADC_CONV_GPIO | pin, (SI446X_ADC_SPEED << 4) | SI446X_ADC_RANGE_3P6, 0);
 	return result;
 }
 
@@ -746,9 +687,9 @@ uint16_t Si446x::adc_gpio(uint8_t pin)
 *
 * @return Supply voltage in millivolts
 */
-uint16_t Si446x::adc_battery()
+word Si446x::adc_battery()
 {
-	uint16_t result = getADC(SI446X_ADC_CONV_BATT, (SI446X_ADC_SPEED << 4), 2);
+	word result = getADC(SI446X_ADC_CONV_BATT, (SI446X_ADC_SPEED << 4), 2);
 	result = ((uint32_t)result * 75) / 32; // result * 2.34375;
 	return result;
 }
@@ -774,9 +715,9 @@ float Si446x::adc_temperature()
 * @param [value] The new pin mode, this can be bitwise OR'd with the ::SI446X_PIN_PULL_EN option, see ::si446x_gpio_mode_t ::si446x_nirq_mode_t ::si446x_sdo_mode_t
 * @return (none)
 */
-void Si446x::writeGPIO(si446x_gpio_t pin, uint8_t value)
+void Si446x::writeGPIO(si446x_gpio_t pin, byte value)
 {
-	uint8_t data[] = {
+	byte data[] = {
 		SI446X_CMD_GPIO_PIN_CFG,
 		SI446X_GPIO_MODE_DONOTHING,
 		SI446X_GPIO_MODE_DONOTHING,
@@ -794,12 +735,12 @@ void Si446x::writeGPIO(si446x_gpio_t pin, uint8_t value)
 *
 * @return The pin states. Use ::si446x_gpio_t to mask the value to get the state for the desired pin.
 */
-uint8_t Si446x::readGPIO()
+byte Si446x::readGPIO()
 {
-	uint8_t data[4] = {
+	byte data[4] = {
 		SI446X_CMD_GPIO_PIN_CFG};
 	doAPI(data, 1, data, sizeof(data));
-	uint8_t states = data[0] >> 7 | (data[1] & 0x80) >> 6 | (data[2] & 0x80) >> 5 | (data[3] & 0x80) >> 4;
+	byte states = data[0] >> 7 | (data[1] & 0x80) >> 6 | (data[2] & 0x80) >> 5 | (data[3] & 0x80) >> 4;
 	return states;
 }
 
@@ -810,9 +751,9 @@ uint8_t Si446x::readGPIO()
 * @param [group] The group to dump
 * @return Size of the property group
 */
-uint8_t Si446x::dump(void *buff, uint8_t group)
+byte Si446x::dump(void *buff, byte group)
 {
-	static const uint8_t groupSizes[] PROGMEM = {
+	static const byte groupSizes[] PROGMEM = {
 		SI446X_PROP_GROUP_GLOBAL, 0x0A,
 		SI446X_PROP_GROUP_INT, 0x04,
 		SI446X_PROP_GROUP_FRR, 0x04,
@@ -828,10 +769,10 @@ uint8_t Si446x::dump(void *buff, uint8_t group)
 		SI446X_PROP_GROUP_RX_HOP, 0x42,
 		SI446X_PROP_GROUP_PTI, 0x04};
 
-	uint8_t length = 0;
-	for (uint8_t i = 0; i < sizeof(groupSizes); i += 2)
+	byte length = 0;
+	for (byte i = 0; i < sizeof(groupSizes); i += 2)
 	{
-		uint8_t buff[2];
+		byte buff[2];
 		memcpy_P(buff, &groupSizes[i], sizeof(buff));
 
 		if (buff[0] == group)
@@ -844,12 +785,12 @@ uint8_t Si446x::dump(void *buff, uint8_t group)
 	if (buff == NULL)
 		return length;
 
-	for (uint8_t i = 0; i < length; i += 16)
+	for (byte i = 0; i < length; i += 16)
 	{
-		uint8_t count = length - i;
+		byte count = length - i;
 		if (count > 16)
 			count = 16;
-		getProperties((group << 8) | i, ((uint8_t *)buff) + i, count);
+		getProperties((group << 8) | i, ((byte *)buff) + i, count);
 	}
 
 	return length;
@@ -868,7 +809,7 @@ ISR_PREFIX void Si446x::onIrqFalling()
 void Si446x::handleIrqFall()
 {
 	isrBusy = 1;
-	uint8_t interrupts[8];
+	byte interrupts[8];
 	interrupt(interrupts);
 
 	// TODO remove
@@ -905,10 +846,10 @@ void Si446x::handleIrqFall()
 	if (interrupts[2] & (1 << SI446X_PACKET_RX_PEND))
 	{
 #if !SI446X_FIXED_LENGTH
-		uint8_t len = 0;
+		byte len = 0;
 		read(&len, 1);
 #else
-		uint8_t len = SI446X_FIXED_LENGTH;
+		byte len = SI446X_FIXED_LENGTH;
 #endif
 		SI446X_CB_RXCOMPLETE(len, getLatchedRSSI());
 	}
@@ -936,4 +877,64 @@ void Si446x::handleIrqFall()
 		SI446X_CB_WUT();
 
 	isrBusy = 0;
+}
+
+void Si446x::doAPI(void *data, byte len, void *out, byte outLen)
+{
+	irq_off();
+	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
+	{
+		interrupt_off();
+		digitalWrite(SI446X_CSN, LOW);
+		for (byte i = 0; i < len; i++)
+			SPI.transfer(((byte *)data)[i]); // (pgm_read_byte(&((byte*)data)[i]));
+		digitalWrite(SI446X_CSN, HIGH);
+		interrupt_on();
+		if (((byte *)data)[0] == SI446X_CMD_IRCAL) // If we're doing an IRCAL then wait for its completion without a timeout since it can sometimes take a few seconds
+			waitForResponse(NULL, 0, 0);
+		else if (out != NULL) // If we have an output buffer then read command response into it
+			waitForResponse(out, outLen, 1);
+	}
+	irq_on();
+}
+
+// Keep trying to read the command buffer, with timeout of around 500ms
+byte Si446x::waitForResponse(void *out, byte outLen, byte useTimeout)
+{
+	// With F_CPU at 8MHz and SPI at 4MHz each check takes about 7us + 10us delay
+	word timeout = 40000;
+	while (!getResponse(out, outLen))
+	{
+		delayMicroseconds(10);
+		if (useTimeout && !--timeout)
+		{
+			SI446X_CB_CMDTIMEOUT();
+			return 0;
+		}
+	}
+	return 1;
+}
+
+// Read CTS and if its ok then read the command buffer
+byte Si446x::getResponse(void *buff, byte len)
+{
+	byte cts = 0;
+
+	interrupt_off();
+	digitalWrite(SI446X_CSN, LOW);
+	// Send command
+	SPI.transfer(SI446X_CMD_READ_CMD_BUFF);
+	// Get CTS value
+	cts = (SPI.transfer(0xFF) == 0xFF);
+	if (cts)
+	{
+		// Get response data
+		for (byte i = 0; i < len; i++)
+		{
+			((byte *)buff)[i] = SPI.transfer(0xFF);
+		}
+	}
+	digitalWrite(SI446X_CSN, HIGH);
+	interrupt_on();
+	return cts;
 }
