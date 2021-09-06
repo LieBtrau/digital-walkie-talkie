@@ -285,8 +285,8 @@ private:
 	void handleIrqFall(void);
 	uint8_t getResponse(void *buff, uint8_t len);
 	uint8_t waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout);
-	uint8_t Si446x_irq_off(void);
-	void irq_on(uint8_t origVal);
+	void irq_off(void);
+	void irq_on(void);
 	void doAPI(void *data, uint8_t len, void *out, uint8_t outLen);
 	void setProperties(uint16_t prop, void *values, uint8_t len);
 	void setProperty(uint16_t prop, uint8_t value);

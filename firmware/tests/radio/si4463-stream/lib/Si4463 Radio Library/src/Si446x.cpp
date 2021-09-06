@@ -125,11 +125,10 @@ static inline uint8_t cdeselect(void)
 // Global (SI446X_ATOMIC()): Disable all interrupts, don't use waitForResponse() inside here as it can take a while to complete. These blocks are to make sure no other interrupts use the SPI bus.
 
 // When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
-uint8_t Si446x::Si446x_irq_off()
+void Si446x::irq_off()
 {
 	detachInterrupt(digitalPinToInterrupt(SI446X_IRQ));
 	isrState_local++;
-	return 0;
 }
 
 /**
@@ -141,9 +140,8 @@ uint8_t Si446x::Si446x_irq_off()
 * @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
 * @return (none)
 */
-void Si446x::irq_on(uint8_t origVal)
+void Si446x::irq_on()
 {
-	((void)(origVal));
 	if (isrState_local > 0)
 		isrState_local--;
 	if (isrState_local == 0)
@@ -193,7 +191,7 @@ uint8_t Si446x::waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout)
 
 void Si446x::doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
 {
-	Si446x_irq_off();
+	irq_off();
 	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
 	{
 		interrupt_off();
@@ -207,7 +205,7 @@ void Si446x::doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
 		else if (out != NULL) // If we have an output buffer then read command response into it
 			waitForResponse(out, outLen, 1);
 	}
-	irq_on(0);
+	irq_on();
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
@@ -499,7 +497,7 @@ void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 	if (!(config & (SI446X_WUT_RUN | SI446X_WUT_BATT | SI446X_WUT_RX)))
 		return;
 
-	Si446x_irq_off();
+	irq_off();
 	{
 		// Disable WUT
 		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
@@ -534,7 +532,7 @@ void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 		properties[4] = ldc;
 		setProperties(SI446X_GLOBAL_WUT_CONFIG, properties, sizeof(properties));
 	}
-	irq_on(0);
+	irq_on();
 }
 
 /**
@@ -544,12 +542,12 @@ void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 */
 void Si446x::disableWUT()
 {
-	Si446x_irq_off();
+	irq_off();
 	{
 		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
 		setProperty(SI446X_GLOBAL_CLK_CFG, 0);
 	}
-	irq_on(0);
+	irq_on();
 }
 
 /**
@@ -561,7 +559,7 @@ void Si446x::disableWUT()
 */
 void Si446x::setupCallback(uint16_t callbacks, uint8_t state)
 {
-	Si446x_irq_off();
+	irq_off();
 	{
 		uint8_t data[2];
 		getProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
@@ -584,7 +582,7 @@ void Si446x::setupCallback(uint16_t callbacks, uint8_t state)
 		enabledInterrupts[IRQ_MODEM] = data[1];
 		setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 	}
-	irq_on(0);
+	irq_on();
 }
 
 /**
@@ -641,11 +639,11 @@ uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t on
 	((void)(len));
 #endif
 
-	Si446x_irq_off();
+	irq_off();
 	{
 		if (getState() == SI446X_STATE_TX) // Already transmitting
 		{
-			irq_on(0);
+			irq_on();
 			return 0;
 		}
 
@@ -691,7 +689,7 @@ uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t on
 		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
 #endif
 	}
-	irq_on(0);
+	irq_on();
 	return 1;
 }
 
@@ -705,7 +703,7 @@ uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t on
 */
 void Si446x::RX(uint8_t channel)
 {
-	Si446x_irq_off();
+	irq_off();
 	{
 		setState(IDLE_STATE);
 		clearFIFO();
@@ -728,7 +726,7 @@ void Si446x::RX(uint8_t channel)
 		};
 		doAPI(data, sizeof(data), NULL, 0);
 	}
-	irq_on(0);
+	irq_on();
 }
 
 /**
