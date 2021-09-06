@@ -259,25 +259,24 @@ class Si446x
 {
 public:
 	Si446x();
-	void Si446x_init(void);
-	void Si446x_getInfo(si446x_info_t *info);
-	int16_t Si446x_getRSSI(void);
-	void Si446x_setTxPower(uint8_t pwr);
-	void Si446x_setupCallback(uint16_t callbacks, uint8_t state);
-	uint8_t Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish);
-	void Si446x_RX(uint8_t channel);
-	void Si446x_setLowBatt(uint16_t voltage);
-	void Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config);
-	void Si446x_disableWUT(void);
-	uint8_t Si446x_sleep(void);
-	si446x_state_t Si446x_getState(void);
-	uint16_t Si446x_adc_gpio(uint8_t pin);
-	uint16_t Si446x_adc_battery(void);
-	float Si446x_adc_temperature(void);
-	void Si446x_writeGPIO(si446x_gpio_t pin, uint8_t value);
-	uint8_t Si446x_readGPIO(void);
-	uint8_t Si446x_dump(void *buff, uint8_t group);
-	void Si446x_read(void *buff, uint8_t len);
+	void init(void);
+	void getInfo(si446x_info_t *info);
+	int16_t getRSSI(void);
+	void setTxPower(uint8_t pwr);
+	void setupCallback(uint16_t callbacks, uint8_t state);
+	uint8_t TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish);
+	void RX(uint8_t channel);
+	void setLowBatt(uint16_t voltage);
+	void setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config);
+	void disableWUT(void);
+	uint8_t sleep(void);
+	uint16_t adc_gpio(uint8_t pin);
+	uint16_t adc_battery(void);
+	float adc_temperature(void);
+	void writeGPIO(si446x_gpio_t pin, uint8_t value);
+	uint8_t readGPIO(void);
+	uint8_t dump(void *buff, uint8_t group);
+	void read(void *buff, uint8_t len);
 
 private:
 	uint8_t interrupt_off(void);
@@ -287,7 +286,7 @@ private:
 	uint8_t getResponse(void *buff, uint8_t len);
 	uint8_t waitForResponse(void *out, uint8_t outLen, uint8_t useTimeout);
 	uint8_t Si446x_irq_off(void);
-	void Si446x_irq_on(uint8_t origVal);
+	void irq_on(uint8_t origVal);
 	void doAPI(void *data, uint8_t len, void *out, uint8_t outLen);
 	void setProperties(uint16_t prop, void *values, uint8_t len);
 	void setProperty(uint16_t prop, uint8_t value);

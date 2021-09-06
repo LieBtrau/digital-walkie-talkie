@@ -45,7 +45,7 @@ void SI446X_CB_RXCOMPLETE(uint8_t length, int16_t rssi)
 	pingInfo.rssi = rssi;
 	pingInfo.length = length;
 
-	si4463.Si446x_read((uint8_t *)pingInfo.buffer, length);
+	si4463.read((uint8_t *)pingInfo.buffer, length);
 
 	// Radio will now be in idle mode
 }
@@ -67,11 +67,11 @@ void setup()
 	isClient = digitalRead(MODE_SELECT_PIN) == HIGH ? true : false;
 
 	// Start up
-	si4463.Si446x_init();
-	si4463.Si446x_setTxPower(SI446X_MAX_TX_POWER);
+	si4463.init();
+	si4463.setTxPower(SI446X_MAX_TX_POWER);
 
 	// Put into receive mode
-	si4463.Si446x_RX(CHANNEL);
+	si4463.RX(CHANNEL);
 }
 
 void clientloop()
@@ -93,7 +93,7 @@ void clientloop()
 	uint32_t startTime = millis();
 
 	// Send the data
-	si4463.Si446x_TX(data, sizeof(data), CHANNEL, SI446X_STATE_RX);
+	si4463.TX(data, sizeof(data), CHANNEL, SI446X_STATE_RX);
 	sent++;
 
 	// Put into receive mode
@@ -183,7 +183,7 @@ void serverloop()
 		Serial.print(F("Invalid packet! Signal: "));
 		Serial.print(pingInfo.rssi);
 		Serial.println(F("dBm"));
-		si4463.Si446x_RX(CHANNEL);
+		si4463.RX(CHANNEL);
 	}
 	else
 	{
@@ -194,7 +194,7 @@ void serverloop()
 		delay(500);
 
 		// Send back the data, once the transmission has completed go into receive mode
-		si4463.Si446x_TX((uint8_t *)pingInfo.buffer, pingInfo.length, CHANNEL, SI446X_STATE_RX);
+		si4463.TX((uint8_t *)pingInfo.buffer, pingInfo.length, CHANNEL, SI446X_STATE_RX);
 
 		Serial.println(F("Reply sent"));
 

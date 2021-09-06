@@ -141,7 +141,7 @@ uint8_t Si446x::Si446x_irq_off()
 * @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
 * @return (none)
 */
-void Si446x::Si446x_irq_on(uint8_t origVal)
+void Si446x::irq_on(uint8_t origVal)
 {
 	((void)(origVal));
 	if (isrState_local > 0)
@@ -207,7 +207,7 @@ void Si446x::doAPI(void *data, uint8_t len, void *out, uint8_t outLen)
 		else if (out != NULL) // If we have an output buffer then read command response into it
 			waitForResponse(out, outLen, 1);
 	}
-	Si446x_irq_on(0);
+	irq_on(0);
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
@@ -285,7 +285,12 @@ int16_t Si446x::getLatchedRSSI(void)
 	return rssi;
 }
 
-// Get current radio state
+/**
+* @brief Get the radio status
+*
+* @see ::si446x_state_t
+* @return The current radio status
+*/
 si446x_state_t Si446x::getState(void)
 {
 	uint8_t state = getFRR(SI446X_CMD_READ_FRR_B);
@@ -363,7 +368,7 @@ void Si446x::applyStartupConfig(void)
 *
 * @return (none)
 */
-void Si446x::Si446x_init()
+void Si446x::init()
 {
 	digitalWrite(SI446X_CSN, HIGH);
 	pinMode(SI446X_CSN, OUTPUT);
@@ -373,7 +378,7 @@ void Si446x::Si446x_init()
 	resetDevice();
 	applyStartupConfig();
 	interrupt(NULL);
-	Si446x_sleep();
+	sleep();
 
 	enabledInterrupts[IRQ_PACKET] = (1 << SI446X_PACKET_RX_PEND) | (1 << SI446X_CRC_ERROR_PEND);
 	//enabledInterrupts[IRQ_MODEM] = (1<<SI446X_SYNC_DETECT_PEND);
@@ -391,7 +396,7 @@ void Si446x::Si446x_init()
 * @param [info] Pointer to allocated ::si446x_info_t struct to place data into
 * @return (none)
 */
-void Si446x::Si446x_getInfo(si446x_info_t *info)
+void Si446x::getInfo(si446x_info_t *info)
 {
 	uint8_t data[8] = {
 		SI446X_CMD_PART_INFO};
@@ -419,7 +424,7 @@ void Si446x::Si446x_getInfo(si446x_info_t *info)
 *
 * @return The current RSSI in dBm (usually between -130 and 0)
 */
-int16_t Si446x::Si446x_getRSSI()
+int16_t Si446x::getRSSI()
 {
 	uint8_t data[3] = {
 		SI446X_CMD_GET_MODEM_STATUS,
@@ -429,17 +434,7 @@ int16_t Si446x::Si446x_getRSSI()
 	return rssi;
 }
 
-/**
-* @brief Get the radio status
-*
-* @see ::si446x_state_t
-* @return The current radio status
-*/
-si446x_state_t Si446x::Si446x_getState()
-{
-	// TODO what about the state change delay with transmitting?
-	return getState();
-}
+
 
 /**
 * @brief Set the transmit power. The output power does not follow the \p pwr value, see the Si446x datasheet for a pretty graph
@@ -454,7 +449,7 @@ si446x_state_t Si446x::Si446x_getState()
 * @param [pwr] A value from 0 to 127
 * @return (none)
 */
-void Si446x::Si446x_setTxPower(uint8_t pwr)
+void Si446x::setTxPower(uint8_t pwr)
 {
 	setProperty(SI446X_PA_PWR_LVL, pwr);
 }
@@ -467,7 +462,7 @@ void Si446x::Si446x_setTxPower(uint8_t pwr)
 * @param [voltage] The low battery threshold in millivolts (1050 - 3050).
 * @return (none)
 */
-void Si446x::Si446x_setLowBatt(uint16_t voltage)
+void Si446x::setLowBatt(uint16_t voltage)
 {
 	// voltage should be between 1500 and 3050
 	uint8_t batt = (voltage / 50) - 30; //((voltage * 2) - 3000) / 100;
@@ -493,7 +488,7 @@ void Si446x::Si446x_setLowBatt(uint16_t voltage)
 * @param [config] Which WUT features to enable ::SI446X_WUT_RUN ::SI446X_WUT_BATT ::SI446X_WUT_RX These can be bitwise OR'ed together to enable multiple features.
 * @return (none)
 */
-void Si446x::Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
+void Si446x::setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 {
 	// Maximum value of r is 20
 
@@ -539,7 +534,7 @@ void Si446x::Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 		properties[4] = ldc;
 		setProperties(SI446X_GLOBAL_WUT_CONFIG, properties, sizeof(properties));
 	}
-	Si446x_irq_on(0);
+	irq_on(0);
 }
 
 /**
@@ -547,14 +542,14 @@ void Si446x::Si446x_setupWUT(uint8_t r, uint16_t m, uint8_t ldc, uint8_t config)
 *
 * @return (none)
 */
-void Si446x::Si446x_disableWUT()
+void Si446x::disableWUT()
 {
 	Si446x_irq_off();
 	{
 		setProperty(SI446X_GLOBAL_WUT_CONFIG, 0);
 		setProperty(SI446X_GLOBAL_CLK_CFG, 0);
 	}
-	Si446x_irq_on(0);
+	irq_on(0);
 }
 
 /**
@@ -564,7 +559,7 @@ void Si446x::Si446x_disableWUT()
 * @param [state] Enable or disable the callbacks passed in \p callbacks parameter (1 = Enable, 0 = Disable)
 * @return (none)
 */
-void Si446x::Si446x_setupCallback(uint16_t callbacks, uint8_t state)
+void Si446x::setupCallback(uint16_t callbacks, uint8_t state)
 {
 	Si446x_irq_off();
 	{
@@ -589,7 +584,7 @@ void Si446x::Si446x_setupCallback(uint16_t callbacks, uint8_t state)
 		enabledInterrupts[IRQ_MODEM] = data[1];
 		setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 	}
-	Si446x_irq_on(0);
+	irq_on(0);
 }
 
 /**
@@ -602,7 +597,7 @@ void Si446x::Si446x_setupCallback(uint16_t callbacks, uint8_t state)
 *
 * @return 0 on failure (busy transmitting something), 1 on success
 */
-uint8_t Si446x::Si446x_sleep()
+uint8_t Si446x::sleep()
 {
 	if (getState() == SI446X_STATE_TX)
 		return 0;
@@ -617,7 +612,7 @@ uint8_t Si446x::Si446x_sleep()
 * @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
 * @return (none)
 */
-void Si446x::Si446x_read(void *buff, uint8_t len)
+void Si446x::read(void *buff, uint8_t len)
 {
 	interrupt_off();
 	digitalWrite(SI446X_CSN, LOW);
@@ -637,7 +632,7 @@ void Si446x::Si446x_read(void *buff, uint8_t len)
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
-uint8_t Si446x::Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish)
+uint8_t Si446x::TX(void *packet, uint8_t len, uint8_t channel, si446x_state_t onTxFinish)
 {
 	// TODO what happens if len is 0?
 
@@ -650,7 +645,7 @@ uint8_t Si446x::Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_sta
 	{
 		if (getState() == SI446X_STATE_TX) // Already transmitting
 		{
-			Si446x_irq_on(0);
+			irq_on(0);
 			return 0;
 		}
 
@@ -696,7 +691,7 @@ uint8_t Si446x::Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_sta
 		setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
 #endif
 	}
-	Si446x_irq_on(0);
+	irq_on(0);
 	return 1;
 }
 
@@ -708,7 +703,7 @@ uint8_t Si446x::Si446x_TX(void *packet, uint8_t len, uint8_t channel, si446x_sta
 * @param [channel] Channel to listen to (0 - 255)
 * @return (none)
 */
-void Si446x::Si446x_RX(uint8_t channel)
+void Si446x::RX(uint8_t channel)
 {
 	Si446x_irq_off();
 	{
@@ -733,7 +728,7 @@ void Si446x::Si446x_RX(uint8_t channel)
 		};
 		doAPI(data, sizeof(data), NULL, 0);
 	}
-	Si446x_irq_on(0);
+	irq_on(0);
 }
 
 /**
@@ -742,7 +737,7 @@ void Si446x::Si446x_RX(uint8_t channel)
 * @param [pin] The GPIO pin number (0 - 3)
 * @return ADC value (0 - 2048, where 2048 is 3.6V)
 */
-uint16_t Si446x::Si446x_adc_gpio(uint8_t pin)
+uint16_t Si446x::adc_gpio(uint8_t pin)
 {
 	uint16_t result = getADC(SI446X_ADC_CONV_GPIO | pin, (SI446X_ADC_SPEED << 4) | SI446X_ADC_RANGE_3P6, 0);
 	return result;
@@ -753,7 +748,7 @@ uint16_t Si446x::Si446x_adc_gpio(uint8_t pin)
 *
 * @return Supply voltage in millivolts
 */
-uint16_t Si446x::Si446x_adc_battery()
+uint16_t Si446x::adc_battery()
 {
 	uint16_t result = getADC(SI446X_ADC_CONV_BATT, (SI446X_ADC_SPEED << 4), 2);
 	result = ((uint32_t)result * 75) / 32; // result * 2.34375;
@@ -765,7 +760,7 @@ uint16_t Si446x::Si446x_adc_battery()
 *
 * @return Temperature in C
 */
-float Si446x::Si446x_adc_temperature()
+float Si446x::adc_temperature()
 {
 	float result = getADC(SI446X_ADC_CONV_TEMP, (SI446X_ADC_SPEED << 4), 4);
 	result = (899 / 4096.0) * result - 293;
@@ -781,7 +776,7 @@ float Si446x::Si446x_adc_temperature()
 * @param [value] The new pin mode, this can be bitwise OR'd with the ::SI446X_PIN_PULL_EN option, see ::si446x_gpio_mode_t ::si446x_nirq_mode_t ::si446x_sdo_mode_t
 * @return (none)
 */
-void Si446x::Si446x_writeGPIO(si446x_gpio_t pin, uint8_t value)
+void Si446x::writeGPIO(si446x_gpio_t pin, uint8_t value)
 {
 	uint8_t data[] = {
 		SI446X_CMD_GPIO_PIN_CFG,
@@ -801,7 +796,7 @@ void Si446x::Si446x_writeGPIO(si446x_gpio_t pin, uint8_t value)
 *
 * @return The pin states. Use ::si446x_gpio_t to mask the value to get the state for the desired pin.
 */
-uint8_t Si446x::Si446x_readGPIO()
+uint8_t Si446x::readGPIO()
 {
 	uint8_t data[4] = {
 		SI446X_CMD_GPIO_PIN_CFG};
@@ -817,7 +812,7 @@ uint8_t Si446x::Si446x_readGPIO()
 * @param [group] The group to dump
 * @return Size of the property group
 */
-uint8_t Si446x::Si446x_dump(void *buff, uint8_t group)
+uint8_t Si446x::dump(void *buff, uint8_t group)
 {
 	static const uint8_t groupSizes[] PROGMEM = {
 		SI446X_PROP_GROUP_GLOBAL, 0x0A,
@@ -913,7 +908,7 @@ void Si446x::handleIrqFall()
 	{
 #if !SI446X_FIXED_LENGTH
 		uint8_t len = 0;
-		Si446x_read(&len, 1);
+		read(&len, 1);
 #else
 		uint8_t len = SI446X_FIXED_LENGTH;
 #endif
