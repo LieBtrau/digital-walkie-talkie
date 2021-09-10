@@ -279,7 +279,11 @@ public:
 	byte dump(byte *buff, byte group);
 	void read(byte *buff, byte len);
 	void onReceive(void (*callback)(byte));
-
+	void onReceiveBegin(void (*callback)(short));
+	void onReceiveInvalid(void (*callback)(short));
+	void onSent(void (*callback)(void));
+	void onBatteryLow(void (*callback)(void));
+	void onWakingUp(void (*callback)(void));
 private:
 	byte interrupt_off(void);
 	byte interrupt_on(void);
@@ -304,4 +308,9 @@ private:
 	void resetDevice(void);
 	void applyStartupConfig(void);
 	void (*_onReceive)(byte) = nullptr;
+	void (*_onReceiveBegin)(short) = nullptr;
+	void (*_onReceiveInvalid)(short) = nullptr;
+	void (*_onSent)(void) = nullptr;
+	void (*_onBatteryLow)(void) = nullptr;
+	void (*_onWakingUp)(void) = nullptr;
 };

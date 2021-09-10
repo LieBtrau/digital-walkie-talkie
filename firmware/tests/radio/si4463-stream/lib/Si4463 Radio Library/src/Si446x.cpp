@@ -45,26 +45,6 @@ static volatile byte isrState_local;
 static volatile byte isrState;
 static volatile byte isrBusy; // Don't mess with global interrupts if we're inside an ISR
 
-// http://stackoverflow.com/questions/10802324/aliasing-a-function-on-a-c-interface-within-a-c-application-on-linux
-#if defined(__cplusplus)
-extern "C"
-{
-#endif
-	static void __empty_callback0(void)
-	{
-	}
-	static void __empty_callback1(short param1) { (void)(param1); }
-#if defined(__cplusplus)
-}
-#endif
-
-void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_CMDTIMEOUT(void);
-void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXBEGIN(short rssi);
-void __attribute__((weak, alias("__empty_callback1"))) SI446X_CB_RXINVALID(short rssi);
-void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_SENT(void);
-void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_WUT(void);
-void __attribute__((weak, alias("__empty_callback0"))) SI446X_CB_LOWBATT(void);
-
 Si446x::Si446x()
 {
 	pSi446x = this;
@@ -73,6 +53,31 @@ Si446x::Si446x()
 void Si446x::onReceive(void (*callback)(byte))
 {
 	_onReceive = callback;
+}
+
+void Si446x::onReceiveBegin(void (*callback)(short))
+{
+	_onReceiveBegin = callback;
+}
+
+void Si446x::onReceiveInvalid(void (*callback)(short))
+{
+	_onReceiveInvalid = callback;
+}
+
+void Si446x::onSent(void (*callback)(void))
+{
+	_onSent = callback;
+}
+
+void Si446x::onBatteryLow(void (*callback)(void))
+{
+	_onBatteryLow = callback;
+}
+
+void Si446x::onWakingUp(void (*callback)(void))
+{
+	_onWakingUp = callback;
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
@@ -639,7 +644,10 @@ void Si446x::handleIrqFall()
 	{
 		//fix_invalidSync_irq(1);
 		//		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 1); // Enable INVALID_SYNC when a new packet starts, sometimes a corrupted packet will mess the radio up
-		SI446X_CB_RXBEGIN(getLatchedRSSI());
+		if (_onReceiveBegin != nullptr)
+		{
+			_onReceiveBegin(getLatchedRSSI());
+		}
 	}
 	/*
 	// Disable INVALID_SYNC
@@ -663,7 +671,7 @@ void Si446x::handleIrqFall()
 #else
 		byte len = SI446X_FIXED_LENGTH;
 #endif
-		if (_onReceive)
+		if (_onReceive != nullptr)
 		{
 			_onReceive(len);
 		}
@@ -678,18 +686,27 @@ void Si446x::handleIrqFall()
 		if (getState() == SI446X_STATE_SPI_ACTIVE)
 			setState(IDLE_STATE); // We're in sleep mode (acually, we're now in SPI active mode) after an invalid packet to fix the INVALID_SYNC issue
 #endif
-		SI446X_CB_RXINVALID(getLatchedRSSI()); // TODO remove RSSI stuff for invalid packets, entering SLEEP mode looses the latched value?
+		if (_onReceiveInvalid != nullptr)
+		{
+			_onReceiveInvalid(getLatchedRSSI());
+		}
 	}
 
 	// Packet sent
-	if (interrupts[2] & (1 << SI446X_PACKET_SENT_PEND))
-		SI446X_CB_SENT();
+	if ((interrupts[2] & (1 << SI446X_PACKET_SENT_PEND)) && _onSent != nullptr)
+	{
+		_onSent();
+	}
 
-	if (interrupts[6] & (1 << SI446X_LOW_BATT_PEND))
-		SI446X_CB_LOWBATT();
+	if ((interrupts[6] & (1 << SI446X_LOW_BATT_PEND)) && _onBatteryLow != nullptr)
+	{
+		_onBatteryLow();
+	}
 
-	if (interrupts[6] & (1 << SI446X_WUT_PEND))
-		SI446X_CB_WUT();
+	if ((interrupts[6] & (1 << SI446X_WUT_PEND)) && _onWakingUp !=nullptr)
+	{
+		_onWakingUp();
+	}
 
 	isrBusy = 0;
 }
@@ -792,7 +809,6 @@ byte Si446x::waitForResponse(void *out, byte outLen, byte useTimeout)
 		delayMicroseconds(10);
 		if (useTimeout && !--timeout)
 		{
-			SI446X_CB_CMDTIMEOUT();
 			return 0;
 		}
 	}
