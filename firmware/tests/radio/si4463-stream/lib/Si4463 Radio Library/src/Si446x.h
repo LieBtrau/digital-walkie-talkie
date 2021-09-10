@@ -12,14 +12,6 @@
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
 
-// Address matching doesnt really work very well as the FIFO still needs to be
-// manually cleared after receiving a packet, so the MCU still needs to wakeup and
-// do stuff instead of the radio doing things automatically :/
-#if !DOXYGEN
-#define SI446X_ENABLE_ADDRMATCHING 0
-#endif
-
-
 class Si446x
 {
 public:
