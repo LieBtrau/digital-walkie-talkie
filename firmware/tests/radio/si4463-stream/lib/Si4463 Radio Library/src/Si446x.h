@@ -16,7 +16,8 @@ class Si446x
 {
 public:
 	Si446x();
-	void init(void);
+	void setPins(int cs, int irq, int sdn);
+	void begin(void);
 	void getInfo(si446x_info_t *info);
 	short getLatchedRSSI(void);
 	short getRSSI(void);
@@ -71,4 +72,7 @@ private:
 	void (*_onSent)(void) = nullptr;
 	void (*_onBatteryLow)(void) = nullptr;
 	void (*_onWakingUp)(void) = nullptr;
+	byte _cs = 0;
+	byte _irq = 0;
+	byte _sdn = 0;
 };

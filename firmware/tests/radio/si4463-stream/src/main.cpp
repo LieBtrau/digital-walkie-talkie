@@ -67,7 +67,8 @@ void setup()
 	isClient = digitalRead(MODE_SELECT_PIN) == HIGH ? true : false;
 
 	// Start up
-	si4463.init();
+	si4463.setPins(5, 4, 16);
+	si4463.begin();
 	si4463.setTxPower(SI446X_MAX_TX_POWER);
 
 	// Put into receive mode

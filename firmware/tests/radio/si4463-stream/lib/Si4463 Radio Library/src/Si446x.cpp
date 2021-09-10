@@ -198,9 +198,9 @@ void Si446x::interrupt2(void *buff, byte clearPH, byte clearMODEM, byte clearCHI
 // Reset the RF chip
 void Si446x::resetDevice(void)
 {
-	digitalWrite(SI446X_SDN, HIGH);
+	digitalWrite(_sdn, HIGH);
 	delay(50);
-	digitalWrite(SI446X_SDN, LOW);
+	digitalWrite(_sdn, LOW);
 	delay(50);
 }
 
@@ -216,17 +216,29 @@ void Si446x::applyStartupConfig(void)
 	}
 }
 
+	void Si446x::setPins(int cs, int irq, int sdn)
+	{
+		_cs = cs;
+		_irq = irq;
+		_sdn = sdn;
+	}
+
+
 /**
 * @brief Initialise, must be called before anything else!
 *
 * @return (none)
 */
-void Si446x::init()
+void Si446x::begin()
 {
-	digitalWrite(SI446X_CSN, HIGH);
-	pinMode(SI446X_CSN, OUTPUT);
-	pinMode(SI446X_SDN, OUTPUT);
-	pinMode(SI446X_IRQ, INPUT_PULLUP);
+	if(_cs==0 || _irq==0 || _sdn==0)
+	{
+		return;
+	}
+	digitalWrite(_cs, HIGH);
+	pinMode(_cs, OUTPUT);
+	pinMode(_sdn, OUTPUT);
+	pinMode(_irq, INPUT_PULLUP);
 	SPI.begin();
 	resetDevice();
 	applyStartupConfig();
@@ -239,7 +251,7 @@ void Si446x::init()
 	if (isrState_local > 0)
 		isrState_local--;
 	if (isrState_local == 0)
-		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), onIrqFalling, FALLING);
+		attachInterrupt(digitalPinToInterrupt(_irq), onIrqFalling, FALLING);
 }
 
 /**
@@ -740,7 +752,7 @@ byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
 
 	interrupt_off();
 	// Load data to FIFO
-	digitalWrite(SI446X_CSN, LOW);
+	digitalWrite(_cs, LOW);
 	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
 #if !SI446X_FIXED_LENGTH
 	SPI.transfer(len);
@@ -750,7 +762,7 @@ byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
 	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
 		SPI.transfer(packet[i]);
 #endif
-	digitalWrite(SI446X_CSN, HIGH);
+	digitalWrite(_cs, HIGH);
 	interrupt_on();
 
 #if !SI446X_FIXED_LENGTH
@@ -783,10 +795,10 @@ void Si446x::doAPI(void *data, byte len, void *out, byte outLen)
 	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
 	{
 		interrupt_off();
-		digitalWrite(SI446X_CSN, LOW);
+		digitalWrite(_cs, LOW);
 		for (byte i = 0; i < len; i++)
 			SPI.transfer(((byte *)data)[i]); // (pgm_read_byte(&((byte*)data)[i]));
-		digitalWrite(SI446X_CSN, HIGH);
+		digitalWrite(_cs, HIGH);
 		interrupt_on();
 		if (((byte *)data)[0] == SI446X_CMD_IRCAL) // If we're doing an IRCAL then wait for its completion without a timeout since it can sometimes take a few seconds
 			waitForResponse(NULL, 0, 0);
@@ -818,7 +830,7 @@ byte Si446x::getResponse(void *buff, byte len)
 	byte cts = 0;
 
 	interrupt_off();
-	digitalWrite(SI446X_CSN, LOW);
+	digitalWrite(_cs, LOW);
 	// Send command
 	SPI.transfer(SI446X_CMD_READ_CMD_BUFF);
 	// Get CTS value
@@ -831,7 +843,7 @@ byte Si446x::getResponse(void *buff, byte len)
 			((byte *)buff)[i] = SPI.transfer(0xFF);
 		}
 	}
-	digitalWrite(SI446X_CSN, HIGH);
+	digitalWrite(_cs, HIGH);
 	interrupt_on();
 	return cts;
 }
@@ -846,13 +858,13 @@ byte Si446x::getResponse(void *buff, byte len)
 void Si446x::read(byte *buff, byte len)
 {
 	interrupt_off();
-	digitalWrite(SI446X_CSN, LOW);
+	digitalWrite(_cs, LOW);
 	SPI.transfer(SI446X_CMD_READ_RX_FIFO);
 	for (byte i = 0; i < len; i++)
 	{
 		buff[i] = SPI.transfer(0xFF);
 	}
-	digitalWrite(SI446X_CSN, HIGH);
+	digitalWrite(_cs, HIGH);
 	interrupt_on();
 }
 
@@ -861,10 +873,10 @@ byte Si446x::getFRR(byte reg)
 {
 	byte frr = 0;
 	interrupt_off();
-	digitalWrite(SI446X_CSN, LOW);
+	digitalWrite(_cs, LOW);
 	SPI.transfer(reg);
 	frr = SPI.transfer(0xFF);
-	digitalWrite(SI446X_CSN, HIGH);
+	digitalWrite(_cs, HIGH);
 	interrupt_on();
 	return frr;
 }
@@ -907,7 +919,7 @@ inline byte Si446x::interrupt_on(void)
 // When doing SPI comms with the radio or doing multiple commands we don't want the radio interrupt to mess it up.
 void Si446x::irq_off()
 {
-	detachInterrupt(digitalPinToInterrupt(SI446X_IRQ));
+	detachInterrupt(digitalPinToInterrupt(_irq));
 	isrState_local++;
 }
 
@@ -925,5 +937,5 @@ void Si446x::irq_on()
 	if (isrState_local > 0)
 		isrState_local--;
 	if (isrState_local == 0)
-		attachInterrupt(digitalPinToInterrupt(SI446X_IRQ), Si446x::onIrqFalling, FALLING);
+		attachInterrupt(digitalPinToInterrupt(_irq), Si446x::onIrqFalling, FALLING);
 }

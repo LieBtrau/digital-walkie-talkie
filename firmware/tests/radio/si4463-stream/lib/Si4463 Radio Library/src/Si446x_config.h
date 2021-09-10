@@ -45,15 +45,6 @@
 #define SI446X_FIXED_LENGTH 0
 
 
-///////////////////
-// Pin stuff
-///////////////////
-
-// Arduino pin assignments
-#define SI446X_CSN			5//ESP32
-#define SI446X_SDN			16
-#define SI446X_IRQ			4 // This needs to be an interrupt pin
-
 // NOT PROPERLY TESTED, KEEP 1
 // what happens if:
 // 1. Si446x_SERVICE()
