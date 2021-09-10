@@ -8,9 +8,6 @@
 
 #include <Arduino.h>
 #include "SPI.h"
-#include <string.h>
-#include <stdint.h>
-#include <stdio.h>
 #include "Si446x.h"
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
@@ -147,7 +144,7 @@ short Si446x::getLatchedRSSI(void)
 * @see ::si446x_state_t
 * @return The current radio status
 */
-Si446x::si446x_state_t Si446x::getState(void)
+si446x_state_t Si446x::getState(void)
 {
 	byte state = getFRR(SI446X_CMD_READ_FRR_B);
 	if (state == SI446X_STATE_TX_TUNE)

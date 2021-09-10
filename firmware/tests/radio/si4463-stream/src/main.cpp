@@ -94,7 +94,7 @@ void clientloop()
 	uint32_t startTime = millis();
 
 	// Send the data
-	si4463.TX(data, sizeof(data), CHANNEL, Si446x::SI446X_STATE_RX);
+	si4463.TX(data, sizeof(data), CHANNEL, SI446X_STATE_RX);
 	sent++;
 
 	// Put into receive mode
@@ -195,7 +195,7 @@ void serverloop()
 		delay(500);
 
 		// Send back the data, once the transmission has completed go into receive mode
-		si4463.TX((uint8_t *)pingInfo.buffer, pingInfo.length, CHANNEL, Si446x::SI446X_STATE_RX);
+		si4463.TX((uint8_t *)pingInfo.buffer, pingInfo.length, CHANNEL, SI446X_STATE_RX);
 
 		Serial.println(F("Reply sent"));
 
