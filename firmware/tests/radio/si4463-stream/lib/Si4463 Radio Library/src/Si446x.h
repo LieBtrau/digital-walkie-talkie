@@ -12,19 +12,28 @@
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
 
-class Si446x
+class Si446x //: public Stream
 {
 public:
 	Si446x();
 	void setPins(int cs, int irq, int sdn);
-	void begin(void);
+	void begin(byte channel);
+
+	// // from Print
+	// virtual size_t write(uint8_t byte);
+	// virtual size_t write(const uint8_t *buffer, size_t size);
+
+	// // from Stream
+	// virtual int available();
+	// virtual int read();
+	// virtual int peek();
+	// virtual void flush();
+
 	void getInfo(si446x_info_t *info);
 	short getLatchedRSSI(void);
 	short getRSSI(void);
 	void setTxPower(byte pwr);
 	void setupCallback(word callbacks, byte state);
-	byte TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish);
-	void RX(byte channel);
 	void setLowBatt(word voltage);
 	void setupWUT(byte r, word m, byte ldc, byte config);
 	void disableWUT(void);
@@ -35,13 +44,15 @@ public:
 	void writeGPIO(si446x_gpio_t pin, byte value);
 	byte readGPIO(void);
 	byte dump(byte *buff, byte group);
-	void read(byte *buff, byte len);
 	void onReceive(void (*callback)(byte));
 	void onReceiveBegin(void (*callback)(short));
 	void onReceiveInvalid(void (*callback)(short));
 	void onSent(void (*callback)(void));
 	void onBatteryLow(void (*callback)(void));
 	void onWakingUp(void (*callback)(void));
+	byte TX(byte *packet, byte len, si446x_state_t onTxFinish);
+	void receive();
+	void read(byte *buff, byte len);
 
 private:
 	byte interrupt_off(void);
@@ -75,4 +86,5 @@ private:
 	byte _cs = 0;
 	byte _irq = 0;
 	byte _sdn = 0;
+	byte _channel;
 };

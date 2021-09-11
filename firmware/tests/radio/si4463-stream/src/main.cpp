@@ -68,11 +68,11 @@ void setup()
 
 	// Start up
 	si4463.setPins(5, 4, 16);
-	si4463.begin();
+	si4463.begin(CHANNEL);
 	si4463.setTxPower(SI446X_MAX_TX_POWER);
 
 	// Put into receive mode
-	si4463.RX(CHANNEL);
+	si4463.receive();
 	si4463.onReceive(onReceive);
 }
 
@@ -95,7 +95,7 @@ void clientloop()
 	uint32_t startTime = millis();
 
 	// Send the data
-	si4463.TX(data, sizeof(data), CHANNEL, SI446X_STATE_RX);
+	si4463.TX(data, sizeof(data), SI446X_STATE_RX);
 	sent++;
 
 	// Put into receive mode
@@ -185,7 +185,7 @@ void serverloop()
 		Serial.print(F("Invalid packet! Signal: "));
 		Serial.print(pingInfo.rssi);
 		Serial.println(F("dBm"));
-		si4463.RX(CHANNEL);
+		si4463.receive();
 	}
 	else
 	{
@@ -196,7 +196,7 @@ void serverloop()
 		delay(500);
 
 		// Send back the data, once the transmission has completed go into receive mode
-		si4463.TX((uint8_t *)pingInfo.buffer, pingInfo.length, CHANNEL, SI446X_STATE_RX);
+		si4463.TX((uint8_t *)pingInfo.buffer, pingInfo.length, SI446X_STATE_RX);
 
 		Serial.println(F("Reply sent"));
 

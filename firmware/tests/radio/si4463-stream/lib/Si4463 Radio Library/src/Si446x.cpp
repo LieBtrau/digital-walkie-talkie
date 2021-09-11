@@ -229,12 +229,13 @@ void Si446x::applyStartupConfig(void)
 *
 * @return (none)
 */
-void Si446x::begin()
+void Si446x::begin(byte channel)
 {
 	if(_cs==0 || _irq==0 || _sdn==0)
 	{
 		return;
 	}
+	_channel = channel;
 	digitalWrite(_cs, HIGH);
 	pinMode(_cs, OUTPUT);
 	pinMode(_sdn, OUTPUT);
@@ -470,7 +471,7 @@ byte Si446x::sleep()
 * @param [channel] Channel to listen to (0 - 255)
 * @return (none)
 */
-void Si446x::RX(byte channel)
+void Si446x::receive()
 {
 	irq_off();
 	setState(IDLE_STATE);
@@ -484,7 +485,7 @@ void Si446x::RX(byte channel)
 
 	byte data[] = {
 		SI446X_CMD_START_RX,
-		channel,
+		_channel,
 		0,
 		0,
 		SI446X_FIXED_LENGTH,
@@ -729,7 +730,7 @@ void Si446x::handleIrqFall()
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
-byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
+byte Si446x::TX(byte *packet, byte len, si446x_state_t onTxFinish)
 {
 	// TODO what happens if len is 0?
 
@@ -773,7 +774,7 @@ byte Si446x::TX(byte *packet, byte len, byte channel, si446x_state_t onTxFinish)
 	// Begin transmit
 	byte data[] = {
 		SI446X_CMD_START_TX,
-		channel,
+		_channel,
 		(byte)(onTxFinish << 4),
 		0,
 		SI446X_FIXED_LENGTH,
