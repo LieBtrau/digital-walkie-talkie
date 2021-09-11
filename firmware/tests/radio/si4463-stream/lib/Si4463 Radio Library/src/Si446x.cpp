@@ -721,6 +721,19 @@ void Si446x::handleIrqFall()
 	isrBusy = 0;
 }
 
+bool Si446x::beginPacket()
+{
+	if (getState() == SI446X_STATE_TX) // Already transmitting
+	{
+		return false;
+	}
+	irq_off();
+	setState(IDLE_STATE);
+	clearFIFO();
+	interrupt2(NULL, 0, 0, 0xFF);
+	return true;
+}
+
 /**
 * @brief Transmit a packet
 *
@@ -738,18 +751,6 @@ byte Si446x::TX(byte *packet, byte len, si446x_state_t onTxFinish)
 	// Stop the unused parameter warning
 	((void)(len));
 #endif
-
-	if (getState() == SI446X_STATE_TX) // Already transmitting
-	{
-		return 0;
-	}
-
-	irq_off();
-	// TODO collision avoid or maybe just do collision detect (RSSI jump)
-
-	setState(IDLE_STATE);
-	clearFIFO();
-	interrupt2(NULL, 0, 0, 0xFF);
 
 	interrupt_off();
 	// Load data to FIFO

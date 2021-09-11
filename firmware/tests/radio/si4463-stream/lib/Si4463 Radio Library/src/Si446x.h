@@ -28,6 +28,7 @@ public:
 	// virtual int read();
 	// virtual int peek();
 	// virtual void flush();
+	bool beginPacket();
 
 	void getInfo(si446x_info_t *info);
 	short getLatchedRSSI(void);
