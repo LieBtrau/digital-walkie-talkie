@@ -77,6 +77,11 @@ void Si446x::onWakingUp(void (*callback)(void))
 	_onWakingUp = callback;
 }
 
+void Si446x::onTxDone(void (*callback)(void))
+{
+	_onTxDone = callback;
+}
+
 // Configure a bunch of properties (up to 12 properties in one go)
 void Si446x::setProperties(word prop, void *values, byte len)
 {

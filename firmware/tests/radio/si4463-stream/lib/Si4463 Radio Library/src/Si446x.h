@@ -51,6 +51,7 @@ public:
 	void onSent(void (*callback)(void));
 	void onBatteryLow(void (*callback)(void));
 	void onWakingUp(void (*callback)(void));
+	void onTxDone(void(*callback)());
 	byte TX(byte *packet, byte len, si446x_state_t onTxFinish);
 	void receive();
 	void read(byte *buff, byte len);
@@ -84,6 +85,7 @@ private:
 	void (*_onSent)(void) = nullptr;
 	void (*_onBatteryLow)(void) = nullptr;
 	void (*_onWakingUp)(void) = nullptr;
+	void (*_onTxDone)() = nullptr;
 	byte _cs = 0;
 	byte _irq = 0;
 	byte _sdn = 0;
