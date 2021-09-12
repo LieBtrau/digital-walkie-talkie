@@ -105,10 +105,10 @@ void Si446x::getProperties(word prop, byte *values, byte len)
 {
 	byte data[] =
 		{
-			SI446X_CMD_GET_PROPERTY,	//CMD
-			highByte(prop),				//GROUP
-			len,						//NUM_PROPS	
-			lowByte(prop)};				//START_PROP
+			SI446X_CMD_GET_PROPERTY, //CMD
+			highByte(prop),			 //GROUP
+			len,					 //NUM_PROPS
+			lowByte(prop)};			 //START_PROP
 
 	doAPI(data, sizeof(data), values, len);
 }
@@ -179,6 +179,19 @@ void Si446x::clearFIFO(void)
 		SI446X_CMD_FIFO_INFO,
 		SI446X_FIFO_CLEAR_RX | SI446X_FIFO_CLEAR_TX};
 	doAPI((byte *)clearFifo, sizeof(clearFifo), NULL, 0);
+}
+
+void Si446x::getFifoInfo(byte &RX_FIFO_COUNT, byte &TX_FIFO_SPACE)
+{
+	byte data[] =
+		{
+			SI446X_CMD_FIFO_INFO,
+			0 //Don't clear FIFO's
+		};
+	byte out[2];
+	doAPI(data, sizeof(data), out, 2);
+	RX_FIFO_COUNT = out[0];
+	TX_FIFO_SPACE = out[1];
 }
 
 // Read and clear pending interrupts
@@ -669,12 +682,11 @@ void Si446x::handleIrqFall()
 	// Valid packet
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
-#if !SI446X_FIXED_LENGTH
-		byte len = 0;
-		read(&len, 1);
-#else
 		byte len = SI446X_FIXED_LENGTH;
-#endif
+		if (len == 0)
+		{
+			read(&len, 1);
+		}
 		if (_onReceive != nullptr)
 		{
 			_onReceive(len);
@@ -722,6 +734,75 @@ bool Si446x::beginPacket()
 	return true;
 }
 
+size_t Si446x::write(uint8_t byte)
+{
+	return write(&byte, sizeof(byte));
+}
+
+size_t Si446x::write(const uint8_t *buffer, size_t size)
+{
+	// byte dummy, fifoSpaceRemaining;
+	// getFifoInfo(dummy, fifoSpaceRemaining);
+
+	// // check size
+	// if (size > fifoSpaceRemaining)
+	// {
+	// 	size = fifoSpaceRemaining;
+	// }
+
+	// // write data
+	// for (size_t i = 0; i < size; i++)
+	// {
+	// 	writeRegister(REG_FIFO, buffer[i]);
+	// }
+
+	// return size;
+	return 0;
+}
+
+int Si446x::available()
+{
+	// return (readRegister(REG_RX_NB_BYTES) - _packetIndex);
+	return 0;
+}
+
+int Si446x::read()
+{
+	// if (!available())
+	// {
+	// 	return -1;
+	// }
+
+	// _packetIndex++;
+
+	// return readRegister(REG_FIFO);
+	return 0;
+}
+
+int Si446x::peek()
+{
+	// if (!available())
+	// {
+	// 	return -1;
+	// }
+
+	// // store current FIFO address
+	// int currentAddress = readRegister(REG_FIFO_ADDR_PTR);
+
+	// // read
+	// uint8_t b = readRegister(REG_FIFO);
+
+	// // restore FIFO address
+	// writeRegister(REG_FIFO_ADDR_PTR, currentAddress);
+
+	// return b;
+	return 0;
+}
+
+void Si446x::flush()
+{
+}
+
 /**
 * @brief Transmit a packet
 *
@@ -762,14 +843,13 @@ byte Si446x::TX(byte *packet, byte len, si446x_state_t onTxFinish)
 
 	// Begin transmit
 	byte data[] = {
-		SI446X_CMD_START_TX,
-		_channel,
-		(byte)(onTxFinish << 4),
-		0,
-		SI446X_FIXED_LENGTH,
-		0,
-		0};
-	doAPI(data, sizeof(data), NULL, 0);
+		SI446X_CMD_START_TX,	 //CMD
+		_channel,				 //CHANNEL
+		(byte)(onTxFinish << 4), //CONDITION
+		0,						 //TXLEN_H
+		SI446X_FIXED_LENGTH		 //TXLEN_L (=0 when using variable length packets)
+	};
+	doAPI(data, sizeof(data), nullptr, 0);
 
 #if !SI446X_FIXED_LENGTH
 	// Reset packet length back to max for receive mode

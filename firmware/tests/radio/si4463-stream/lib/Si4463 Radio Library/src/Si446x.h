@@ -12,22 +12,22 @@
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
 
-class Si446x //: public Stream
+class Si446x : public Stream
 {
 public:
 	Si446x();
 	void setPins(int cs, int irq, int sdn);
 	void begin(byte channel);
 
-	// // from Print
-	// virtual size_t write(uint8_t byte);
-	// virtual size_t write(const uint8_t *buffer, size_t size);
+	// from Print
+	virtual size_t write(uint8_t byte);
+	virtual size_t write(const uint8_t *buffer, size_t size);
 
-	// // from Stream
-	// virtual int available();
-	// virtual int read();
-	// virtual int peek();
-	// virtual void flush();
+	// from Stream
+	virtual int available();
+	virtual int read();
+	virtual int peek();
+	virtual void flush();
 	bool beginPacket();
 
 	void getInfo(si446x_info_t *info);
@@ -75,6 +75,7 @@ private:
 	si446x_state_t getState(void);
 	void setState(si446x_state_t newState);
 	void clearFIFO(void);
+	void getFifoInfo(byte& RX_FIFO_COUNT, byte &TX_FIFO_SPACE);
 	void interrupt(byte *buff);
 	void interrupt2(byte *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);

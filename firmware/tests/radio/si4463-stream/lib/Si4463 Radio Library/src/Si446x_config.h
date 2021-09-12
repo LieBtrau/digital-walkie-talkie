@@ -42,8 +42,11 @@
 // To use variable length packets set this to 0
 // Otherwise for fixed length packets this should be set to the length. The len parameter in Si446x_TX() will then be ignored.
 // Using fixed length packets will stop the length field from being transmitted, reducing the transmission by 3 bytes.
-#define SI446X_FIXED_LENGTH 0
-
+/* Due to the implementation as a Streaming library, it's no longer possible to use variable length packets.
+ * The streaming library allows to add data to the FIFO in several bursts.  So the final length isn't known beforehand.
+ * The variable length packet requires the length to be written as the first byte in the FIFO, so the length should be known beforehand.
+ */
+#define SI446X_FIXED_LENGTH 60
 
 // NOT PROPERLY TESTED, KEEP 1
 // what happens if:
@@ -58,6 +61,5 @@
 // 0 = Off, run callbacks from Si446x_SERVICE()
 // 1 = On, run callbacks from interrupt
 #define SI446X_INTERRUPTS 1 // DO NOT CHANGE
-
 
 #endif /* SI443X_CONFIG_H_ */
