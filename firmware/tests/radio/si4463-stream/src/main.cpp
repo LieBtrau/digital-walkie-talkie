@@ -162,13 +162,13 @@ void clientloop()
 		Serial.println();
 	}
 
-	Serial.print(F("Totals: "));
-	Serial.print(sent);
-	Serial.print(F("\tSent, "));
+	Serial.print(F("Totals:\t"));
 	Serial.print(sentPacketCtr);
-	Serial.print(F("\tReplies, "));
+	Serial.print(F(" Sent,\t"));
+	Serial.print(replies);
+	Serial.print(F(" Replies,\t"));
 	Serial.print(timeouts);
-	Serial.print(F("\tTimeouts, "));
+	Serial.print(F(" Timeouts,\t"));
 	Serial.print(invalids);
 	Serial.println(F(" Invalid"));
 	Serial.println(F("------"));

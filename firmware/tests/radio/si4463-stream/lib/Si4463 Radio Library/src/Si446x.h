@@ -82,7 +82,6 @@ private:
 	void (*_onReceive)(byte) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
-	void (*_onSent)(void) = nullptr;
 	void (*_onBatteryLow)(void) = nullptr;
 	void (*_onWakingUp)(void) = nullptr;
 	void (*_onTxDone)() = nullptr;

@@ -63,11 +63,6 @@ void Si446x::onReceiveInvalid(void (*callback)(short))
 	_onReceiveInvalid = callback;
 }
 
-void Si446x::onSent(void (*callback)(void))
-{
-	_onSent = callback;
-}
-
 void Si446x::onBatteryLow(void (*callback)(void))
 {
 	_onBatteryLow = callback;
@@ -108,11 +103,12 @@ inline void Si446x::setProperty(word prop, byte value)
 // Read a bunch of properties
 void Si446x::getProperties(word prop, byte *values, byte len)
 {
-	byte data[] = {
-		SI446X_CMD_GET_PROPERTY,
-		(byte)(prop >> 8),
-		len,
-		(byte)prop};
+	byte data[] =
+		{
+			SI446X_CMD_GET_PROPERTY,	//CMD
+			highByte(prop),				//GROUP
+			len,						//NUM_PROPS	
+			lowByte(prop)};				//START_PROP
 
 	doAPI(data, sizeof(data), values, len);
 }
@@ -254,11 +250,12 @@ void Si446x::begin(byte channel)
 	interrupt(nullptr);
 	sleep();
 
+	//Enable individual interrupt sources within the Packet Handler Interrupt Group to generate a HW interrupt on the NIRQ output pin.
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_SENT_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_RX_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, CRC_ERROR_EN);
 	irq_off();
-	setProperties(SI446X_INT_CTL_PH_ENABLE, (byte*)&cached_Int_Enable.INT_CTL_PH_ENABLE, 1);
+	setProperties(SI446X_INT_CTL_PH_ENABLE, (byte *)&cached_Int_Enable.INT_CTL_PH_ENABLE, 1);
 	irq_on();
 
 	if (isrState_local > 0)
@@ -655,6 +652,12 @@ void Si446x::handleIrqFall()
 	byte MODEM_PEND = interrupts[4] & cached_Int_Enable.INT_CTL_MODEM_ENABLE;
 	byte CHIP_PEND = interrupts[6] & cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
+	// Packet sent
+	if (bitRead(PH_PEND, SI446X_PACKET_SENT_PEND) && _onTxDone != nullptr)
+	{
+		_onTxDone();
+	}
+
 	// Valid PREAMBLE and SYNC, packet data now begins
 	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND) && _onReceiveBegin != nullptr)
 	{
@@ -691,12 +694,6 @@ void Si446x::handleIrqFall()
 		{
 			_onReceiveInvalid(getLatchedRSSI());
 		}
-	}
-
-	// Packet sent
-	if (bitRead(PH_PEND, SI446X_PACKET_SENT_PEND) && _onSent != nullptr)
-	{
-		_onSent();
 	}
 
 	if (bitRead(CHIP_PEND, SI446X_LOW_BATT_PEND) && _onBatteryLow != nullptr)
