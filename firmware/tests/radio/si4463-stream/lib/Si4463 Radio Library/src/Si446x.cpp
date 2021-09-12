@@ -84,7 +84,7 @@ void Si446x::onTxDone(void (*callback)(void))
 }
 
 // Configure a bunch of properties (up to 12 properties in one go)
-void Si446x::setProperties(word prop, void *values, byte len)
+void Si446x::setProperties(word prop, byte *values, byte len)
 {
 	// len must not be greater than 12
 	byte data[16] = {
@@ -106,7 +106,7 @@ inline void Si446x::setProperty(word prop, byte value)
 }
 
 // Read a bunch of properties
-void Si446x::getProperties(word prop, void *values, byte len)
+void Si446x::getProperties(word prop, byte *values, byte len)
 {
 	byte data[] = {
 		SI446X_CMD_GET_PROPERTY,
@@ -187,14 +187,14 @@ void Si446x::clearFIFO(void)
 
 // Read and clear pending interrupts
 // Buff should either be NULL (just clear interrupts) or a buffer of at least 8 bytes for storing statuses
-void Si446x::interrupt(void *buff)
+void Si446x::interrupt(byte *buff)
 {
 	byte data = SI446X_CMD_GET_INT_STATUS;
 	doAPI(&data, sizeof(data), buff, 8);
 }
 
 // Similar to interrupt() but with the option of not clearing certain interrupt flags
-void Si446x::interrupt2(void *buff, byte clearPH, byte clearMODEM, byte clearCHIP)
+void Si446x::interrupt2(byte *buff, byte clearPH, byte clearMODEM, byte clearCHIP)
 {
 	byte data[] = {
 		SI446X_CMD_GET_INT_STATUS,
@@ -645,19 +645,13 @@ void Si446x::handleIrqFall()
 	isrBusy = 1;
 	byte interrupts[8];
 	interrupt(interrupts);
-
-	// TODO remove
-	//SI446X_CB_DEBUG(interrupts);
-
-	//printf_P(PSTR("INT %hhu/%hhu %hhu/%hhu %hhu/%hhu\n"), interrupts[2], interrupts[3], interrupts[4], interrupts[5], interrupts[6], interrupts[7]);
-
 	// We could read the enabled interrupts properties instead of keep their states in RAM, but that would be much slower
-	interrupts[2] &= cached_Int_Enable.INT_CTL_PH_ENABLE;
-	interrupts[4] &= cached_Int_Enable.INT_CTL_MODEM_ENABLE;
-	interrupts[6] &= cached_Int_Enable.INT_CTL_CHIP_ENABLE;
+	byte PH_PEND = interrupts[2] & cached_Int_Enable.INT_CTL_PH_ENABLE;
+	byte MODEM_PEND = interrupts[4] & cached_Int_Enable.INT_CTL_MODEM_ENABLE;
+	byte CHIP_PEND = interrupts[6] & cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
 	// Valid PREAMBLE and SYNC, packet data now begins
-	if (bitRead(interrupts[4], SI446X_SYNC_DETECT_PEND))
+	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND))
 	{
 		//fix_invalidSync_irq(1);
 		//		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 1); // Enable INVALID_SYNC when a new packet starts, sometimes a corrupted packet will mess the radio up
@@ -666,21 +660,9 @@ void Si446x::handleIrqFall()
 			_onReceiveBegin(getLatchedRSSI());
 		}
 	}
-	/*
-	// Disable INVALID_SYNC
-	if((interrupts[4] & (1<<SI446X_INVALID_SYNC_PEND)) || (interrupts[2] & ((1<<SI446X_PACKET_SENT_PEND)|(1<<SI446X_CRC_ERROR_PEND))))
-	{
-		//fix_invalidSync_irq(0);
-		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
-	}
-*/
-
-	// INVALID_SYNC detected, sometimes the radio gets messed up in this state and requires a RX restart
-	//	if(interrupts[4] & (1<<SI446X_INVALID_SYNC_PEND))
-	//		SI446X_CB_RXINVALIDSYNC();
 
 	// Valid packet
-	if (bitRead(interrupts[2], SI446X_PACKET_RX_PEND))
+	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
 #if !SI446X_FIXED_LENGTH
 		byte len = 0;
@@ -697,7 +679,7 @@ void Si446x::handleIrqFall()
 	// Corrupted packet
 	// NOTE: This will still be called even if the address did not match, but the packet failed the CRC
 	// This will not be called if the address missed, but the packet passed CRC
-	if (bitRead(interrupts[2], SI446X_CRC_ERROR_PEND))
+	if (bitRead(PH_PEND, SI446X_CRC_ERROR_PEND))
 	{
 #if IDLE_STATE == SI446X_STATE_READY
 		if (getState() == SI446X_STATE_SPI_ACTIVE)
@@ -710,17 +692,17 @@ void Si446x::handleIrqFall()
 	}
 
 	// Packet sent
-	if (bitRead(interrupts[2],SI446X_PACKET_SENT_PEND) && _onSent != nullptr)
+	if (bitRead(PH_PEND, SI446X_PACKET_SENT_PEND) && _onSent != nullptr)
 	{
 		_onSent();
 	}
 
-	if (bitRead(interrupts[6], SI446X_LOW_BATT_PEND) && _onBatteryLow != nullptr)
+	if (bitRead(CHIP_PEND, SI446X_LOW_BATT_PEND) && _onBatteryLow != nullptr)
 	{
 		_onBatteryLow();
 	}
 
-	if (bitRead(interrupts[6], SI446X_WUT_PEND) && _onWakingUp != nullptr)
+	if (bitRead(CHIP_PEND, SI446X_WUT_PEND) && _onWakingUp != nullptr)
 	{
 		_onWakingUp();
 	}
@@ -798,7 +780,7 @@ byte Si446x::TX(byte *packet, byte len, si446x_state_t onTxFinish)
 	return 1;
 }
 
-void Si446x::doAPI(void *data, byte len, void *out, byte outLen)
+void Si446x::doAPI(byte *data, byte len, byte *out, byte outLen)
 {
 	irq_off();
 	if (waitForResponse(NULL, 0, 1)) // Make sure it's ok to send a command
@@ -806,19 +788,25 @@ void Si446x::doAPI(void *data, byte len, void *out, byte outLen)
 		interrupt_off();
 		digitalWrite(_cs, LOW);
 		for (byte i = 0; i < len; i++)
-			SPI.transfer(((byte *)data)[i]); // (pgm_read_byte(&((byte*)data)[i]));
+		{
+			SPI.transfer(data[i]); // (pgm_read_byte(&((byte*)data)[i]));
+		}
 		digitalWrite(_cs, HIGH);
 		interrupt_on();
-		if (((byte *)data)[0] == SI446X_CMD_IRCAL) // If we're doing an IRCAL then wait for its completion without a timeout since it can sometimes take a few seconds
+		if (data[0] == SI446X_CMD_IRCAL) // If we're doing an IRCAL then wait for its completion without a timeout since it can sometimes take a few seconds
+		{
 			waitForResponse(NULL, 0, 0);
-		else if (out != NULL) // If we have an output buffer then read command response into it
+		}
+		else if (out != nullptr) // If we have an output buffer then read command response into it
+		{
 			waitForResponse(out, outLen, 1);
+		}
 	}
 	irq_on();
 }
 
 // Keep trying to read the command buffer, with timeout of around 500ms
-byte Si446x::waitForResponse(void *out, byte outLen, byte useTimeout)
+byte Si446x::waitForResponse(byte *out, byte outLen, byte useTimeout)
 {
 	// With F_CPU at 8MHz and SPI at 4MHz each check takes about 7us + 10us delay
 	word timeout = 40000;
@@ -834,7 +822,7 @@ byte Si446x::waitForResponse(void *out, byte outLen, byte useTimeout)
 }
 
 // Read CTS and if its ok then read the command buffer
-byte Si446x::getResponse(void *buff, byte len)
+byte Si446x::getResponse(byte *buff, byte len)
 {
 	byte cts = 0;
 
@@ -849,7 +837,7 @@ byte Si446x::getResponse(void *buff, byte len)
 		// Get response data
 		for (byte i = 0; i < len; i++)
 		{
-			((byte *)buff)[i] = SPI.transfer(0xFF);
+			buff[i] = SPI.transfer(0xFF);
 		}
 	}
 	digitalWrite(_cs, HIGH);

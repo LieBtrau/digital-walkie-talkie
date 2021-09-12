@@ -34,6 +34,7 @@ typedef struct
 } pingInfo_t;
 
 static volatile pingInfo_t pingInfo;
+static volatile int sentPacketCtr = 0;
 
 void onReceive(byte length)
 {
@@ -45,9 +46,14 @@ void onReceive(byte length)
 	pingInfo.rssi = si4463.getLatchedRSSI();
 	pingInfo.length = length;
 
-	si4463.read((byte*)pingInfo.buffer, length);
+	si4463.read((byte *)pingInfo.buffer, length);
 
 	// Radio will now be in idle mode
+}
+
+void onTxDone()
+{
+	sentPacketCtr++;
 }
 
 void SI446X_CB_RXINVALID(int16_t rssi)
@@ -71,9 +77,11 @@ void setup()
 	si4463.begin(CHANNEL);
 	si4463.setTxPower(SI446X_MAX_TX_POWER);
 
+	si4463.onReceive(onReceive);
+	si4463.onTxDone(onTxDone);
+
 	// Put into receive mode
 	si4463.receive();
-	si4463.onReceive(onReceive);
 }
 
 void clientloop()
@@ -86,11 +94,11 @@ void clientloop()
 
 	// Make data
 	byte data[MAX_PACKET_SIZE] = {0};
-	sprintf_P((char*)data, PSTR("test %hhu"), counter);
+	sprintf_P((char *)data, PSTR("test %hhu"), counter);
 	counter++;
 
 	Serial.print(F("Client : Sending data"));
-	Serial.println((char*)data);
+	Serial.println((char *)data);
 
 	uint32_t startTime = millis();
 
@@ -156,11 +164,11 @@ void clientloop()
 
 	Serial.print(F("Totals: "));
 	Serial.print(sent);
-	Serial.print(F(" Sent, "));
-	Serial.print(replies);
-	Serial.print(F(" Replies, "));
+	Serial.print(F("\tSent, "));
+	Serial.print(sentPacketCtr);
+	Serial.print(F("\tReplies, "));
 	Serial.print(timeouts);
-	Serial.print(F(" Timeouts, "));
+	Serial.print(F("\tTimeouts, "));
 	Serial.print(invalids);
 	Serial.println(F(" Invalid"));
 	Serial.println(F("------"));
@@ -217,11 +225,13 @@ void serverloop()
 		Serial.println();
 	}
 
-	Serial.print(F("Totals: "));
+	Serial.print(F("Totals:\t"));
 	Serial.print(pings);
-	Serial.print(F("Pings, "));
+	Serial.print(F(" Pings,\t"));
+	Serial.print(sentPacketCtr);
+	Serial.print(F(" Sent packets,\t"));
 	Serial.print(invalids);
-	Serial.println(F("Invalid"));
+	Serial.println(F(" Invalid"));
 	Serial.println(F("------"));
 }
 
