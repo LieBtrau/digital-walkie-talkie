@@ -254,7 +254,12 @@ void Si446x::begin(byte channel)
 	interrupt(nullptr);
 	sleep();
 
-	cached_Int_Enable.INT_CTL_PH_ENABLE = PACKET_SENT_EN | PACKET_RX_EN | CRC_ERROR_EN;
+	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_SENT_EN);
+	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_RX_EN);
+	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, CRC_ERROR_EN);
+	irq_off();
+	setProperties(SI446X_INT_CTL_PH_ENABLE, (byte*)&cached_Int_Enable.INT_CTL_PH_ENABLE, 1);
+	irq_on();
 
 	if (isrState_local > 0)
 		isrState_local--;
@@ -651,14 +656,11 @@ void Si446x::handleIrqFall()
 	byte CHIP_PEND = interrupts[6] & cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
 	// Valid PREAMBLE and SYNC, packet data now begins
-	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND))
+	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND) && _onReceiveBegin != nullptr)
 	{
 		//fix_invalidSync_irq(1);
 		//		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 1); // Enable INVALID_SYNC when a new packet starts, sometimes a corrupted packet will mess the radio up
-		if (_onReceiveBegin != nullptr)
-		{
-			_onReceiveBegin(getLatchedRSSI());
-		}
+		_onReceiveBegin(getLatchedRSSI());
 	}
 
 	// Valid packet

@@ -292,9 +292,9 @@ typedef enum
 #define SI446X_INT_CTL_CHIP_ENABLE INT_PROP(0x03)
 
 //INT_CTL_PH_ENABLE
-const byte PACKET_SENT_EN = 0x20;
-const byte PACKET_RX_EN = 0x10;
-const byte CRC_ERROR_EN = 0x08;
+const byte PACKET_SENT_EN = 5;
+const byte PACKET_RX_EN = 4;
+const byte CRC_ERROR_EN = 3;
 
 //GET_INT_STATUS
 //	PH_CLR_PEND
