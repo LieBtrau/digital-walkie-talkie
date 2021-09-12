@@ -254,8 +254,7 @@ void Si446x::begin(byte channel)
 	interrupt(nullptr);
 	sleep();
 
-	cached_Int_Enable.INT_CTL_PH_ENABLE = (1 << SI446X_PACKET_RX_PEND) | (1 << SI446X_CRC_ERROR_PEND);
-	//enabledInterrupts[IRQ_MODEM] = (1<<SI446X_SYNC_DETECT_PEND);
+	cached_Int_Enable.INT_CTL_PH_ENABLE = PACKET_SENT_EN | PACKET_RX_EN | CRC_ERROR_EN;
 
 	if (isrState_local > 0)
 		isrState_local--;
@@ -272,8 +271,9 @@ void Si446x::begin(byte channel)
 */
 void Si446x::getInfo(si446x_info_t *info)
 {
-	byte data[8] = {
-		SI446X_CMD_PART_INFO};
+	byte data[8] =
+		{
+			SI446X_CMD_PART_INFO};
 	doAPI(data, 1, data, 8);
 
 	info->chipRev = data[0];
@@ -657,7 +657,7 @@ void Si446x::handleIrqFall()
 	interrupts[6] &= cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
 	// Valid PREAMBLE and SYNC, packet data now begins
-	if (interrupts[4] & (1 << SI446X_SYNC_DETECT_PEND))
+	if (bitRead(interrupts[4], SI446X_SYNC_DETECT_PEND))
 	{
 		//fix_invalidSync_irq(1);
 		//		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 1); // Enable INVALID_SYNC when a new packet starts, sometimes a corrupted packet will mess the radio up
@@ -680,7 +680,7 @@ void Si446x::handleIrqFall()
 	//		SI446X_CB_RXINVALIDSYNC();
 
 	// Valid packet
-	if (interrupts[2] & (1 << SI446X_PACKET_RX_PEND))
+	if (bitRead(interrupts[2], SI446X_PACKET_RX_PEND))
 	{
 #if !SI446X_FIXED_LENGTH
 		byte len = 0;
@@ -697,7 +697,7 @@ void Si446x::handleIrqFall()
 	// Corrupted packet
 	// NOTE: This will still be called even if the address did not match, but the packet failed the CRC
 	// This will not be called if the address missed, but the packet passed CRC
-	if (interrupts[2] & (1 << SI446X_CRC_ERROR_PEND))
+	if (bitRead(interrupts[2], SI446X_CRC_ERROR_PEND))
 	{
 #if IDLE_STATE == SI446X_STATE_READY
 		if (getState() == SI446X_STATE_SPI_ACTIVE)
@@ -710,17 +710,17 @@ void Si446x::handleIrqFall()
 	}
 
 	// Packet sent
-	if ((interrupts[2] & (1 << SI446X_PACKET_SENT_PEND)) && _onSent != nullptr)
+	if (bitRead(interrupts[2],SI446X_PACKET_SENT_PEND) && _onSent != nullptr)
 	{
 		_onSent();
 	}
 
-	if ((interrupts[6] & (1 << SI446X_LOW_BATT_PEND)) && _onBatteryLow != nullptr)
+	if (bitRead(interrupts[6], SI446X_LOW_BATT_PEND) && _onBatteryLow != nullptr)
 	{
 		_onBatteryLow();
 	}
 
-	if ((interrupts[6] & (1 << SI446X_WUT_PEND)) && _onWakingUp != nullptr)
+	if (bitRead(interrupts[6], SI446X_WUT_PEND) && _onWakingUp != nullptr)
 	{
 		_onWakingUp();
 	}

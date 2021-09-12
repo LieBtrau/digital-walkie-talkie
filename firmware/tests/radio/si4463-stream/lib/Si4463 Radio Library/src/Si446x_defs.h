@@ -6,8 +6,7 @@
  * Web: http://blog.zakkemble.co.uk/si4463-radio-library-avr-arduino/
  */
 
-#ifndef SI446X_DEFS_H_
-#define SI446X_DEFS_H_
+#pragma once
 
 #define SI446X_CMD_POWER_UP 0x02
 #define SI446X_CMD_NOP 0x00
@@ -292,19 +291,24 @@ typedef enum
 #define SI446X_INT_CTL_MODEM_ENABLE INT_PROP(0x02)
 #define SI446X_INT_CTL_CHIP_ENABLE INT_PROP(0x03)
 
+//INT_CTL_PH_ENABLE
+const byte PACKET_SENT_EN = 0x20;
+const byte PACKET_RX_EN = 0x10;
+const byte CRC_ERROR_EN = 0x08;
+
 //GET_INT_STATUS
 //	PH_CLR_PEND
-#define SI446X_FILTER_MATCH_PEND 7
-#define SI446X_FILTER_MISS_PEND 6
-#define SI446X_PACKET_SENT_PEND 5
-#define SI446X_PACKET_RX_PEND 4
-#define SI446X_CRC_ERROR_PEND 3
-//	MODEM_CLR_PEND 	
-#define SI446X_INVALID_SYNC_PEND 5
-#define SI446X_SYNC_DETECT_PEND 0
+const byte SI446X_FILTER_MATCH_PEND = 7;
+const byte SI446X_FILTER_MISS_PEND = 6;
+const byte SI446X_PACKET_SENT_PEND = 5;
+const byte SI446X_PACKET_RX_PEND = 4;
+const byte SI446X_CRC_ERROR_PEND = 3;
+//	MODEM_CLR_PEND
+const byte SI446X_INVALID_SYNC_PEND = 5;
+const byte SI446X_SYNC_DETECT_PEND = 0;
 //	CHIP_CLR_PEND
-#define SI446X_LOW_BATT_PEND 1
-#define SI446X_WUT_PEND 0
+const byte SI446X_LOW_BATT_PEND = 1;
+const byte SI446X_WUT_PEND = 0;
 
 #define SI446X_MATCH_VALUE_1 MATCH_PROP(0x00)
 #define SI446X_MATCH_EN 0x40
@@ -351,5 +355,3 @@ typedef enum
 #define SI446X_PROP_GROUP_FREQ_CONTROL 0x40 ///< Property group frequency control
 #define SI446X_PROP_GROUP_RX_HOP 0x50		///< Property group RX hop
 #define SI446X_PROP_GROUP_PTI 0xF0			///< Property group packet trace interface
-
-#endif /* SI446X_DEFS_H_ */
