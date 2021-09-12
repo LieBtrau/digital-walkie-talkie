@@ -25,17 +25,18 @@
 // The first byte is used for length, then the remaining 128 bytes for the packet data
 #define MAX_PACKET_LEN SI446X_MAX_PACKET_LEN
 
-#define IRQ_PACKET 0
-#define IRQ_MODEM 1
-#define IRQ_CHIP 2
+static volatile struct
+{
+	byte INT_CTL_PH_ENABLE;
+	byte INT_CTL_MODEM_ENABLE;
+	byte INT_CTL_CHIP_ENABLE;
+} cached_Int_Enable;
 
 #define rssi_dBm(val) ((val / 2) - 134)
 
 static Si446x *pSi446x = nullptr;
 
 static const byte config[] PROGMEM = RADIO_CONFIGURATION_DATA_ARRAY;
-
-static volatile byte enabledInterrupts[3];
 
 // It's not possible to get the current interrupt enabled state in Arduino (SREG only works for AVR based Arduinos, and no way of getting attachInterrupt() status), so we use a counter thing instead
 static volatile byte isrState_local;
@@ -152,16 +153,16 @@ short Si446x::getLatchedRSSI(void)
 si446x_state_t Si446x::getState(void)
 {
 	byte state = getFRR(SI446X_CMD_READ_FRR_B);
-	switch(state)
+	switch (state)
 	{
-		case SI446X_STATE_TX_TUNE:
-			return SI446X_STATE_TX;
-		case SI446X_STATE_RX_TUNE:
-			return SI446X_STATE_RX;
-		case SI446X_STATE_READY2:
-			return SI446X_STATE_READY;
-		default:
-			return (si446x_state_t)state;
+	case SI446X_STATE_TX_TUNE:
+		return SI446X_STATE_TX;
+	case SI446X_STATE_RX_TUNE:
+		return SI446X_STATE_RX;
+	case SI446X_STATE_READY2:
+		return SI446X_STATE_READY;
+	default:
+		return (si446x_state_t)state;
 	}
 }
 
@@ -250,10 +251,10 @@ void Si446x::begin(byte channel)
 	SPI.begin();
 	resetDevice();
 	applyStartupConfig();
-	interrupt(NULL);
+	interrupt(nullptr);
 	sleep();
 
-	enabledInterrupts[IRQ_PACKET] = (1 << SI446X_PACKET_RX_PEND) | (1 << SI446X_CRC_ERROR_PEND);
+	cached_Int_Enable.INT_CTL_PH_ENABLE = (1 << SI446X_PACKET_RX_PEND) | (1 << SI446X_CRC_ERROR_PEND);
 	//enabledInterrupts[IRQ_MODEM] = (1<<SI446X_SYNC_DETECT_PEND);
 
 	if (isrState_local > 0)
@@ -383,7 +384,7 @@ void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 	//intChip &= ~((1<<SI446X_INT_CTL_CHIP_LOW_BATT_EN)|(1<<SI446X_INT_CTL_CHIP_WUT_EN));
 	intChip |= doBatt << SI446X_INT_CTL_CHIP_LOW_BATT_EN;
 	intChip |= doRun << SI446X_INT_CTL_CHIP_WUT_EN;
-	enabledInterrupts[IRQ_CHIP] = intChip;
+	cached_Int_Enable.INT_CTL_CHIP_ENABLE = intChip;
 	setProperty(SI446X_INT_CTL_CHIP_ENABLE, intChip);
 
 	// Set WUT clock source to internal 32KHz RC
@@ -434,20 +435,19 @@ void Si446x::setupCallback(word callbacks, byte state)
 
 	if (state)
 	{
-		data[0] |= callbacks >> 8;
-		data[1] |= callbacks;
+		data[0] |= highByte(callbacks);
+		data[1] |= lowByte(callbacks);
 	}
 	else
 	{
-		data[0] &= ~(callbacks >> 8);
-		data[1] &= ~callbacks;
+		data[0] &= ~highByte(callbacks);
+		data[1] &= ~lowByte(callbacks);
 	}
 
 	// TODO
 	// make sure RXCOMPELTE, RXINVALID and RXBEGIN? are always enabled
-
-	enabledInterrupts[IRQ_PACKET] = data[0];
-	enabledInterrupts[IRQ_MODEM] = data[1];
+	cached_Int_Enable.INT_CTL_PH_ENABLE = data[0];
+	cached_Int_Enable.INT_CTL_MODEM_ENABLE = data[1];
 	setProperties(SI446X_INT_CTL_PH_ENABLE, data, sizeof(data));
 	irq_on();
 }
@@ -652,9 +652,9 @@ void Si446x::handleIrqFall()
 	//printf_P(PSTR("INT %hhu/%hhu %hhu/%hhu %hhu/%hhu\n"), interrupts[2], interrupts[3], interrupts[4], interrupts[5], interrupts[6], interrupts[7]);
 
 	// We could read the enabled interrupts properties instead of keep their states in RAM, but that would be much slower
-	interrupts[2] &= enabledInterrupts[IRQ_PACKET];
-	interrupts[4] &= enabledInterrupts[IRQ_MODEM];
-	interrupts[6] &= enabledInterrupts[IRQ_CHIP];
+	interrupts[2] &= cached_Int_Enable.INT_CTL_PH_ENABLE;
+	interrupts[4] &= cached_Int_Enable.INT_CTL_MODEM_ENABLE;
+	interrupts[6] &= cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
 	// Valid PREAMBLE and SYNC, packet data now begins
 	if (interrupts[4] & (1 << SI446X_SYNC_DETECT_PEND))
