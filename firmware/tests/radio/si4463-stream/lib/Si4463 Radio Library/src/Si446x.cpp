@@ -152,13 +152,17 @@ short Si446x::getLatchedRSSI(void)
 si446x_state_t Si446x::getState(void)
 {
 	byte state = getFRR(SI446X_CMD_READ_FRR_B);
-	if (state == SI446X_STATE_TX_TUNE)
-		state = SI446X_STATE_TX;
-	else if (state == SI446X_STATE_RX_TUNE)
-		state = SI446X_STATE_RX;
-	else if (state == SI446X_STATE_READY2)
-		state = SI446X_STATE_READY;
-	return (si446x_state_t)state;
+	switch(state)
+	{
+		case SI446X_STATE_TX_TUNE:
+			return SI446X_STATE_TX;
+		case SI446X_STATE_RX_TUNE:
+			return SI446X_STATE_RX;
+		case SI446X_STATE_READY2:
+			return SI446X_STATE_READY;
+		default:
+			return (si446x_state_t)state;
+	}
 }
 
 // Set new state
@@ -180,9 +184,8 @@ void Si446x::clearFIFO(void)
 	doAPI((byte *)clearFifo, sizeof(clearFifo), NULL, 0);
 }
 
-// Read pending interrupts
-// Reading interrupts will also clear them
-// Buff should either be NULL (just clear interrupts) or a buffer of atleast 8 bytes for storing statuses
+// Read and clear pending interrupts
+// Buff should either be NULL (just clear interrupts) or a buffer of at least 8 bytes for storing statuses
 void Si446x::interrupt(void *buff)
 {
 	byte data = SI446X_CMD_GET_INT_STATUS;
@@ -221,13 +224,12 @@ void Si446x::applyStartupConfig(void)
 	}
 }
 
-	void Si446x::setPins(int cs, int irq, int sdn)
-	{
-		_cs = cs;
-		_irq = irq;
-		_sdn = sdn;
-	}
-
+void Si446x::setPins(int cs, int irq, int sdn)
+{
+	_cs = cs;
+	_irq = irq;
+	_sdn = sdn;
+}
 
 /**
 * @brief Initialise, must be called before anything else!
@@ -236,7 +238,7 @@ void Si446x::applyStartupConfig(void)
 */
 void Si446x::begin(byte channel)
 {
-	if(_cs==0 || _irq==0 || _sdn==0)
+	if (_cs == 0 || _irq == 0 || _sdn == 0)
 	{
 		return;
 	}
@@ -718,7 +720,7 @@ void Si446x::handleIrqFall()
 		_onBatteryLow();
 	}
 
-	if ((interrupts[6] & (1 << SI446X_WUT_PEND)) && _onWakingUp !=nullptr)
+	if ((interrupts[6] & (1 << SI446X_WUT_PEND)) && _onWakingUp != nullptr)
 	{
 		_onWakingUp();
 	}
