@@ -52,7 +52,7 @@ public:
 	void onBatteryLow(void (*callback)(void));
 	void onWakingUp(void (*callback)(void));
 	void onTxDone(void(*callback)());
-	byte TX(byte *packet, byte len, si446x_state_t onTxFinish);
+	byte endPacket(/*byte *packet, byte len, */si446x_state_t onTxFinish);
 	void receive();
 	void read(byte *buff, byte len);
 

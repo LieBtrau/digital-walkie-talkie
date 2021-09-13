@@ -104,7 +104,8 @@ void clientloop()
 
 	// Send the data
 	si4463.beginPacket();
-	si4463.TX(data, sizeof(data), SI446X_STATE_RX);
+	si4463.write(data, sizeof(data));
+	si4463.endPacket(SI446X_STATE_RX);
 	sent++;
 
 	// Put into receive mode
@@ -206,7 +207,8 @@ void serverloop()
 
 		// Send back the data, once the transmission has completed go into receive mode
 		si4463.beginPacket();
-		si4463.TX((uint8_t *)pingInfo.buffer, pingInfo.length, SI446X_STATE_RX);
+		si4463.write((uint8_t *)pingInfo.buffer, pingInfo.length);
+		si4463.endPacket(SI446X_STATE_RX);
 
 		Serial.println(F("Reply sent"));
 

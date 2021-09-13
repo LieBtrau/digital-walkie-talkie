@@ -741,6 +741,21 @@ size_t Si446x::write(uint8_t byte)
 
 size_t Si446x::write(const uint8_t *buffer, size_t size)
 {
+	interrupt_off();
+	// Load data to FIFO
+	digitalWrite(_cs, LOW);
+	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
+#if !SI446X_FIXED_LENGTH
+	SPI.transfer(len);
+	for (byte i = 0; i < len; i++)
+		SPI.transfer(packet[i]);
+#else
+	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+		SPI.transfer(buffer[i]);
+#endif
+	digitalWrite(_cs, HIGH);
+	interrupt_on();
+
 	// byte dummy, fifoSpaceRemaining;
 	// getFifoInfo(dummy, fifoSpaceRemaining);
 
@@ -812,29 +827,15 @@ void Si446x::flush()
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
-byte Si446x::TX(byte *packet, byte len, si446x_state_t onTxFinish)
+byte Si446x::endPacket(/*byte *packet, byte len, */si446x_state_t onTxFinish)
 {
 	// TODO what happens if len is 0?
 
-#if SI446X_FIXED_LENGTH
-	// Stop the unused parameter warning
-	((void)(len));
-#endif
+// #if SI446X_FIXED_LENGTH
+// 	// Stop the unused parameter warning
+// 	((void)(len));
+// #endif
 
-	interrupt_off();
-	// Load data to FIFO
-	digitalWrite(_cs, LOW);
-	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-#if !SI446X_FIXED_LENGTH
-	SPI.transfer(len);
-	for (byte i = 0; i < len; i++)
-		SPI.transfer(packet[i]);
-#else
-	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
-		SPI.transfer(packet[i]);
-#endif
-	digitalWrite(_cs, HIGH);
-	interrupt_on();
 
 #if !SI446X_FIXED_LENGTH
 	// Set packet length
