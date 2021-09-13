@@ -827,21 +827,8 @@ void Si446x::flush()
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
-byte Si446x::endPacket(/*byte *packet, byte len, */si446x_state_t onTxFinish)
+byte Si446x::endPacket(si446x_state_t onTxFinish)
 {
-	// TODO what happens if len is 0?
-
-// #if SI446X_FIXED_LENGTH
-// 	// Stop the unused parameter warning
-// 	((void)(len));
-// #endif
-
-
-#if !SI446X_FIXED_LENGTH
-	// Set packet length
-	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, len);
-#endif
-
 	// Begin transmit
 	byte data[] = {
 		SI446X_CMD_START_TX,	 //CMD
@@ -852,10 +839,6 @@ byte Si446x::endPacket(/*byte *packet, byte len, */si446x_state_t onTxFinish)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
 
-#if !SI446X_FIXED_LENGTH
-	// Reset packet length back to max for receive mode
-	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
-#endif
 	irq_on();
 	return 1;
 }
