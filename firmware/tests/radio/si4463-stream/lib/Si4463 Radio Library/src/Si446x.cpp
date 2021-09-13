@@ -741,38 +741,27 @@ size_t Si446x::write(uint8_t byte)
 
 size_t Si446x::write(const uint8_t *buffer, size_t size)
 {
+	const byte SI446X_FIFO_LENGTH = 64;
+	byte dummy, fifoSpaceRemaining;
+	getFifoInfo(dummy, fifoSpaceRemaining);
+	int packetRemaining = fifoSpaceRemaining - SI446X_FIFO_LENGTH + SI446X_FIXED_LENGTH;
+
+	// check size
+	if (size > packetRemaining)
+	{
+		size = packetRemaining;
+	}
 	interrupt_off();
 	// Load data to FIFO
 	digitalWrite(_cs, LOW);
 	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-#if !SI446X_FIXED_LENGTH
-	SPI.transfer(len);
-	for (byte i = 0; i < len; i++)
-		SPI.transfer(packet[i]);
-#else
-	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+	for (byte i = 0; i < size; i++)
+	{
 		SPI.transfer(buffer[i]);
-#endif
+	}
 	digitalWrite(_cs, HIGH);
 	interrupt_on();
-
-	// byte dummy, fifoSpaceRemaining;
-	// getFifoInfo(dummy, fifoSpaceRemaining);
-
-	// // check size
-	// if (size > fifoSpaceRemaining)
-	// {
-	// 	size = fifoSpaceRemaining;
-	// }
-
-	// // write data
-	// for (size_t i = 0; i < size; i++)
-	// {
-	// 	writeRegister(REG_FIFO, buffer[i]);
-	// }
-
-	// return size;
-	return 0;
+	return size;
 }
 
 int Si446x::available()
@@ -821,9 +810,6 @@ void Si446x::flush()
 /**
 * @brief Transmit a packet
 *
-* @param [packet] Pointer to packet data
-* @param [len] Number of bytes to transmit, maximum of ::SI446X_MAX_PACKET_LEN If configured for fixed length packets then this parameter is ignored and the length is set by ::SI446X_FIXED_LENGTH in Si446x_config.h
-* @param [channel] Channel to transmit data on (0 - 255)
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
