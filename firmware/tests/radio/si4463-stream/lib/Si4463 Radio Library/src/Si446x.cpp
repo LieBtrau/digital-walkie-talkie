@@ -815,12 +815,15 @@ void Si446x::flush()
 /**
 * @brief Transmit a packet
 *
-* !! Packet will only be transmitted when enough characters are in the FIFO to fill the packet.
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
 byte Si446x::endPacket(si446x_state_t onTxFinish)
 {
+	//Fill up the end of the packet with zeros
+	byte zerobuf[SI446X_FIXED_LENGTH]={0};
+	write(zerobuf, sizeof(zerobuf));
+
 	// Begin transmit
 	byte data[] = {
 		SI446X_CMD_START_TX,	 //CMD
