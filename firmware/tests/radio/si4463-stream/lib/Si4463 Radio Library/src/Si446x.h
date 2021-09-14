@@ -51,7 +51,7 @@ public:
 	void onSent(void (*callback)(void));
 	void onBatteryLow(void (*callback)(void));
 	void onWakingUp(void (*callback)(void));
-	void onTxDone(void(*callback)());
+	void onTxDone(void (*callback)());
 	byte endPacket(si446x_state_t onTxFinish);
 	void receive();
 	void read(byte *buff, byte len);
@@ -75,7 +75,7 @@ private:
 	si446x_state_t getState(void);
 	void setState(si446x_state_t newState);
 	void clearFIFO(void);
-	void getFifoInfo(byte& RX_FIFO_COUNT, byte &TX_FIFO_SPACE);
+	void getFifoInfo(byte &RX_FIFO_COUNT, byte &TX_FIFO_SPACE);
 	void interrupt(byte *buff);
 	void interrupt2(byte *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);
@@ -90,4 +90,6 @@ private:
 	byte _irq = 0;
 	byte _sdn = 0;
 	byte _channel;
+	bool _poke = false;
+	byte _pokeVal = 0;
 };

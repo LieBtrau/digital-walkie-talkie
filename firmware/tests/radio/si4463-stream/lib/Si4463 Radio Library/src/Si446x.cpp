@@ -766,50 +766,56 @@ size_t Si446x::write(const uint8_t *buffer, size_t size)
 
 int Si446x::available()
 {
-	// return (readRegister(REG_RX_NB_BYTES) - _packetIndex);
-	return 0;
+	byte dummy, rxFifoCount;
+	getFifoInfo(rxFifoCount, dummy);
+	return rxFifoCount;
 }
 
 int Si446x::read()
 {
-	// if (!available())
-	// {
-	// 	return -1;
-	// }
+	if (!available())
+	{
+		return -1;
+	}
 
-	// _packetIndex++;
-
-	// return readRegister(REG_FIFO);
-	return 0;
+	if (_poke)
+	{
+		_poke = false;
+		return _pokeVal;
+	}
+	else
+	{
+		byte data;
+		read(&data, 1);
+		return data;
+	}
 }
 
 int Si446x::peek()
 {
-	// if (!available())
-	// {
-	// 	return -1;
-	// }
-
-	// // store current FIFO address
-	// int currentAddress = readRegister(REG_FIFO_ADDR_PTR);
-
-	// // read
-	// uint8_t b = readRegister(REG_FIFO);
-
-	// // restore FIFO address
-	// writeRegister(REG_FIFO_ADDR_PTR, currentAddress);
-
-	// return b;
-	return 0;
+	byte data;
+	if (!available())
+	{
+		return -1;
+	}
+	if (!_poke)
+	{
+		_poke = true;
+		read(&data, 1);
+		_pokeVal = data;
+	}
+	return _pokeVal;
 }
 
 void Si446x::flush()
 {
+	endPacket(SI446X_STATE_RX);
 }
 
 /**
 * @brief Transmit a packet
 *
+* !! Packet will only be transmitted when enough characters are in the FIFO to fill the packet.
 * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
 * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
 */
@@ -824,8 +830,7 @@ byte Si446x::endPacket(si446x_state_t onTxFinish)
 		SI446X_FIXED_LENGTH		 //TXLEN_L (=0 when using variable length packets)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
-
-	irq_on();
+	irq_on();	//Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
 	return 1;
 }
 
