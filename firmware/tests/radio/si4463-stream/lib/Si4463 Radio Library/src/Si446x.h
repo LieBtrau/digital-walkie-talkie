@@ -1,4 +1,4 @@
-/*
+/* 
  * Project: Si4463 Radio Library for AVR and Arduino
  * Author: Zak Kemble, contact@zakkemble.co.uk
  * Copyright: (C) 2017 by Zak Kemble
@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
+#include "CircularBuffer.h"
 
 class Si446x : public Stream
 {
@@ -92,4 +93,5 @@ private:
 	byte _channel;
 	bool _poke = false;
 	byte _pokeVal = 0;
+	CircularBuffer<byte, 400> buffer;
 };

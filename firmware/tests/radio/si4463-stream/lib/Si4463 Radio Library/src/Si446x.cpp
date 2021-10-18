@@ -105,10 +105,10 @@ void Si446x::getProperties(word prop, byte *values, byte len)
 {
 	byte data[] =
 		{
-			SI446X_CMD_GET_PROPERTY, //CMD
-			highByte(prop),			 //GROUP
-			len,					 //NUM_PROPS
-			lowByte(prop)};			 //START_PROP
+			SI446X_CMD_GET_PROPERTY, // CMD
+			highByte(prop),			 // GROUP
+			len,					 // NUM_PROPS
+			lowByte(prop)};			 // START_PROP
 
 	doAPI(data, sizeof(data), values, len);
 }
@@ -141,11 +141,11 @@ short Si446x::getLatchedRSSI(void)
 }
 
 /**
-* @brief Get the radio status
-*
-* @see ::si446x_state_t
-* @return The current radio status
-*/
+ * @brief Get the radio status
+ *
+ * @see ::si446x_state_t
+ * @return The current radio status
+ */
 si446x_state_t Si446x::getState(void)
 {
 	byte state = getFRR(SI446X_CMD_READ_FRR_B);
@@ -186,7 +186,7 @@ void Si446x::getFifoInfo(byte &RX_FIFO_COUNT, byte &TX_FIFO_SPACE)
 	byte data[] =
 		{
 			SI446X_CMD_FIFO_INFO,
-			0 //Don't clear FIFO's
+			0 // Don't clear FIFO's
 		};
 	byte out[2];
 	doAPI(data, sizeof(data), out, 2);
@@ -242,10 +242,10 @@ void Si446x::setPins(int cs, int irq, int sdn)
 }
 
 /**
-* @brief Initialise, must be called before anything else!
-*
-* @return (none)
-*/
+ * @brief Initialise, must be called before anything else!
+ *
+ * @return (none)
+ */
 void Si446x::begin(byte channel)
 {
 	if (_cs == 0 || _irq == 0 || _sdn == 0)
@@ -263,7 +263,7 @@ void Si446x::begin(byte channel)
 	interrupt(nullptr);
 	sleep();
 
-	//Enable individual interrupt sources within the Packet Handler Interrupt Group to generate a HW interrupt on the NIRQ output pin.
+	// Enable individual interrupt sources within the Packet Handler Interrupt Group to generate a HW interrupt on the NIRQ output pin.
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_SENT_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_RX_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, CRC_ERROR_EN);
@@ -278,12 +278,12 @@ void Si446x::begin(byte channel)
 }
 
 /**
-* @brief Get chip info, see ::si446x_info_t
-*
-* @see ::si446x_info_t
-* @param [info] Pointer to allocated ::si446x_info_t struct to place data into
-* @return (none)
-*/
+ * @brief Get chip info, see ::si446x_info_t
+ *
+ * @see ::si446x_info_t
+ * @param [info] Pointer to allocated ::si446x_info_t struct to place data into
+ * @return (none)
+ */
 void Si446x::getInfo(si446x_info_t *info)
 {
 	byte data[8] =
@@ -309,10 +309,10 @@ void Si446x::getInfo(si446x_info_t *info)
 }
 
 /**
-* @brief Get the current RSSI, the chip needs to be in receive mode for this to work
-*
-* @return The current RSSI in dBm (usually between -130 and 0)
-*/
+ * @brief Get the current RSSI, the chip needs to be in receive mode for this to work
+ *
+ * @return The current RSSI in dBm (usually between -130 and 0)
+ */
 short Si446x::getRSSI()
 {
 	byte data[3] = {
@@ -324,31 +324,31 @@ short Si446x::getRSSI()
 }
 
 /**
-* @brief Set the transmit power. The output power does not follow the \p pwr value, see the Si446x datasheet for a pretty graph
-*
-* 0 = -32dBm (<1uW)\n
-* 7 = 0dBm (1mW)\n
-* 12 = 5dBm (3.2mW)\n
-* 22 = 10dBm (10mW)\n
-* 40 = 15dBm (32mW)\n
-* 100 = 20dBm (100mW)
-*
-* @param [pwr] A value from 0 to 127
-* @return (none)
-*/
+ * @brief Set the transmit power. The output power does not follow the \p pwr value, see the Si446x datasheet for a pretty graph
+ *
+ * 0 = -32dBm (<1uW)\n
+ * 7 = 0dBm (1mW)\n
+ * 12 = 5dBm (3.2mW)\n
+ * 22 = 10dBm (10mW)\n
+ * 40 = 15dBm (32mW)\n
+ * 100 = 20dBm (100mW)
+ *
+ * @param [pwr] A value from 0 to 127
+ * @return (none)
+ */
 void Si446x::setTxPower(byte pwr)
 {
 	setProperty(SI446X_PA_PWR_LVL, pwr);
 }
 
 /**
-* @brief Set the low battery voltage alarm
-*
-* The ::SI446X_CB_LOWBATT() callback will be ran when the supply voltage drops below this value. The WUT must be configured with ::Si446x_setupWUT() to enable periodically checking the battery level.
-*
-* @param [voltage] The low battery threshold in millivolts (1050 - 3050).
-* @return (none)
-*/
+ * @brief Set the low battery voltage alarm
+ *
+ * The ::SI446X_CB_LOWBATT() callback will be ran when the supply voltage drops below this value. The WUT must be configured with ::Si446x_setupWUT() to enable periodically checking the battery level.
+ *
+ * @param [voltage] The low battery threshold in millivolts (1050 - 3050).
+ * @return (none)
+ */
 void Si446x::setLowBatt(word voltage)
 {
 	// voltage should be between 1500 and 3050
@@ -357,24 +357,24 @@ void Si446x::setLowBatt(word voltage)
 }
 
 /**
-* @brief Configure the wake up timer
-* 
-* This function will also reset the timer.\n
-*\n
-* The Wake Up Timer (WUT) can be used to periodically run a number of features:\n
-* ::SI446X_WUT_RUN Simply wake up the microcontroller when the WUT expires and run the ::SI446X_CB_WUT() callback.\n
-* ::SI446X_WUT_BATT Check battery voltage - If the battery voltage is below the threshold set by ::Si446x_setLowBatt() then wake up the microcontroller and run the ::SI446X_CB_LOWBATT() callback.\n
-* ::SI446X_WUT_RX Enter receive mode for a length of time determinded by the ldc and r parameters (NOT SUPPORTED YET! dont use this option)\n
-*\n
-* For more info see the GLOBAL_WUT_M, GLOBAL_WUT_R and GLOBAL_WUT_LDC properties in the Si446x API docs.\n
-*
-* @note When first turning on the WUT this function will take around 300us to complete
-* @param [r] Exponent value for WUT and LDC (Maximum valus is 20)
-* @param [m] Mantissia value for WUT
-* @param [ldc] Mantissia value for LDC (NOT SUPPORTED YET, just pass 0 for now)
-* @param [config] Which WUT features to enable ::SI446X_WUT_RUN ::SI446X_WUT_BATT ::SI446X_WUT_RX These can be bitwise OR'ed together to enable multiple features.
-* @return (none)
-*/
+ * @brief Configure the wake up timer
+ *
+ * This function will also reset the timer.\n
+ *\n
+ * The Wake Up Timer (WUT) can be used to periodically run a number of features:\n
+ * ::SI446X_WUT_RUN Simply wake up the microcontroller when the WUT expires and run the ::SI446X_CB_WUT() callback.\n
+ * ::SI446X_WUT_BATT Check battery voltage - If the battery voltage is below the threshold set by ::Si446x_setLowBatt() then wake up the microcontroller and run the ::SI446X_CB_LOWBATT() callback.\n
+ * ::SI446X_WUT_RX Enter receive mode for a length of time determinded by the ldc and r parameters (NOT SUPPORTED YET! dont use this option)\n
+ *\n
+ * For more info see the GLOBAL_WUT_M, GLOBAL_WUT_R and GLOBAL_WUT_LDC properties in the Si446x API docs.\n
+ *
+ * @note When first turning on the WUT this function will take around 300us to complete
+ * @param [r] Exponent value for WUT and LDC (Maximum valus is 20)
+ * @param [m] Mantissia value for WUT
+ * @param [ldc] Mantissia value for LDC (NOT SUPPORTED YET, just pass 0 for now)
+ * @param [config] Which WUT features to enable ::SI446X_WUT_RUN ::SI446X_WUT_BATT ::SI446X_WUT_RX These can be bitwise OR'ed together to enable multiple features.
+ * @return (none)
+ */
 void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 {
 	// Maximum value of r is 20
@@ -395,8 +395,8 @@ void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 	byte doRx = (config & SI446X_WUT_RX);
 
 	// Setup WUT interrupts
-	byte intChip = 0; //getProperty(SI446X_INT_CTL_CHIP_ENABLE); // No other CHIP interrupts are enabled so dont bother reading the current state
-	//intChip &= ~((1<<SI446X_INT_CTL_CHIP_LOW_BATT_EN)|(1<<SI446X_INT_CTL_CHIP_WUT_EN));
+	byte intChip = 0; // getProperty(SI446X_INT_CTL_CHIP_ENABLE); // No other CHIP interrupts are enabled so dont bother reading the current state
+	// intChip &= ~((1<<SI446X_INT_CTL_CHIP_LOW_BATT_EN)|(1<<SI446X_INT_CTL_CHIP_WUT_EN));
 	intChip |= doBatt << SI446X_INT_CTL_CHIP_LOW_BATT_EN;
 	intChip |= doRun << SI446X_INT_CTL_CHIP_WUT_EN;
 	cached_Int_Enable.INT_CTL_CHIP_ENABLE = intChip;
@@ -423,10 +423,10 @@ void Si446x::setupWUT(byte r, word m, byte ldc, byte config)
 }
 
 /**
-* @brief Disable the wake up timer
-*
-* @return (none)
-*/
+ * @brief Disable the wake up timer
+ *
+ * @return (none)
+ */
 void Si446x::disableWUT()
 {
 	irq_off();
@@ -436,12 +436,12 @@ void Si446x::disableWUT()
 }
 
 /**
-* @brief Enable or disable callbacks. This is mainly to configure what events should wake the microcontroller up.
-*
-* @param [callbacks] The callbacks to configure (multiple callbacks should be bitewise OR'd together)
-* @param [state] Enable or disable the callbacks passed in \p callbacks parameter (1 = Enable, 0 = Disable)
-* @return (none)
-*/
+ * @brief Enable or disable callbacks. This is mainly to configure what events should wake the microcontroller up.
+ *
+ * @param [callbacks] The callbacks to configure (multiple callbacks should be bitewise OR'd together)
+ * @param [state] Enable or disable the callbacks passed in \p callbacks parameter (1 = Enable, 0 = Disable)
+ * @return (none)
+ */
 void Si446x::setupCallback(word callbacks, byte state)
 {
 	irq_off();
@@ -468,15 +468,15 @@ void Si446x::setupCallback(word callbacks, byte state)
 }
 
 /**
-* @brief Enter sleep mode
-*
-* If WUT is enabled then the radio will keep the internal 32KHz RC enabled with a current consumption of 740nA, otherwise the current consumption will be 40nA without WUT.
-* Sleep will fail if the radio is currently transmitting.
-*
-* @note Any SPI communications with the radio will wake the radio into ::SI446X_STATE_SPI_ACTIVE mode. ::Si446x_sleep() will need to called again to put it back into sleep mode.
-*
-* @return 0 on failure (busy transmitting something), 1 on success
-*/
+ * @brief Enter sleep mode
+ *
+ * If WUT is enabled then the radio will keep the internal 32KHz RC enabled with a current consumption of 740nA, otherwise the current consumption will be 40nA without WUT.
+ * Sleep will fail if the radio is currently transmitting.
+ *
+ * @note Any SPI communications with the radio will wake the radio into ::SI446X_STATE_SPI_ACTIVE mode. ::Si446x_sleep() will need to called again to put it back into sleep mode.
+ *
+ * @return 0 on failure (busy transmitting something), 1 on success
+ */
 byte Si446x::sleep()
 {
 	if (getState() == SI446X_STATE_TX)
@@ -486,21 +486,21 @@ byte Si446x::sleep()
 }
 
 /**
-* @brief Enter receive mode
-*
-* Entering RX mode will abort any transmissions happening at the time
-*
-* @param [channel] Channel to listen to (0 - 255)
-* @return (none)
-*/
+ * @brief Enter receive mode
+ *
+ * Entering RX mode will abort any transmissions happening at the time
+ *
+ * @param [channel] Channel to listen to (0 - 255)
+ * @return (none)
+ */
 void Si446x::receive()
 {
 	irq_off();
 	setState(IDLE_STATE);
 	clearFIFO();
-	//fix_invalidSync_irq(0);
-	//Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
-	//setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN); // TODO ?
+	// fix_invalidSync_irq(0);
+	// Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
+	// setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN); // TODO ?
 	interrupt2(NULL, 0, 0, 0xFF); // TODO needed?
 
 	// TODO RX timeout to sleep if WUT LDC enabled
@@ -520,11 +520,11 @@ void Si446x::receive()
 }
 
 /**
-* @brief Read pin ADC value
-*
-* @param [pin] The GPIO pin number (0 - 3)
-* @return ADC value (0 - 2048, where 2048 is 3.6V)
-*/
+ * @brief Read pin ADC value
+ *
+ * @param [pin] The GPIO pin number (0 - 3)
+ * @return ADC value (0 - 2048, where 2048 is 3.6V)
+ */
 word Si446x::adc_gpio(byte pin)
 {
 	word result = getADC(SI446X_ADC_CONV_GPIO | pin, (SI446X_ADC_SPEED << 4) | SI446X_ADC_RANGE_3P6, 0);
@@ -532,10 +532,10 @@ word Si446x::adc_gpio(byte pin)
 }
 
 /**
-* @brief Read supply voltage
-*
-* @return Supply voltage in millivolts
-*/
+ * @brief Read supply voltage
+ *
+ * @return Supply voltage in millivolts
+ */
 word Si446x::adc_battery()
 {
 	word result = getADC(SI446X_ADC_CONV_BATT, (SI446X_ADC_SPEED << 4), 2);
@@ -544,10 +544,10 @@ word Si446x::adc_battery()
 }
 
 /**
-* @brief Read temperature
-*
-* @return Temperature in C
-*/
+ * @brief Read temperature
+ *
+ * @return Temperature in C
+ */
 float Si446x::adc_temperature()
 {
 	float result = getADC(SI446X_ADC_CONV_TEMP, (SI446X_ADC_SPEED << 4), 4);
@@ -556,14 +556,14 @@ float Si446x::adc_temperature()
 }
 
 /**
-* @brief Configure GPIO/NIRQ/SDO pin
-*
-* @note NIRQ and SDO pins should not be changed, unless you really know what you're doing. 2 of the GPIO pins (usually 0 and 1) are also usually used for the RX/TX RF switch and should also be left alone.
-*
-* @param [pin] The pin, this can only take a single pin (don't use bitwise OR), see ::si446x_gpio_t
-* @param [value] The new pin mode, this can be bitwise OR'd with the ::SI446X_PIN_PULL_EN option, see ::si446x_gpio_mode_t ::si446x_nirq_mode_t ::si446x_sdo_mode_t
-* @return (none)
-*/
+ * @brief Configure GPIO/NIRQ/SDO pin
+ *
+ * @note NIRQ and SDO pins should not be changed, unless you really know what you're doing. 2 of the GPIO pins (usually 0 and 1) are also usually used for the RX/TX RF switch and should also be left alone.
+ *
+ * @param [pin] The pin, this can only take a single pin (don't use bitwise OR), see ::si446x_gpio_t
+ * @param [value] The new pin mode, this can be bitwise OR'd with the ::SI446X_PIN_PULL_EN option, see ::si446x_gpio_mode_t ::si446x_nirq_mode_t ::si446x_sdo_mode_t
+ * @return (none)
+ */
 void Si446x::writeGPIO(si446x_gpio_t pin, byte value)
 {
 	byte data[] = {
@@ -580,10 +580,10 @@ void Si446x::writeGPIO(si446x_gpio_t pin, byte value)
 }
 
 /**
-* @brief Read GPIO pin states
-*
-* @return The pin states. Use ::si446x_gpio_t to mask the value to get the state for the desired pin.
-*/
+ * @brief Read GPIO pin states
+ *
+ * @return The pin states. Use ::si446x_gpio_t to mask the value to get the state for the desired pin.
+ */
 byte Si446x::readGPIO()
 {
 	byte data[4] = {
@@ -594,12 +594,12 @@ byte Si446x::readGPIO()
 }
 
 /**
-* @brief Get all values of a property group
-*
-* @param [buff] Pointer to memory to place group values, if this is NULL then nothing will be dumped, just the group size is returned
-* @param [group] The group to dump
-* @return Size of the property group
-*/
+ * @brief Get all values of a property group
+ *
+ * @param [buff] Pointer to memory to place group values, if this is NULL then nothing will be dumped, just the group size is returned
+ * @param [group] The group to dump
+ * @return Size of the property group
+ */
 byte Si446x::dump(byte *buff, byte group)
 {
 	static const byte groupSizes[] PROGMEM = {
@@ -646,10 +646,10 @@ byte Si446x::dump(byte *buff, byte group)
 }
 
 /**
-* @brief If interrupts are disabled (::SI446X_INTERRUPTS in Si446x_config.h) then this function should be called as often as possible to process any events
-*
-* @return (none)
-*/
+ * @brief If interrupts are disabled (::SI446X_INTERRUPTS in Si446x_config.h) then this function should be called as often as possible to process any events
+ *
+ * @return (none)
+ */
 ISR_PREFIX void Si446x::onIrqFalling()
 {
 	pSi446x->handleIrqFall();
@@ -674,7 +674,7 @@ void Si446x::handleIrqFall()
 	// Valid PREAMBLE and SYNC, packet data now begins
 	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND) && _onReceiveBegin != nullptr)
 	{
-		//fix_invalidSync_irq(1);
+		// fix_invalidSync_irq(1);
 		//		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 1); // Enable INVALID_SYNC when a new packet starts, sometimes a corrupted packet will mess the radio up
 		_onReceiveBegin(getLatchedRSSI());
 	}
@@ -739,28 +739,16 @@ size_t Si446x::write(uint8_t byte)
 	return write(&byte, sizeof(byte));
 }
 
-size_t Si446x::write(const uint8_t *buffer, size_t size)
+size_t Si446x::write(const uint8_t *data, size_t size)
 {
-	const byte SI446X_FIFO_LENGTH = 64;
-	byte dummy, fifoSpaceRemaining;
-	getFifoInfo(dummy, fifoSpaceRemaining);
-	int packetRemaining = fifoSpaceRemaining - SI446X_FIFO_LENGTH + SI446X_FIXED_LENGTH;
-
-	// check size
-	if (size > packetRemaining)
+	if (size > buffer.available())
 	{
-		size = packetRemaining;
+		size = buffer.available();
 	}
-	interrupt_off();
-	// Load data to FIFO
-	digitalWrite(_cs, LOW);
-	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-	for (byte i = 0; i < size; i++)
+	for (int i = 0; i < size; i++)
 	{
-		SPI.transfer(buffer[i]);
+		buffer.push(data[i]);
 	}
-	digitalWrite(_cs, HIGH);
-	interrupt_on();
 	return size;
 }
 
@@ -813,27 +801,41 @@ void Si446x::flush()
 }
 
 /**
-* @brief Transmit a packet
-*
-* @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
-* @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
-*/
+ * @brief Transmit a packet
+ *
+ * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
+ * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
+ */
 byte Si446x::endPacket(si446x_state_t onTxFinish)
 {
-	//Fill up the end of the packet with zeros
-	byte zerobuf[SI446X_FIXED_LENGTH]={0};
-	write(zerobuf, sizeof(zerobuf));
-
+	interrupt_off();
+	// Load data to FIFO
+	digitalWrite(_cs, LOW);
+	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
+	int packetSize = buffer.size();
+	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+	{
+		if (i < packetSize)
+		{
+			SPI.transfer(buffer.pop());
+		}
+		else
+		{
+			SPI.transfer(0);
+		}
+	}
+	digitalWrite(_cs, HIGH);
+	interrupt_on();
 	// Begin transmit
 	byte data[] = {
-		SI446X_CMD_START_TX,	 //CMD
-		_channel,				 //CHANNEL
-		(byte)(onTxFinish << 4), //CONDITION
-		0,						 //TXLEN_H
-		SI446X_FIXED_LENGTH		 //TXLEN_L (=0 when using variable length packets)
+		SI446X_CMD_START_TX,	 // CMD
+		_channel,				 // CHANNEL
+		(byte)(onTxFinish << 4), // CONDITION
+		0,						 // TXLEN_H
+		SI446X_FIXED_LENGTH		 // TXLEN_L (=0 when using variable length packets)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
-	irq_on();	//Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
+	irq_on(); // Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
 	return 1;
 }
 
@@ -903,12 +905,12 @@ byte Si446x::getResponse(byte *buff, byte len)
 }
 
 /**
-* @brief Read received data from FIFO
-*
-* @param [buff] Pointer to buffer to place data
-* @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
-* @return (none)
-*/
+ * @brief Read received data from FIFO
+ *
+ * @param [buff] Pointer to buffer to place data
+ * @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
+ * @return (none)
+ */
 void Si446x::read(byte *buff, byte len)
 {
 	interrupt_off();
@@ -958,13 +960,13 @@ inline byte Si446x::interrupt_on(void)
 }
 
 /**
-* @brief When using interrupts use this to disable them for the Si446x
-*
-* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_on()
-*
-* @see ::Si446x_irq_on() and ::SI446X_NO_INTERRUPT()
-* @return The previous interrupt status; 1 if interrupt was enabled, 0 if it was already disabled
-*/
+ * @brief When using interrupts use this to disable them for the Si446x
+ *
+ * Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_on()
+ *
+ * @see ::Si446x_irq_on() and ::SI446X_NO_INTERRUPT()
+ * @return The previous interrupt status; 1 if interrupt was enabled, 0 if it was already disabled
+ */
 // TODO
 // 2 types of interrupt blocks
 // Local (SI446X_NO_INTERRUPT()): Disables the pin interrupt so the ISR does not run while normal code is busy in the Si446x code, however another interrupt can enter the code which would be bad.
@@ -978,14 +980,14 @@ void Si446x::irq_off()
 }
 
 /**
-* @brief When using interrupts use this to re-enable them for the Si446x
-*
-* Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_off()
-*
-* @see ::Si446x_irq_off() and ::SI446X_NO_INTERRUPT()
-* @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
-* @return (none)
-*/
+ * @brief When using interrupts use this to re-enable them for the Si446x
+ *
+ * Ideally you should wrap sensitive sections with ::SI446X_NO_INTERRUPT() instead, as it automatically deals with this function and ::Si446x_irq_off()
+ *
+ * @see ::Si446x_irq_off() and ::SI446X_NO_INTERRUPT()
+ * @param [origVal] The original interrupt status returned from ::Si446x_irq_off()
+ * @return (none)
+ */
 void Si446x::irq_on()
 {
 	if (isrState_local > 0)
