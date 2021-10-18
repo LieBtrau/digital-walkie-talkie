@@ -510,7 +510,7 @@ void Si446x::receive()
 		_channel,
 		0,
 		0,
-		SI446X_FIXED_LENGTH,
+		0,
 		SI446X_STATE_NOCHANGE, // RX Timeout
 		IDLE_STATE,			   // RX Valid
 		SI446X_STATE_SLEEP	   // IDLE_STATE // RX Invalid (using SI446X_STATE_SLEEP for the INVALID_SYNC fix)
@@ -682,11 +682,8 @@ void Si446x::handleIrqFall()
 	// Valid packet
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
-		byte len = SI446X_FIXED_LENGTH;
-		if (len == 0)
-		{
-			read(&len, 1);
-		}
+		byte len = 0;
+		read(&len, 1);
 		if (_onReceive != nullptr)
 		{
 			_onReceive(len);
@@ -813,7 +810,8 @@ byte Si446x::endPacket(si446x_state_t onTxFinish)
 	digitalWrite(_cs, LOW);
 	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
 	int packetSize = buffer.size();
-	for (byte i = 0; i < SI446X_FIXED_LENGTH; i++)
+	SPI.transfer(lowByte(packetSize));
+	for (byte i = 0; i < packetSize; i++)
 	{
 		if (i < packetSize)
 		{
@@ -826,15 +824,18 @@ byte Si446x::endPacket(si446x_state_t onTxFinish)
 	}
 	digitalWrite(_cs, HIGH);
 	interrupt_on();
+	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, packetSize);
 	// Begin transmit
 	byte data[] = {
 		SI446X_CMD_START_TX,	 // CMD
 		_channel,				 // CHANNEL
 		(byte)(onTxFinish << 4), // CONDITION
 		0,						 // TXLEN_H
-		SI446X_FIXED_LENGTH		 // TXLEN_L (=0 when using variable length packets)
+		0						 // TXLEN_L (=0 when using variable length packets)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
+	// Reset packet length back to max for receive mode
+	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
 	irq_on(); // Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
 	return 1;
 }
