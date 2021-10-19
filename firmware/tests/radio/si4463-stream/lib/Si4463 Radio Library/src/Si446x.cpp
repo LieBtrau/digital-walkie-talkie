@@ -744,7 +744,7 @@ size_t Si446x::write(const uint8_t *data, size_t size)
 	}
 	for (int i = 0; i < size; i++)
 	{
-		buffer.push(data[i]);
+		buffer.unshift(data[i]);
 	}
 	return size;
 }

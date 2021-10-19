@@ -14,7 +14,7 @@
 #include <Si446x.h>
 
 #define CHANNEL 0
-#define MAX_PACKET_SIZE 10
+#define MAX_PACKET_SIZE 60
 #define TIMEOUT 1000
 
 #define PACKET_NONE 0
