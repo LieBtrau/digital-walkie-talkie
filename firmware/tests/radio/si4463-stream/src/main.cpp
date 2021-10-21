@@ -14,7 +14,7 @@
 #include <Si446x.h>
 
 #define CHANNEL 0
-#define MAX_PACKET_SIZE 60
+#define MAX_PACKET_SIZE 100
 #define TIMEOUT 1000
 
 #define PACKET_NONE 0
@@ -56,10 +56,11 @@ void onTxDone()
 	sentPacketCtr++;
 }
 
-void SI446X_CB_RXINVALID(int16_t rssi)
+void onReceiveInvalid(int16_t rssi)
 {
 	pingInfo.ready = PACKET_INVALID;
 	pingInfo.rssi = rssi;
+	pingInfo.length = 0;
 }
 
 void setup()
@@ -79,26 +80,42 @@ void setup()
 
 	si4463.onReceive(onReceive);
 	si4463.onTxDone(onTxDone);
+	si4463.onReceiveInvalid(onReceiveInvalid);
 
 	// Put into receive mode
 	si4463.receive();
 }
 
+void printData(byte *data, byte length)
+{
+	for (int i = 0; i < length; i++)
+	{
+		if (i % 10 == 0)
+		{
+			Serial.println();
+		}
+		Serial.printf("%d ", data[i]);
+	}
+}
+
 void clientloop()
 {
-	static uint8_t counter;
 	static uint32_t sent;
 	static uint32_t replies;
 	static uint32_t timeouts;
 	static uint32_t invalids;
+	static uint32_t counter;
 
 	// Make data
 	byte data[MAX_PACKET_SIZE] = {0};
-	sprintf_P((char *)data, PSTR("test %hhu"), counter);
+	for (int i = 0; i < MAX_PACKET_SIZE; i++)
+	{
+		data[i] = counter;
+	}
 	counter++;
 
-	Serial.print(F("Client : Sending data"));
-	Serial.println((char *)data);
+	Serial.print(F("Client : Sending data : "));
+	printData(data, MAX_PACKET_SIZE);
 
 	uint32_t startTime = millis();
 
@@ -131,24 +148,27 @@ void clientloop()
 		Serial.println(F("Ping timed out"));
 		timeouts++;
 	}
-	else if (success == PACKET_INVALID)
-	{
-		Serial.print(F("Invalid packet! Signal: "));
-		Serial.print(pingInfo.rssi);
-		Serial.println(F("dBm"));
-		invalids++;
-	}
 	else
 	{
+		if (success == PACKET_INVALID)
+		{
+			Serial.print(F("Invalid packet! Signal: "));
+			Serial.print(pingInfo.rssi);
+			Serial.println(F("dBm"));
+			invalids++;
+		}
+		else
+		{
+
+			static uint8_t ledState;
+			digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
+			ledState = !ledState;
+
+			replies++;
+		}
+
 		// If success toggle LED and send ping time over UART
 		uint16_t totalTime = pingInfo.timestamp - startTime;
-
-		static uint8_t ledState;
-		digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
-		ledState = !ledState;
-
-		replies++;
-
 		Serial.print(F("Ping time: "));
 		Serial.print(totalTime);
 		Serial.println(F("ms"));
@@ -159,7 +179,7 @@ void clientloop()
 
 		// Print out ping contents
 		Serial.print(F("Data from server: "));
-		Serial.write((uint8_t *)pingInfo.buffer, sizeof(pingInfo.buffer));
+		printData((byte *)pingInfo.buffer, sizeof(pingInfo.buffer));
 		Serial.println();
 	}
 
@@ -195,11 +215,14 @@ void serverloop()
 		Serial.print(F("Invalid packet! Signal: "));
 		Serial.print(pingInfo.rssi);
 		Serial.println(F("dBm"));
-		si4463.receive();
+		//si4463.receive();
+		si4463.beginPacket();
+		si4463.endPacket(SI446X_STATE_RX);
 	}
 	else
 	{
 		pings++;
+
 		pingInfo.ready = PACKET_NONE;
 
 		Serial.println(F("Got ping, sending reply..."));
@@ -223,18 +246,18 @@ void serverloop()
 
 		// Print out ping contents
 		Serial.print(F("Data from server: "));
-		Serial.write((uint8_t *)pingInfo.buffer, sizeof(pingInfo.buffer));
+		printData((uint8_t *)pingInfo.buffer, sizeof(pingInfo.buffer));
 		Serial.println();
-	}
 
-	Serial.print(F("Totals:\t"));
-	Serial.print(pings);
-	Serial.print(F(" Pings,\t"));
-	Serial.print(sentPacketCtr);
-	Serial.print(F(" Sent packets,\t"));
-	Serial.print(invalids);
-	Serial.println(F(" Invalid"));
-	Serial.println(F("------"));
+		Serial.print(F("Totals:\t"));
+		Serial.print(pings);
+		Serial.print(F(" Pings,\t"));
+		Serial.print(sentPacketCtr);
+		Serial.print(F(" Sent packets,\t"));
+		Serial.print(invalids);
+		Serial.println(F(" Invalid"));
+		Serial.println(F("------"));
+	}
 }
 
 void loop()
