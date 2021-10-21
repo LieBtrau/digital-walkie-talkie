@@ -72,7 +72,7 @@
 // Descriptions:
 //   GLOBAL_CONFIG - Global configuration settings.
 */
-#define RF_GLOBAL_CONFIG_1 0x11, 0x00, 0x01, 0x03, 0x60
+#define RF_GLOBAL_CONFIG_1 0x11, 0x00, 0x01, 0x03, 0x70
 
 /*
 // Set properties:           RF_MODEM_MOD_TYPE_12
@@ -381,7 +381,7 @@
 // Descriptions:
 //   GLOBAL_CONFIG - Global configuration settings.
 */
-#define RF_GLOBAL_CONFIG_1_1 0x11, 0x00, 0x01, 0x03, 0x60
+#define RF_GLOBAL_CONFIG_1_1 0x11, 0x00, 0x01, 0x03, 0x70
 
 /*
 // Set properties:           RF_INT_CTL_ENABLE_4
