@@ -240,6 +240,19 @@ void tx_cb(struct si446x_device *dev, int err)
 	}
 }
 
+void reply(uint8_t cmd, int len, uint8_t *payload)
+{
+	for (int i = 0; i < len; i++)
+	{
+		if (i % 16 == 0)
+		{
+			printf("\r\n");
+		}
+		printf("%02x ", payload[i]);
+	}
+	printf("\r\n");
+}
+
 void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
 {
 
@@ -255,36 +268,32 @@ void rx_cb(struct si446x_device *dev, int err, int len, uint8_t *data)
 		return;
 	}
 
-	printf("got something");
-	// if (len == 4 && data[0] == 'P' && data[1] == 'I' && data[2] == 'N'
-	//     && data[3] == 'G') {
-
-	if (!isClient)
-	{
-		uint8_t resp[] = {
-			'P',
-			'O',
-			'N',
-			'G',
-		};
-		STATUS_TXBUSY = true;
-		// gpio_write(TX_ACT_PIN, HIGH);
-		// err = set_gate_bias(settings.tx_gate_bias);
-		si446x_setup_tx(dev, sizeof(resp), resp, tx_cb);
-		if (si446x_fire_tx(dev) == -ERESETSI)
-		{
-			reset_si446x();
-			si446x_recv_async(dev, 255, buf, rx_cb);
-		}
-	}
-	return;
-	// } else {
-	//     // Handle RX'd packet
-	//     reply(CMD_RXDATA, len, data);
+	// if (len == 4 && data[0] == 'P' && data[1] == 'I' && data[2] == 'N' && data[3] == 'G')
+	// {
+	// 	uint8_t resp[] = {
+	// 		'P',
+	// 		'O',
+	// 		'N',
+	// 		'G',
+	// 	};
+	// 	STATUS_TXBUSY = true;
+	// 	// gpio_write(TX_ACT_PIN, HIGH);
+	// 	// err = set_gate_bias(settings.tx_gate_bias);
+	// 	si446x_setup_tx(dev, sizeof(resp), resp, tx_cb);
+	// 	if (si446x_fire_tx(dev) == -ERESETSI)
+	// 	{
+	// 		reset_si446x();
+	// 		si446x_recv_async(dev, 255, buf, rx_cb);
+	// 	}
+	// 	return;
 	// }
-	// STATUS_TXBUSY=false;
-	// si446x_recv_async(dev, 255, buf, rx_cb);
-	// send_reply_to_host();
+	// else
+	// {
+	// 	// Handle RX'd packet
+		reply(0, len, data);
+	// }
+	STATUS_TXBUSY = false;
+	si446x_recv_async(dev, 255, buf, rx_cb);
 }
 
 void setup()
@@ -337,7 +346,11 @@ void loop()
 	if (delay_3s.isExpired() && isClient)
 	{
 		delay_3s.repeat(); // Count from when the delay expired, not now
-		byte testbuf[10] = {0};
-		printf("send something %d\r\n", send_w_retry(10, testbuf));
+		byte testbuf[150];
+		for(int i=0;i<sizeof(testbuf);i++)
+		{
+			testbuf[i]=i;
+		}
+		printf("send something %d\r\n", send_w_retry(sizeof(testbuf), testbuf));
 	}
 }
