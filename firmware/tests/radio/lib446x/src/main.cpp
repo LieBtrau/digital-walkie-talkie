@@ -311,6 +311,7 @@ void setup()
 	if (err)
 	{
 		error(-err, __FILE__, __LINE__);
+		return;
 	}
 
 	config_si446x();
@@ -324,7 +325,9 @@ void setup()
 	if (err)
 	{
 		error(-err, __FILE__, __LINE__);
+		return;
 	}
+	printf("Setup ok\n");
 }
 
 void loop()
@@ -346,7 +349,7 @@ void loop()
 	if (delay_3s.isExpired() && isClient)
 	{
 		delay_3s.repeat(); // Count from when the delay expired, not now
-		byte testbuf[150];
+		byte testbuf[160];
 		for(int i=0;i<sizeof(testbuf);i++)
 		{
 			testbuf[i]=i;
