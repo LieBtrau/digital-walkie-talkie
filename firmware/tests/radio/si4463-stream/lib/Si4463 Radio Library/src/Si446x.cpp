@@ -704,14 +704,17 @@ void Si446x::handleIrqFall()
 	// Valid packet
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
-		read_rx_fifo(rx_fifo_buffer, _payloadLength);
-		if (_payloadLength > rxBuffer.available())
+		byte rxCnt, txSpace;
+		getFifoInfo(rxCnt, txSpace);
+		int readSize = rxCnt < _payloadLength ? rxCnt : _payloadLength;
+		read_rx_fifo(rx_fifo_buffer, readSize);
+		if (readSize > rxBuffer.available())
 		{
 			//RX-buffer overflow
 			error(rxBuffer.available(), __FILE__, __LINE__);
 			return;
 		}
-		for (int i = 0; i < _payloadLength; i++)
+		for (int i = 0; i < readSize; i++)
 		{
 			rxBuffer.unshift(rx_fifo_buffer[i]);
 		}
