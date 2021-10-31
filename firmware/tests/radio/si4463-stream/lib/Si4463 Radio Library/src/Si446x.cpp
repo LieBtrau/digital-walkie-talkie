@@ -265,12 +265,16 @@ void Si446x::begin(byte channel)
 	interrupt(nullptr);
 	sleep();
 
+	irq_off();
 	// Enable individual interrupt sources within the Packet Handler Interrupt Group to generate a HW interrupt on the NIRQ output pin.
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_SENT_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_RX_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, CRC_ERROR_EN);
-	irq_off();
+	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, RX_FIFO_ALMOST_FULL_EN);
 	setProperties(SI446X_INT_CTL_PH_ENABLE, (byte *)&cached_Int_Enable.INT_CTL_PH_ENABLE, 1);
+	// Enable individual interrupt sources within the Modem Control Interrupt Group to generate a HW interrupt on the NIRQ output pin.
+	bitSet(cached_Int_Enable.INT_CTL_MODEM_ENABLE, SYNC_DETECT_EN);
+	setProperties(SI446X_INT_CTL_MODEM_ENABLE, (byte *)&cached_Int_Enable.INT_CTL_MODEM_ENABLE, 1);
 	irq_on();
 
 	if (isrState_local > 0)
@@ -674,33 +678,47 @@ void Si446x::handleIrqFall()
 		_onTxDone();
 	}
 
-	// Valid PREAMBLE and SYNC, packet data now begins
-	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND) && _onReceiveBegin != nullptr)
+	/** Valid PREAMBLE and SYNC, packet data now begins
+	 * The IRQ for SI446X_SYNC_DETECT_PEND must be enabled, otherwise we'll always be too late reading this flag.
+	 * It gets reset automatically when the packet is fully received.
+	 */
+	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND))
 	{
-		// fix_invalidSync_irq(1);
-		//		Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 1); // Enable INVALID_SYNC when a new packet starts, sometimes a corrupted packet will mess the radio up
-		_onReceiveBegin(getLatchedRSSI());
+		_startOfPacket = true;
+		_payloadLength = 0;
+		if (_onReceiveBegin != nullptr)
+		{
+			_onReceiveBegin(getLatchedRSSI());
+		}
+	}
+
+	//RX-FIFO almost full
+	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND))
+	{
+		if (_startOfPacket)
+		{
+			read_rx_fifo(&_payloadLength, 1);
+		}
+		_startOfPacket = false;
 	}
 
 	// Valid packet
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
-		byte len = 0;
-		read_rx_fifo(&len, 1);
-		read_rx_fifo(buf, len);
-		if (len > rxBuffer.available())
+		read_rx_fifo(buf, _payloadLength);
+		if (_payloadLength > rxBuffer.available())
 		{
 			//RX-buffer overflow
 			error(rxBuffer.available(), __FILE__, __LINE__);
 			return;
 		}
-		for (int i = 0; i < len; i++)
+		for (int i = 0; i < _payloadLength; i++)
 		{
 			rxBuffer.unshift(buf[i]);
 		}
 		if (_onReceive != nullptr)
 		{
-			_onReceive(len);
+			_onReceive(_payloadLength);
 		}
 	}
 

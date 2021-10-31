@@ -95,6 +95,7 @@ void printData(byte *data, byte length)
 		}
 		Serial.printf("%02x ", data[i]);
 	}
+	Serial.println();
 }
 
 void clientloop()
