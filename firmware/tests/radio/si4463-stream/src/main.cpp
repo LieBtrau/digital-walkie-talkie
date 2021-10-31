@@ -93,7 +93,7 @@ void printData(byte *data, byte length)
 		{
 			Serial.println();
 		}
-		Serial.printf("%d ", data[i]);
+		Serial.printf("%02x ", data[i]);
 	}
 }
 
@@ -109,7 +109,7 @@ void clientloop()
 	byte data[MAX_PACKET_SIZE] = {0};
 	for (int i = 0; i < MAX_PACKET_SIZE; i++)
 	{
-		data[i] = counter;
+		data[i] = i;
 	}
 	counter++;
 
