@@ -96,9 +96,10 @@ private:
 	byte _channel;
 	bool _poke = false;
 	byte _pokeVal = 0;
-	CircularBuffer<byte, 400> txBuffer;
-	CircularBuffer<byte, 400> rxBuffer;
+	CircularBuffer<byte, 400> txSinglePacketBuffer;
+	CircularBuffer<byte, 400> rxSinglePacketBuffer;
 	bool _startOfPacket = false;
 	byte _payloadLength = 0;
+	int _payloadRemaining=0;
 	byte rx_fifo_buffer[MAX_PACKET_LEN]; //don't put this inside ISR!
 };

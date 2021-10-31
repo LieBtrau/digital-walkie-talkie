@@ -122,7 +122,10 @@ void clientloop()
 	// Send the data
 	si4463.beginPacket();
 	si4463.write(data, sizeof(data));
-	si4463.endPacket(SI446X_STATE_RX);
+	if(!si4463.endPacket(SI446X_STATE_RX))
+	{
+		return;
+	}
 	sent++;
 
 	// Put into receive mode

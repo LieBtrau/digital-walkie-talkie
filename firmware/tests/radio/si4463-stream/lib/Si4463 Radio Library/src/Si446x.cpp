@@ -699,25 +699,32 @@ void Si446x::handleIrqFall()
 			read_rx_fifo(&_payloadLength, 1);
 		}
 		_startOfPacket = false;
+		_payloadRemaining = _payloadLength;
+	}
+
+	//Read payload 
+	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND) || bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
+	{
+		byte rxCnt, txSpace;
+		getFifoInfo(rxCnt, txSpace);//!< Get number of bytes in SI4463 RX-FIFO
+		int readSize = rxCnt < _payloadRemaining ? rxCnt : _payloadRemaining;
+		if (readSize > rxSinglePacketBuffer.available())
+		{
+			//RX-buffer overflow
+			error(rxSinglePacketBuffer.available(), __FILE__, __LINE__);
+			return;
+		}
+		read_rx_fifo(rx_fifo_buffer, readSize);//!< Read SI4463 RX-FIFO
+		for (int i = 0; i < readSize; i++)
+		{
+			rxSinglePacketBuffer.unshift(rx_fifo_buffer[i]);
+		}
+		_payloadRemaining -= readSize;
 	}
 
 	// Valid packet
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
-		byte rxCnt, txSpace;
-		getFifoInfo(rxCnt, txSpace);
-		int readSize = rxCnt < _payloadLength ? rxCnt : _payloadLength;
-		read_rx_fifo(rx_fifo_buffer, readSize);
-		if (readSize > rxBuffer.available())
-		{
-			//RX-buffer overflow
-			error(rxBuffer.available(), __FILE__, __LINE__);
-			return;
-		}
-		for (int i = 0; i < readSize; i++)
-		{
-			rxBuffer.unshift(rx_fifo_buffer[i]);
-		}
 		if (_onReceive != nullptr)
 		{
 			_onReceive(_payloadLength);
@@ -761,6 +768,7 @@ bool Si446x::beginPacket()
 	irq_off();
 	setState(IDLE_STATE);
 	clearFIFO();
+	txSinglePacketBuffer.clear();
 	interrupt2(NULL, 0, 0, 0xFF);
 	return true;
 }
@@ -782,21 +790,22 @@ size_t Si446x::write(uint8_t byte)
  */
 size_t Si446x::write(const uint8_t *data, size_t size)
 {
-	if (size > txBuffer.available())
+	if (size > txSinglePacketBuffer.available())
 	{
 		//TX-buffer overflow
-		error(txBuffer.available(), __FILE__, __LINE__);
+		error(txSinglePacketBuffer.available(), __FILE__, __LINE__);
+		return 0;
 	}
 	for (int i = 0; i < size; i++)
 	{
-		txBuffer.unshift(data[i]);
+		txSinglePacketBuffer.unshift(data[i]);
 	}
 	return size;
 }
 
 int Si446x::available()
 {
-	return rxBuffer.available();
+	return rxSinglePacketBuffer.available();
 }
 
 int Si446x::read()
@@ -805,12 +814,12 @@ int Si446x::read()
 	{
 		return -1;
 	}
-	return rxBuffer.pop();
+	return rxSinglePacketBuffer.pop();
 }
 
 int Si446x::peek()
 {
-	return rxBuffer.last();
+	return rxSinglePacketBuffer.last();
 }
 
 void Si446x::flush()
@@ -831,7 +840,8 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 	if (txSpace != MAX_PACKET_LEN)
 	{
 		//FIFO not empty
-		return error(txSpace, __FILE__, __LINE__);
+		error(txSpace, __FILE__, __LINE__);
+		return false;
 	}
 
 	interrupt_off();
@@ -839,11 +849,11 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 	digitalWrite(_cs, LOW);
 	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
 	//todo support for packets > 255 bytes
-	SPI.transfer(lowByte(txBuffer.size()));
-	int packetSize = txBuffer.size() < MAX_PAYLOAD_LEN ? txBuffer.size() : MAX_PAYLOAD_LEN;
+	SPI.transfer(lowByte(txSinglePacketBuffer.size()));
+	int packetSize = txSinglePacketBuffer.size() < MAX_PAYLOAD_LEN ? txSinglePacketBuffer.size() : MAX_PAYLOAD_LEN;
 	for (byte i = 0; i < packetSize; i++)
 	{
-		SPI.transfer(txBuffer.pop());
+		SPI.transfer(txSinglePacketBuffer.pop());
 	}
 	digitalWrite(_cs, HIGH);
 	interrupt_on();
