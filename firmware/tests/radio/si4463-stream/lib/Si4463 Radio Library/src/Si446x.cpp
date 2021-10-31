@@ -660,7 +660,6 @@ ISR_PREFIX void Si446x::onIrqFalling()
 {
 	pSi446x->handleIrqFall();
 }
-byte buf[200]; //don't put this inside ISR!
 
 void Si446x::handleIrqFall()
 {
@@ -705,7 +704,7 @@ void Si446x::handleIrqFall()
 	// Valid packet
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
-		read_rx_fifo(buf, _payloadLength);
+		read_rx_fifo(rx_fifo_buffer, _payloadLength);
 		if (_payloadLength > rxBuffer.available())
 		{
 			//RX-buffer overflow
@@ -714,7 +713,7 @@ void Si446x::handleIrqFall()
 		}
 		for (int i = 0; i < _payloadLength; i++)
 		{
-			rxBuffer.unshift(buf[i]);
+			rxBuffer.unshift(rx_fifo_buffer[i]);
 		}
 		if (_onReceive != nullptr)
 		{
