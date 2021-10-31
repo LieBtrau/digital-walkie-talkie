@@ -12,6 +12,8 @@
 #include "Si446x_config.h"
 #include "Si446x_defs.h"
 #include "radio_config.h"
+#include "math.h"
+#include "error.h"
 
 #if (ESP8266 || ESP32)
 #define ISR_PREFIX ICACHE_RAM_ATTR
@@ -22,8 +24,8 @@
 #define IDLE_STATE SI446X_IDLE_MODE
 
 // When FIFOs are combined it becomes a 129 byte FiFO
-// The first byte is used for length, then the remaining 128 bytes for the packet data
-#define MAX_PACKET_LEN SI446X_MAX_PACKET_LEN
+const int MAX_PACKET_LEN = 129;
+const int MAX_PAYLOAD_LEN = 128; // 1 length byte
 
 static volatile struct
 {
@@ -731,20 +733,31 @@ bool Si446x::beginPacket()
 	return true;
 }
 
+/** 
+ * @brief Add a byte to the TX-buffer
+ */
 size_t Si446x::write(uint8_t byte)
 {
 	return write(&byte, sizeof(byte));
 }
 
+/**
+ * @brief Add an array to the TX-buffer.  If there's not enough room in the TX-buffer to hold all the array elements, then only the number of
+ * added items will be returned.  Existing data in the TX-buffer will not be overwritten.
+ * @param [data] array pointer
+ * @param [size] number of items in the array pointer to add to the TX-buffer
+ * @return Number of bytes that were actually added to the TX-buffer.
+ */
 size_t Si446x::write(const uint8_t *data, size_t size)
 {
-	if (size > buffer.available())
+	if (size > txBuffer.available())
 	{
-		size = buffer.available();
+		//TX-buffer overflow
+		size = txBuffer.available();
 	}
 	for (int i = 0; i < size; i++)
 	{
-		buffer.unshift(data[i]);
+		txBuffer.unshift(data[i]);
 	}
 	return size;
 }
@@ -801,29 +814,33 @@ void Si446x::flush()
  * @brief Transmit a packet
  *
  * @param [onTxFinish] What state to enter when the packet has finished transmitting. Usually ::SI446X_STATE_SLEEP or ::SI446X_STATE_RX
- * @return 0 on failure (already transmitting), 1 on success (has begun transmitting)
+ * @return false on failure (already transmitting), true on success (has begun transmitting)
  */
-byte Si446x::endPacket(si446x_state_t onTxFinish)
+bool Si446x::endPacket(si446x_state_t onTxFinish)
 {
+	byte rxCnt, txSpace;
+	getFifoInfo(rxCnt, txSpace);
+	if (txSpace != MAX_PACKET_LEN)
+	{
+		//FIFO not empty
+		return error(txSpace, __FILE__, __LINE__);
+	}
+	
 	interrupt_off();
 	// Load data to FIFO
 	digitalWrite(_cs, LOW);
 	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-	int packetSize = buffer.size();
-	SPI.transfer(lowByte(packetSize));
+	//todo support for packets > 255 bytes
+	SPI.transfer(lowByte(txBuffer.size()));
+	int packetSize = txBuffer.size() < MAX_PAYLOAD_LEN ? txBuffer.size() : MAX_PAYLOAD_LEN;
 	for (byte i = 0; i < packetSize; i++)
 	{
-		if (i < packetSize)
-		{
-			SPI.transfer(buffer.pop());
-		}
-		else
-		{
-			SPI.transfer(0);
-		}
+		SPI.transfer(txBuffer.pop());
 	}
 	digitalWrite(_cs, HIGH);
 	interrupt_on();
+
+	//todo support for packets > 255 bytes
 	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, packetSize);
 	// Begin transmit
 	byte data[] = {
@@ -831,7 +848,7 @@ byte Si446x::endPacket(si446x_state_t onTxFinish)
 		_channel,				 // CHANNEL
 		(byte)(onTxFinish << 4), // CONDITION
 		0,						 // TXLEN_H
-		0						 // TXLEN_L (=0 when using variable length packets)
+		0						 // TXLEN_L (=0 because length of variable length packets is specified in PKT_FIELD_X_LENGTH)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
 	// Reset packet length back to max for receive mode

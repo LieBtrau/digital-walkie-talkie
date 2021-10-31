@@ -295,6 +295,7 @@ typedef enum
 const byte PACKET_SENT_EN = 5;
 const byte PACKET_RX_EN = 4;
 const byte CRC_ERROR_EN = 3;
+const byte RX_FIFO_ALMOST_FULL_EN = 0;
 
 //GET_INT_STATUS
 //	PH_CLR_PEND
@@ -303,6 +304,7 @@ const byte SI446X_FILTER_MISS_PEND = 6;
 const byte SI446X_PACKET_SENT_PEND = 5;
 const byte SI446X_PACKET_RX_PEND = 4;
 const byte SI446X_CRC_ERROR_PEND = 3;
+const byte SI446X_RX_FIFO_ALMOST_FULL_PEND = 0;
 //	MODEM_CLR_PEND
 const byte SI446X_INVALID_SYNC_PEND = 5;
 const byte SI446X_SYNC_DETECT_PEND = 0;

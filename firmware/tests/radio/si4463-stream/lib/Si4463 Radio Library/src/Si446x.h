@@ -30,6 +30,7 @@ public:
 	virtual int peek();
 	virtual void flush();
 	bool beginPacket();
+	bool endPacket(si446x_state_t onTxFinish);
 
 	void getInfo(si446x_info_t *info);
 	short getLatchedRSSI(void);
@@ -53,7 +54,6 @@ public:
 	void onBatteryLow(void (*callback)(void));
 	void onWakingUp(void (*callback)(void));
 	void onTxDone(void (*callback)());
-	byte endPacket(si446x_state_t onTxFinish);
 	void receive();
 	void read(byte *buff, byte len);
 
@@ -81,6 +81,7 @@ private:
 	void interrupt2(byte *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);
 	void applyStartupConfig(void);
+	void readRxFifoToRxBuffer(void);
 	void (*_onReceive)(byte) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
@@ -93,5 +94,8 @@ private:
 	byte _channel;
 	bool _poke = false;
 	byte _pokeVal = 0;
-	CircularBuffer<byte, 400> buffer;
+	CircularBuffer<byte, 400> txBuffer;
+	CircularBuffer<byte, 400> rxBuffer;
+	bool _startOfPacket = false;
+	byte _payloadLength = 0;
 };
