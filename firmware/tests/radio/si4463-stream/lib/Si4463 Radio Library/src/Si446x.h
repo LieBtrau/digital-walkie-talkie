@@ -83,7 +83,7 @@ private:
 	void resetDevice(void);
 	void applyStartupConfig(void);
 	void read_rx_fifo(byte *buff, byte len);
-	void write_tx_fifo(byte *buff, byte len);
+	bool write_tx_fifo(bool startOfTxPacket);
 	void (*_onReceive)(byte) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
@@ -98,7 +98,7 @@ private:
 	byte _pokeVal = 0;
 	CircularBuffer<byte, 400> txSinglePacketBuffer;
 	CircularBuffer<byte, 400> rxSinglePacketBuffer;
-	bool _startOfPacket = false;
+	bool _startOfRxPacket = false;
 	byte _payloadLength = 0;
 	int _payloadRemaining=0;
 	byte rx_fifo_buffer[MAX_PACKET_LEN]; //don't put this inside ISR!

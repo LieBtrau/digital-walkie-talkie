@@ -684,7 +684,7 @@ void Si446x::handleIrqFall()
 	 */
 	if (bitRead(MODEM_PEND, SI446X_SYNC_DETECT_PEND))
 	{
-		_startOfPacket = true;
+		_startOfRxPacket = true;
 		_payloadLength = 0;
 		if (_onReceiveBegin != nullptr)
 		{
@@ -695,11 +695,11 @@ void Si446x::handleIrqFall()
 	//RX-FIFO almost full
 	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND))
 	{
-		if (_startOfPacket)
+		if (_startOfRxPacket)
 		{
 			read_rx_fifo(&_payloadLength, 1);
 		}
-		_startOfPacket = false;
+		_startOfRxPacket = false;
 		_payloadRemaining = _payloadLength;
 	}
 
@@ -836,29 +836,8 @@ void Si446x::flush()
  */
 bool Si446x::endPacket(si446x_state_t onTxFinish)
 {
-	byte rxCnt, txSpace;
-	getFifoInfo(rxCnt, txSpace);
-	if (txSpace != MAX_PACKET_LEN)
-	{
-		//FIFO not empty
-		error(txSpace, __FILE__, __LINE__);
-		return false;
-	}
-
-	interrupt_off();
-	// Load data to FIFO
-	digitalWrite(_cs, LOW);
-	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
-	//todo support for packets > 255 bytes
-	SPI.transfer(lowByte(txSinglePacketBuffer.size()));
-	int packetSize = txSinglePacketBuffer.size() < MAX_PAYLOAD_LEN ? txSinglePacketBuffer.size() : MAX_PAYLOAD_LEN;
-	for (byte i = 0; i < packetSize; i++)
-	{
-		SPI.transfer(txSinglePacketBuffer.pop());
-	}
-	digitalWrite(_cs, HIGH);
-	interrupt_on();
-
+	int packetSize = txSinglePacketBuffer.size();
+	write_tx_fifo(true);
 	//todo support for packets > 255 bytes
 	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, packetSize);
 	// Begin transmit
@@ -941,9 +920,36 @@ byte Si446x::getResponse(byte *buff, byte len)
 	return cts;
 }
 
-void Si446x::write_tx_fifo(byte *buff, byte len)
+bool Si446x::write_tx_fifo(bool startOfTxPacket)
 {
+	byte rxCnt, txSpace;
+	getFifoInfo(rxCnt, txSpace);
+	if (startOfTxPacket && txSpace != MAX_PACKET_LEN)
+	{
+		//TX-FIFO not empty at the start of a new packet
+		error(txSpace, __FILE__, __LINE__);
+		return false;
+	}
 
+	interrupt_off();
+	// Load data to FIFO
+	digitalWrite(_cs, LOW);
+	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
+	if (startOfTxPacket)
+	{
+		//Prepend the packet length to the payload data
+		//todo support for packets > 255 bytes
+		SPI.transfer(lowByte(txSinglePacketBuffer.size()));
+		txSpace--;
+	}
+	int packetSize = txSinglePacketBuffer.size() < txSpace ? txSinglePacketBuffer.size() : txSpace;
+	for (byte i = 0; i < packetSize; i++)
+	{
+		SPI.transfer(txSinglePacketBuffer.pop());
+	}
+	digitalWrite(_cs, HIGH);
+	interrupt_on();
+	return true;
 }
 
 /**
