@@ -941,6 +941,11 @@ byte Si446x::getResponse(byte *buff, byte len)
 	return cts;
 }
 
+void Si446x::write_tx_fifo(byte *buff, byte len)
+{
+
+}
+
 /**
  * @brief Read received data from FIFO
  *

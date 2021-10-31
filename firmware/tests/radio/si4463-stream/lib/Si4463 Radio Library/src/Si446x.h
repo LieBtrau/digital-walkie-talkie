@@ -55,7 +55,6 @@ public:
 	void onWakingUp(void (*callback)(void));
 	void onTxDone(void (*callback)());
 	void receive();
-	void read_rx_fifo(byte *buff, byte len);
 
 private:
 	static const int MAX_PACKET_LEN = 129;		// When FIFOs are combined it becomes a 129 byte FiFO
@@ -83,7 +82,8 @@ private:
 	void interrupt2(byte *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);
 	void applyStartupConfig(void);
-	void read_rx_fifo(void);
+	void read_rx_fifo(byte *buff, byte len);
+	void write_tx_fifo(byte *buff, byte len);
 	void (*_onReceive)(byte) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
