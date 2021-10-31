@@ -765,7 +765,7 @@ size_t Si446x::write(const uint8_t *data, size_t size)
 	if (size > txBuffer.available())
 	{
 		//TX-buffer overflow
-		size = txBuffer.available();
+		error(txBuffer.available(), __FILE__, __LINE__);
 	}
 	for (int i = 0; i < size; i++)
 	{
