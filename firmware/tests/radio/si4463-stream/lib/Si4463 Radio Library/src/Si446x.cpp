@@ -656,6 +656,7 @@ ISR_PREFIX void Si446x::onIrqFalling()
 {
 	pSi446x->handleIrqFall();
 }
+byte buf[200]; //don't put this inside ISR!
 
 void Si446x::handleIrqFall()
 {
@@ -686,6 +687,17 @@ void Si446x::handleIrqFall()
 	{
 		byte len = 0;
 		read_rx_fifo(&len, 1);
+		read_rx_fifo(buf, len);
+		if (len > rxBuffer.available())
+		{
+			//RX-buffer overflow
+			error(rxBuffer.available(), __FILE__, __LINE__);
+			return;
+		}
+		for (int i = 0; i < len; i++)
+		{
+			rxBuffer.unshift(buf[i]);
+		}
 		if (_onReceive != nullptr)
 		{
 			_onReceive(len);
@@ -764,9 +776,7 @@ size_t Si446x::write(const uint8_t *data, size_t size)
 
 int Si446x::available()
 {
-	byte dummy, rxFifoCount;
-	getFifoInfo(rxFifoCount, dummy);
-	return rxFifoCount;
+	return rxBuffer.available();
 }
 
 int Si446x::read()
@@ -775,34 +785,12 @@ int Si446x::read()
 	{
 		return -1;
 	}
-
-	if (_poke)
-	{
-		_poke = false;
-		return _pokeVal;
-	}
-	else
-	{
-		byte data;
-		read_rx_fifo(&data, 1);
-		return data;
-	}
+	return rxBuffer.pop();
 }
 
 int Si446x::peek()
 {
-	byte data;
-	if (!available())
-	{
-		return -1;
-	}
-	if (!_poke)
-	{
-		_poke = true;
-		read_rx_fifo(&data, 1);
-		_pokeVal = data;
-	}
-	return _pokeVal;
+	return rxBuffer.last();
 }
 
 void Si446x::flush()
@@ -825,7 +813,7 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 		//FIFO not empty
 		return error(txSpace, __FILE__, __LINE__);
 	}
-	
+
 	interrupt_off();
 	// Load data to FIFO
 	digitalWrite(_cs, LOW);
