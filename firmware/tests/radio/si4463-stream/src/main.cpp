@@ -46,7 +46,7 @@ void onReceive(byte length)
 	pingInfo.rssi = si4463.getLatchedRSSI();
 	pingInfo.length = length;
 
-	si4463.read((byte *)pingInfo.buffer, length);
+	si4463.read_rx_fifo((byte *)pingInfo.buffer, length);
 
 	// Radio will now be in idle mode
 }

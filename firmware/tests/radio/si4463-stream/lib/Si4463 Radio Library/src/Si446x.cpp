@@ -685,7 +685,7 @@ void Si446x::handleIrqFall()
 	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
 		byte len = 0;
-		read(&len, 1);
+		read_rx_fifo(&len, 1);
 		if (_onReceive != nullptr)
 		{
 			_onReceive(len);
@@ -784,7 +784,7 @@ int Si446x::read()
 	else
 	{
 		byte data;
-		read(&data, 1);
+		read_rx_fifo(&data, 1);
 		return data;
 	}
 }
@@ -799,7 +799,7 @@ int Si446x::peek()
 	if (!_poke)
 	{
 		_poke = true;
-		read(&data, 1);
+		read_rx_fifo(&data, 1);
 		_pokeVal = data;
 	}
 	return _pokeVal;
@@ -929,7 +929,7 @@ byte Si446x::getResponse(byte *buff, byte len)
  * @param [len] Number of bytes to read, make sure not to read more bytes than what the FIFO has stored. The number of bytes that can be read is passed in the ::SI446X_CB_RXCOMPLETE() callback.
  * @return (none)
  */
-void Si446x::read(byte *buff, byte len)
+void Si446x::read_rx_fifo(byte *buff, byte len)
 {
 	interrupt_off();
 	digitalWrite(_cs, LOW);

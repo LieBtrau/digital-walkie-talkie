@@ -55,7 +55,7 @@ public:
 	void onWakingUp(void (*callback)(void));
 	void onTxDone(void (*callback)());
 	void receive();
-	void read(byte *buff, byte len);
+	void read_rx_fifo(byte *buff, byte len);
 
 private:
 	byte interrupt_off(void);
