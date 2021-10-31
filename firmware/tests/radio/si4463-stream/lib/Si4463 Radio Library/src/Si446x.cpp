@@ -270,6 +270,7 @@ void Si446x::begin(byte channel)
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_SENT_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, PACKET_RX_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, CRC_ERROR_EN);
+	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, TX_FIFO_ALMOST_EMPTY_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, RX_FIFO_ALMOST_FULL_EN);
 	setProperties(SI446X_INT_CTL_PH_ENABLE, (byte *)&cached_Int_Enable.INT_CTL_PH_ENABLE, 1);
 	// Enable individual interrupt sources within the Modem Control Interrupt Group to generate a HW interrupt on the NIRQ output pin.
@@ -702,11 +703,11 @@ void Si446x::handleIrqFall()
 		_payloadRemaining = _payloadLength;
 	}
 
-	//Read payload 
+	//Read payload
 	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND) || bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
 		byte rxCnt, txSpace;
-		getFifoInfo(rxCnt, txSpace);//!< Get number of bytes in SI4463 RX-FIFO
+		getFifoInfo(rxCnt, txSpace); //!< Get number of bytes in SI4463 RX-FIFO
 		int readSize = rxCnt < _payloadRemaining ? rxCnt : _payloadRemaining;
 		if (readSize > rxSinglePacketBuffer.available())
 		{
@@ -714,7 +715,7 @@ void Si446x::handleIrqFall()
 			error(rxSinglePacketBuffer.available(), __FILE__, __LINE__);
 			return;
 		}
-		read_rx_fifo(rx_fifo_buffer, readSize);//!< Read SI4463 RX-FIFO
+		read_rx_fifo(rx_fifo_buffer, readSize); //!< Read SI4463 RX-FIFO
 		for (int i = 0; i < readSize; i++)
 		{
 			rxSinglePacketBuffer.unshift(rx_fifo_buffer[i]);

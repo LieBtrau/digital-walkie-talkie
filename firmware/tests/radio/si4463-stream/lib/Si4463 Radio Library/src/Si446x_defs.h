@@ -298,6 +298,7 @@ const byte SYNC_DETECT_EN = 0;
 const byte PACKET_SENT_EN = 5;
 const byte PACKET_RX_EN = 4;
 const byte CRC_ERROR_EN = 3;
+const byte TX_FIFO_ALMOST_EMPTY_EN = 1;
 const byte RX_FIFO_ALMOST_FULL_EN = 0;
 
 //GET_INT_STATUS

@@ -83,7 +83,7 @@ private:
 	void interrupt2(byte *buff, byte clearPH, byte clearMODEM, byte clearCHIP);
 	void resetDevice(void);
 	void applyStartupConfig(void);
-	void readRxFifoToRxBuffer(void);
+	void read_rx_fifo(void);
 	void (*_onReceive)(byte) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
