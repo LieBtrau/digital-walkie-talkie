@@ -114,8 +114,8 @@ void clientloop()
 	}
 	counter++;
 
-	Serial.print(F("Client : Sending data : "));
-	printData(data, MAX_PACKET_SIZE);
+	// Serial.print(F("Client : Sending data : "));
+	// printData(data, MAX_PACKET_SIZE);
 
 	uint32_t startTime = millis();
 
@@ -218,12 +218,7 @@ void serverloop()
 		Serial.print(F("Invalid packet! Signal: "));
 		Serial.print(pingInfo.rssi);
 		Serial.println(F("dBm"));
-		//si4463.receive();
-
-		//Problem : receive doesn't recover the module from invalid packet mode.
-		//Sending a packet does recover the module.  What is the difference?
-		si4463.beginPacket();
-		si4463.endPacket(SI446X_STATE_RX);
+		si4463.receive();
 	}
 	else
 	{

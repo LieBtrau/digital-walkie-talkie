@@ -23,10 +23,6 @@
 
 #define IDLE_STATE SI446X_IDLE_MODE
 
-// When FIFOs are combined it becomes a 129 byte FiFO
-const int MAX_PACKET_LEN = 129;
-const int MAX_PAYLOAD_LEN = 128; // 1 length byte
-
 static volatile struct
 {
 	byte INT_CTL_PH_ENABLE;
@@ -502,12 +498,13 @@ byte Si446x::sleep()
  */
 void Si446x::receive()
 {
+	rxSinglePacketBuffer.clear();
 	irq_off();
 	setState(IDLE_STATE);
 	clearFIFO();
 	// fix_invalidSync_irq(0);
 	// Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
-	// setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN); // TODO ?
+	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, 255);
 	interrupt2(NULL, 0, 0, 0xFF); // TODO needed?
 
 	// TODO RX timeout to sleep if WUT LDC enabled
@@ -713,6 +710,7 @@ void Si446x::handleIrqFall()
 		{
 			//RX-buffer overflow
 			error(rxSinglePacketBuffer.available(), __FILE__, __LINE__);
+			rxSinglePacketBuffer.clear();
 			return;
 		}
 		read_rx_fifo(rx_fifo_buffer, readSize); //!< Read SI4463 RX-FIFO
@@ -850,7 +848,7 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
 	// Reset packet length back to max for receive mode
-	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, MAX_PACKET_LEN);
+	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, 255);
 	irq_on(); // Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
 	return 1;
 }
