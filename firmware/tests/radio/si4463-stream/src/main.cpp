@@ -14,7 +14,7 @@
 #include <Si446x.h>
 
 #define CHANNEL 0
-#define MAX_PACKET_SIZE 150
+#define MAX_PACKET_SIZE 250
 const int TIMEOUT = 3000;
 
 #define PACKET_NONE 0
@@ -29,7 +29,7 @@ typedef struct
 	uint8_t ready;
 	uint32_t timestamp;
 	int16_t rssi;
-	uint8_t length;
+	word length;
 	byte buffer[MAX_PACKET_SIZE];
 } pingInfo_t;
 
