@@ -268,10 +268,10 @@ void Si446x::begin(byte channel)
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, CRC_ERROR_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, TX_FIFO_ALMOST_EMPTY_EN);
 	bitSet(cached_Int_Enable.INT_CTL_PH_ENABLE, RX_FIFO_ALMOST_FULL_EN);
-	setProperties(SI446X_INT_CTL_PH_ENABLE, (byte *)&cached_Int_Enable.INT_CTL_PH_ENABLE, 1);
+	setProperty(SI446X_INT_CTL_PH_ENABLE, cached_Int_Enable.INT_CTL_PH_ENABLE);
 	// Enable individual interrupt sources within the Modem Control Interrupt Group to generate a HW interrupt on the NIRQ output pin.
 	bitSet(cached_Int_Enable.INT_CTL_MODEM_ENABLE, SYNC_DETECT_EN);
-	setProperties(SI446X_INT_CTL_MODEM_ENABLE, (byte *)&cached_Int_Enable.INT_CTL_MODEM_ENABLE, 1);
+	setProperty(SI446X_INT_CTL_MODEM_ENABLE, cached_Int_Enable.INT_CTL_MODEM_ENABLE);
 	irq_on();
 
 	if (isrState_local > 0)
@@ -859,11 +859,10 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 void Si446x::setField2Length(word length)
 {
 	// Reset packet length back to max for receive mode
-	byte data[]=
-	{
-		highByte(length & 0x1F),
-		lowByte(length)
-	};
+	byte data[] =
+		{
+			highByte(length & 0x1F),
+			lowByte(length)};
 	setProperties(SI446X_PKT_FIELD_2_LENGTH, data, sizeof(data));
 }
 
