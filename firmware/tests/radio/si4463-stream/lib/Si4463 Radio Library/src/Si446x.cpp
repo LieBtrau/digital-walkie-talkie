@@ -46,7 +46,7 @@ Si446x::Si446x()
 	pSi446x = this;
 }
 
-void Si446x::onReceive(void (*callback)(byte))
+void Si446x::onReceive(void (*callback)(word))
 {
 	_onReceive = callback;
 }

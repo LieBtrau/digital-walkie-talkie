@@ -36,7 +36,7 @@ typedef struct
 static volatile pingInfo_t pingInfo;
 static volatile int sentPacketCtr = 0;
 
-void onReceive(byte length)
+void onReceive(word length)
 {
 	if (length > MAX_PACKET_SIZE)
 		length = MAX_PACKET_SIZE;

@@ -47,7 +47,7 @@ public:
 	void writeGPIO(si446x_gpio_t pin, byte value);
 	byte readGPIO(void);
 	byte dump(byte *buff, byte group);
-	void onReceive(void (*callback)(byte));
+	void onReceive(void (*callback)(word));
 	void onReceiveBegin(void (*callback)(short));
 	void onReceiveInvalid(void (*callback)(short));
 	void onSent(void (*callback)(void));
@@ -85,7 +85,7 @@ private:
 	void read_rx_fifo(byte *buff, byte len);
 	bool write_tx_fifo(bool startOfTxPacket);
 	void setField2Length(word length = 0x1FFF);
-	void (*_onReceive)(byte) = nullptr;
+	void (*_onReceive)(word) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
 	void (*_onBatteryLow)(void) = nullptr;
