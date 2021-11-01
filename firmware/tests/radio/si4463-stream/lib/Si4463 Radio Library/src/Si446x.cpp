@@ -669,6 +669,12 @@ void Si446x::handleIrqFall()
 	byte MODEM_PEND = interrupts[4] & cached_Int_Enable.INT_CTL_MODEM_ENABLE;
 	byte CHIP_PEND = interrupts[6] & cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
+	//TX-fifo almost empty
+	// if(bitRead(PH_PEND, TX_FIFO_ALMOST_EMPTY_PEND))
+	// {
+	// 	write_tx_fifo(false);
+	// }
+
 	// Packet sent
 	if (bitRead(PH_PEND, SI446X_PACKET_SENT_PEND) && _onTxDone != nullptr)
 	{

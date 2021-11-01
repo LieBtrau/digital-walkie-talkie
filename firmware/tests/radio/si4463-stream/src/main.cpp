@@ -246,7 +246,7 @@ void serverloop()
 		Serial.println(F("dBm"));
 
 		// Print out ping contents
-		Serial.print(F("Data from server: "));
+		Serial.print(F("Data from client: "));
 		printData((uint8_t *)pingInfo.buffer, sizeof(pingInfo.buffer));
 		Serial.println();
 
