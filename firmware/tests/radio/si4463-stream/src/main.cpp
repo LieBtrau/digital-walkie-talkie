@@ -128,20 +128,19 @@ void clientloop()
 	}
 	sent++;
 
-	// Put into receive mode
 	Serial.println(F("Data sent, waiting for reply..."));
 
 	uint8_t success;
 
 	// Wait for reply with timeout
 	uint32_t sendStartTime = millis();
-	while (1)
+	while (millis() - sendStartTime < TIMEOUT)
 	{
 		success = pingInfo.ready;
 		if (success != PACKET_NONE)
+		{
 			break;
-		else if (millis() - sendStartTime > TIMEOUT) // Timeout // TODO typecast to uint16_t
-			break;
+		}
 	}
 
 	pingInfo.ready = PACKET_NONE;

@@ -498,8 +498,8 @@ byte Si446x::sleep()
  */
 void Si446x::receive()
 {
-	rxSinglePacketBuffer.clear();
 	irq_off();
+	rxSinglePacketBuffer.clear();
 	setState(IDLE_STATE);
 	clearFIFO();
 	// fix_invalidSync_irq(0);
@@ -796,16 +796,19 @@ size_t Si446x::write(uint8_t byte)
  */
 size_t Si446x::write(const uint8_t *data, size_t size)
 {
+	irq_off();
 	if (size > txSinglePacketBuffer.available())
 	{
 		//TX-buffer overflow
 		error(txSinglePacketBuffer.available(), __FILE__, __LINE__);
+		irq_on();
 		return 0;
 	}
 	for (int i = 0; i < size; i++)
 	{
 		txSinglePacketBuffer.unshift(data[i]);
 	}
+	irq_on();
 	return size;
 }
 
@@ -820,7 +823,10 @@ int Si446x::read()
 	{
 		return -1;
 	}
-	return rxSinglePacketBuffer.pop();
+	irq_off();
+	byte retval= rxSinglePacketBuffer.pop();
+	irq_on();
+	return retval;
 }
 
 int Si446x::peek()
