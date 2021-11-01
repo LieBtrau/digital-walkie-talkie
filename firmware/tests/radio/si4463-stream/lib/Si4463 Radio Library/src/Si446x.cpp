@@ -700,7 +700,11 @@ void Si446x::handleIrqFall()
 	{
 		if (_startOfRxPacket)
 		{
-			read_rx_fifo(&_payloadLength, 1);
+			//Read 2 bytes of Field 1 = length of payload
+			byte msb, lsb;
+			read_rx_fifo(&msb, 1);
+			read_rx_fifo(&lsb, 1);
+			_payloadLength = msb << 8 | lsb;
 		}
 		_startOfRxPacket = false;
 		_payloadRemaining = _payloadLength;
@@ -964,8 +968,8 @@ bool Si446x::write_tx_fifo(bool startOfTxPacket)
 	SPI.transfer(SI446X_CMD_WRITE_TX_FIFO);
 	if (startOfTxPacket)
 	{
-		//Prepend the packet length to the payload data
-		//todo support for packets > 255 bytes
+		//Write Field1 = 2bytes = length of payload
+		SPI.transfer(highByte(txSinglePacketBuffer.size()));
 		SPI.transfer(lowByte(txSinglePacketBuffer.size()));
 		txSpace--;
 	}
