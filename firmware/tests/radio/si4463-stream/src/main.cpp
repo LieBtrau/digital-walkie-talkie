@@ -89,7 +89,7 @@ void printData(byte *data, word length)
 {
 	for (int i = 0; i < length; i++)
 	{
-		if (i % 10 == 0)
+		if (i % 40 == 0)
 		{
 			Serial.println();
 		}
