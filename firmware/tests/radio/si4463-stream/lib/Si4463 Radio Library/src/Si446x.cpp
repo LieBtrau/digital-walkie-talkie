@@ -670,7 +670,7 @@ void Si446x::handleIrqFall()
 	byte CHIP_PEND = interrupts[6] & cached_Int_Enable.INT_CTL_CHIP_ENABLE;
 
 	//TX-fifo almost empty
-	if(bitRead(PH_PEND, TX_FIFO_ALMOST_EMPTY_PEND))
+	if (bitRead(PH_PEND, TX_FIFO_ALMOST_EMPTY_PEND))
 	{
 		write_tx_fifo(false);
 	}
@@ -824,7 +824,7 @@ int Si446x::read()
 		return -1;
 	}
 	irq_off();
-	byte retval= rxSinglePacketBuffer.pop();
+	byte retval = rxSinglePacketBuffer.pop();
 	irq_on();
 	return retval;
 }
@@ -949,10 +949,12 @@ bool Si446x::write_tx_fifo(bool startOfTxPacket)
 {
 	byte rxCnt, txSpace;
 	getFifoInfo(rxCnt, txSpace);
+
 	if (startOfTxPacket && txSpace != MAX_PACKET_LEN)
 	{
 		//TX-FIFO not empty at the start of a new packet
 		error(txSpace, __FILE__, __LINE__);
+		clearFIFO();
 		return false;
 	}
 

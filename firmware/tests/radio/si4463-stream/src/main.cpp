@@ -14,8 +14,8 @@
 #include <Si446x.h>
 
 #define CHANNEL 0
-#define MAX_PACKET_SIZE 100
-#define TIMEOUT 1000
+#define MAX_PACKET_SIZE 150
+const int TIMEOUT = 3000;
 
 #define PACKET_NONE 0
 #define PACKET_OK 1
@@ -122,7 +122,7 @@ void clientloop()
 	// Send the data
 	si4463.beginPacket();
 	si4463.write(data, sizeof(data));
-	if(!si4463.endPacket(SI446X_STATE_RX))
+	if (!si4463.endPacket(SI446X_STATE_RX))
 	{
 		return;
 	}
@@ -161,7 +161,6 @@ void clientloop()
 		}
 		else
 		{
-
 			static uint8_t ledState;
 			digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
 			ledState = !ledState;
@@ -226,6 +225,10 @@ void serverloop()
 		pingInfo.ready = PACKET_NONE;
 
 		Serial.println(F("Got ping, sending reply..."));
+		for (int i = 0; i < pingInfo.length; i++)
+		{
+			pingInfo.buffer[i] = ~pingInfo.buffer[i];
+		}
 		delay(500);
 
 		// Send back the data, once the transmission has completed go into receive mode
