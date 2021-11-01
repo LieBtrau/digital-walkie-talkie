@@ -876,10 +876,15 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
  */
 void Si446x::setField2Length(word length)
 {
+	if(length > 0x1FFF)
+	{
+		error(length, __FILE__, __LINE__);
+		return;
+	}
 	// Reset packet length back to max for receive mode
 	byte data[] =
 		{
-			highByte(length & 0x1F),
+			highByte(length),
 			lowByte(length)};
 	setProperties(SI446X_PKT_FIELD_2_LENGTH, data, sizeof(data));
 }
