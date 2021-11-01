@@ -14,7 +14,7 @@
 #include <Si446x.h>
 
 #define CHANNEL 0
-#define MAX_PACKET_SIZE 250
+const word MAX_PACKET_SIZE = 250;
 const int TIMEOUT = 3000;
 
 #define PACKET_NONE 0
@@ -85,7 +85,7 @@ void setup()
 	si4463.receive();
 }
 
-void printData(byte *data, byte length)
+void printData(byte *data, word length)
 {
 	for (int i = 0; i < length; i++)
 	{

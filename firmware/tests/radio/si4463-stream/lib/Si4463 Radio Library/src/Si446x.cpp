@@ -970,6 +970,7 @@ bool Si446x::write_tx_fifo(bool startOfTxPacket)
 	{
 		//Write Field1 = 2bytes = length of payload
 		SPI.transfer(highByte(txSinglePacketBuffer.size()));
+		txSpace--;
 		SPI.transfer(lowByte(txSinglePacketBuffer.size()));
 		txSpace--;
 	}
