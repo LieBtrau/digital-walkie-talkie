@@ -14,7 +14,7 @@
 #include <Si446x.h>
 
 #define CHANNEL 0
-const word MAX_PACKET_SIZE = 250;
+const word MAX_PACKET_SIZE = 360;
 const int TIMEOUT = 3000;
 
 #define PACKET_NONE 0
