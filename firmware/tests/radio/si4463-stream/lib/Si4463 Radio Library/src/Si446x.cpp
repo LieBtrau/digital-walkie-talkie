@@ -719,6 +719,7 @@ void Si446x::handleIrqFall()
 			rxSinglePacketBuffer.clear();
 			return;
 		}
+		memset(rx_fifo_buffer, 0, sizeof(rx_fifo_buffer));
 		read_rx_fifo(rx_fifo_buffer, readSize); //!< Read SI4463 RX-FIFO
 		for (int i = 0; i < readSize; i++)
 		{
@@ -854,6 +855,7 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
 	setField2Length();
+	rxSinglePacketBuffer.clear();
 	irq_on(); // Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
 	return 1;
 }
