@@ -57,8 +57,8 @@ public:
 	void receive();
 
 private:
-	static const int MAX_PACKET_LEN = 129;		// When FIFOs are combined it becomes a 129 byte FiFO
-	const int MAX_PAYLOAD_LEN = 128; 	// 1 length byte
+	static const int MAX_PACKET_LEN = 129; // When FIFOs are combined it becomes a 129 byte FiFO
+	const int MAX_PAYLOAD_LEN = 128;	   // 1 length byte
 	byte interrupt_off(void);
 	byte interrupt_on(void);
 	static void onIrqFalling(void);
@@ -84,6 +84,7 @@ private:
 	void applyStartupConfig(void);
 	void read_rx_fifo(byte *buff, byte len);
 	bool write_tx_fifo(bool startOfTxPacket);
+	void setField2Length(word length = 0x1FFF);
 	void (*_onReceive)(byte) = nullptr;
 	void (*_onReceiveBegin)(short) = nullptr;
 	void (*_onReceiveInvalid)(short) = nullptr;
@@ -100,6 +101,6 @@ private:
 	CircularBuffer<byte, 400> rxSinglePacketBuffer;
 	bool _startOfRxPacket = false;
 	byte _payloadLength = 0;
-	int _payloadRemaining=0;
+	int _payloadRemaining = 0;
 	byte rx_fifo_buffer[MAX_PACKET_LEN]; //don't put this inside ISR!
 };

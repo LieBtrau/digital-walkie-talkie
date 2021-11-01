@@ -504,7 +504,7 @@ void Si446x::receive()
 	clearFIFO();
 	// fix_invalidSync_irq(0);
 	// Si446x_setupCallback(SI446X_CBS_INVALIDSYNC, 0);
-	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, 255);
+	setField2Length();
 	interrupt2(NULL, 0, 0, 0xFF); // TODO needed?
 
 	// TODO RX timeout to sleep if WUT LDC enabled
@@ -837,7 +837,7 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 	int packetSize = txSinglePacketBuffer.size();
 	write_tx_fifo(true);
 	//todo support for packets > 255 bytes
-	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, packetSize);
+	setField2Length(packetSize);
 	// Begin transmit
 	byte data[] = {
 		SI446X_CMD_START_TX,	 // CMD
@@ -847,10 +847,24 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
 		0						 // TXLEN_L (=0 because length of variable length packets is specified in PKT_FIELD_X_LENGTH)
 	};
 	doAPI(data, sizeof(data), nullptr, 0);
-	// Reset packet length back to max for receive mode
-	setProperty(SI446X_PKT_FIELD_2_LENGTH_LOW, 255);
+	setField2Length();
 	irq_on(); // Strange that code doesn't work without this line.  There's also an irq_on() at the end of doAPI(...).
 	return 1;
+}
+
+/**
+ * Set length of field2 (which is used for the payload)
+ * @param [length]	Leave empty to set to maximum (required for RX-mode).  For TX-mode this must be set to the correct packet length
+ */
+void Si446x::setField2Length(word length)
+{
+	// Reset packet length back to max for receive mode
+	byte data[]=
+	{
+		highByte(length & 0x1F),
+		lowByte(length)
+	};
+	setProperties(SI446X_PKT_FIELD_2_LENGTH, data, sizeof(data));
 }
 
 void Si446x::doAPI(byte *data, byte len, byte *out, byte outLen)
