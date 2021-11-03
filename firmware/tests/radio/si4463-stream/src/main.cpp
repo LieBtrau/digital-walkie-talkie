@@ -9,6 +9,8 @@
  * 	NSEL		5		A3
  *	IRQ			4		D3
  *	SDN			16		D6
+ *  
+ * MODE_SELECT_PIN defines which device is master or slave.
  */
 
 #include <Si446x.h>
