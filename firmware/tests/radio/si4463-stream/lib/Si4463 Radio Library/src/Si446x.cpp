@@ -695,24 +695,20 @@ void Si446x::handleIrqFall()
 		}
 	}
 
-	//RX-FIFO almost full
-	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND))
+	//RX-FIFO almost full (for large packets) or RX-complete
+	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND) || bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
 	{
 		if (_startOfRxPacket)
 		{
+			_startOfRxPacket = false;
 			//Read 2 bytes of Field 1 = length of payload
 			byte msb, lsb;
 			read_rx_fifo(&msb, 1);
 			read_rx_fifo(&lsb, 1);
 			_payloadLength = msb << 8 | lsb;
+			_payloadRemaining = _payloadLength;
 		}
-		_startOfRxPacket = false;
-		_payloadRemaining = _payloadLength;
-	}
-
-	//Read payload
-	if (bitRead(PH_PEND, SI446X_RX_FIFO_ALMOST_FULL_PEND) || bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
-	{
+		//Read payload data
 		byte rxCnt, txSpace;
 		getFifoInfo(rxCnt, txSpace); //!< Get number of bytes in SI4463 RX-FIFO
 		int readSize = rxCnt < _payloadRemaining ? rxCnt : _payloadRemaining;
@@ -876,7 +872,7 @@ bool Si446x::endPacket(si446x_state_t onTxFinish)
  */
 void Si446x::setField2Length(word length)
 {
-	if(length > 0x1FFF)
+	if (length > 0x1FFF)
 	{
 		error(length, __FILE__, __LINE__);
 		return;

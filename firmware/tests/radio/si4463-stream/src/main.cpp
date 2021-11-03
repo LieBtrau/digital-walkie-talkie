@@ -15,7 +15,7 @@
 
 #define CHANNEL 0
 const word MAX_PACKET_SIZE = 360;
-const int TIMEOUT = 3000;
+const int TIMEOUT = 10000;
 
 #define PACKET_NONE 0
 #define PACKET_OK 1
@@ -179,8 +179,8 @@ void clientloop()
 		Serial.println(F("dBm"));
 
 		// Print out ping contents
-		Serial.print(F("Data from server: "));
-		printData((byte *)pingInfo.buffer, sizeof(pingInfo.buffer));
+		Serial.printf("Data from server: %d bytes : ", pingInfo.length);
+		printData((byte *)pingInfo.buffer, pingInfo.length);
 		Serial.println();
 	}
 
@@ -229,7 +229,7 @@ void serverloop()
 		{
 			pingInfo.buffer[i] = ~pingInfo.buffer[i];
 		}
-		delay(500);
+		delay(100);
 
 		// Send back the data, once the transmission has completed go into receive mode
 		si4463.beginPacket();
@@ -248,8 +248,8 @@ void serverloop()
 		Serial.println(F("dBm"));
 
 		// Print out ping contents
-		Serial.print(F("Data from client: "));
-		printData((uint8_t *)pingInfo.buffer, sizeof(pingInfo.buffer));
+		Serial.printf("Data from client: %d bytes : ", pingInfo.length);
+		printData((uint8_t *)pingInfo.buffer, pingInfo.length);
 		Serial.println();
 
 		Serial.print(F("Totals:\t"));
