@@ -1,6 +1,7 @@
 /* 
  * Project: Si4463 Radio Library for AVR and Arduino
  * Author: Zak Kemble, contact@zakkemble.co.uk
+ * Changes : Christoph Tack 
  * Copyright: (C) 2017 by Zak Kemble
  * License: GNU GPL v3 (see License.txt)
  * Web: http://blog.zakkemble.co.uk/si4463-radio-library-avr-arduino/
@@ -97,8 +98,8 @@ private:
 	byte _channel;
 	bool _poke = false;
 	byte _pokeVal = 0;
-	CircularBuffer<byte, 400> txSinglePacketBuffer;
-	CircularBuffer<byte, 400> rxSinglePacketBuffer;
+	CircularBuffer<byte, 500> txSinglePacketBuffer;
+	CircularBuffer<byte, 500> rxSinglePacketBuffer;
 	bool _startOfRxPacket = false;
 	word _payloadLength = 0;
 	word _payloadRemaining = 0;

@@ -10,7 +10,7 @@
  *	IRQ			4		D3
  *	SDN			16		D6
  *  
- * MODE_SELECT_PIN defines which device is master or slave.
+ * MODE_SELECT_PIN determines which device is client or server.
  */
 
 #include <Si446x.h>
@@ -123,8 +123,8 @@ void clientloop()
 
 	// Send the data
 	si4463.beginPacket();
-	si4463.write(data, sizeof(data));
-	if (!si4463.endPacket(SI446X_STATE_RX))
+	
+	if (! si4463.write(data, sizeof(data)) || !si4463.endPacket(SI446X_STATE_RX))
 	{
 		return;
 	}

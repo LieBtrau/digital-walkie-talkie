@@ -1,6 +1,7 @@
-/*
+/* 
  * Project: Si4463 Radio Library for AVR and Arduino
  * Author: Zak Kemble, contact@zakkemble.co.uk
+ * Changes : Christoph Tack 
  * Copyright: (C) 2017 by Zak Kemble
  * License: GNU GPL v3 (see License.txt)
  * Web: http://blog.zakkemble.co.uk/si4463-radio-library-avr-arduino/
@@ -717,23 +718,26 @@ void Si446x::handleIrqFall()
 			//RX-buffer overflow
 			error(rxSinglePacketBuffer.available(), __FILE__, __LINE__);
 			rxSinglePacketBuffer.clear();
-			return;
+			_payloadRemaining = 0;
+			_payloadLength = 0;
 		}
-		memset(rx_fifo_buffer, 0, sizeof(rx_fifo_buffer));
-		read_rx_fifo(rx_fifo_buffer, readSize); //!< Read SI4463 RX-FIFO
-		for (int i = 0; i < readSize; i++)
+		else
 		{
-			rxSinglePacketBuffer.unshift(rx_fifo_buffer[i]);
-		}
-		_payloadRemaining -= readSize;
-	}
+			read_rx_fifo(rx_fifo_buffer, readSize); //!< Read SI4463 RX-FIFO
+			for (int i = 0; i < readSize; i++)
+			{
+				rxSinglePacketBuffer.unshift(rx_fifo_buffer[i]);
+			}
+			_payloadRemaining -= readSize;
 
-	// Valid packet
-	if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
-	{
-		if (_onReceive != nullptr)
-		{
-			_onReceive(_payloadLength);
+			// Valid packet
+			if (bitRead(PH_PEND, SI446X_PACKET_RX_PEND))
+			{
+				if (_onReceive != nullptr)
+				{
+					_onReceive(_payloadLength);
+				}
+			}
 		}
 	}
 
