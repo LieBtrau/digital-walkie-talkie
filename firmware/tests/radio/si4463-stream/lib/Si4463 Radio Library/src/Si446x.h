@@ -59,7 +59,7 @@ public:
 
 private:
 	static const int MAX_PACKET_LEN = 129; // When FIFOs are combined it becomes a 129 byte FiFO
-	const int MAX_PAYLOAD_LEN = 128;	   // 1 length byte
+	static const int MAX_PAYLOAD_LEN = 500;
 	byte interrupt_off(void);
 	byte interrupt_on(void);
 	static void onIrqFalling(void);
@@ -98,8 +98,8 @@ private:
 	byte _channel;
 	bool _poke = false;
 	byte _pokeVal = 0;
-	CircularBuffer<byte, 500> txSinglePacketBuffer;
-	CircularBuffer<byte, 500> rxSinglePacketBuffer;
+	CircularBuffer<byte, MAX_PAYLOAD_LEN> txSinglePacketBuffer;
+	CircularBuffer<byte, MAX_PAYLOAD_LEN> rxSinglePacketBuffer;
 	bool _startOfRxPacket = false;
 	word _payloadLength = 0;
 	word _payloadRemaining = 0;
