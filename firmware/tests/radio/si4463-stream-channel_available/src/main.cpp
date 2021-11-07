@@ -26,6 +26,7 @@ const int PACKET_INTERVAL_ms = 1000; //in ms
 const int MAX_PACKET_COUNT = 100;
 const int MODE_SELECT_PIN = 27;
 const int CHANNEL = 0;
+const short RSSI_DISCRIMINATOR= -110;//dBm
 int packetCount = 0;
 float averageRssi = 0;
 int totalBytes = 0;
@@ -59,7 +60,7 @@ void onReceive(word length)
 	pingInfo.length = length;
 
 	si4463.readBytes((byte *)pingInfo.buffer, length);
-	// Put into receive mode
+	//Si4463 is configured to go to idle state after receiving a packet.  Re-enable RX-mode again, otherwise RSSI can't be read.y
 	si4463.receive();
 }
 
@@ -115,13 +116,12 @@ void clientloop()
 
 void serverloop()
 {
-	// Put into receive mode
-	//si4463.receive();
 	if (wperfTimer.isExpired())
 	{
 		wperfTimer.repeat();
 		digitalWrite(LED_BUILTIN, digitalRead(LED_BUILTIN) == HIGH ? LOW : HIGH);
-		Serial.printf("RSSI: %d\r\n", si4463.getRSSI());
+		short rssi = si4463.getRSSI();
+		Serial.printf("RSSI: %d\tChannel: %s\r\n", rssi, rssi< RSSI_DISCRIMINATOR ? "FREE" : "OCCUPIED");
 	}
 }
 
