@@ -321,7 +321,7 @@ short Si446x::getRSSI()
 {
 	byte data[3] = {
 		SI446X_CMD_GET_MODEM_STATUS,
-		0xFF};
+		0xFF}; //Don't clear interrupts
 	doAPI(data, 2, data, 3);
 	short rssi = rssi_dBm(data[2]);
 	return rssi;
