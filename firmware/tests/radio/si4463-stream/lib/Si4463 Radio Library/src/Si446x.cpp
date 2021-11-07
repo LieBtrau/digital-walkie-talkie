@@ -816,14 +816,20 @@ size_t Si446x::write(const uint8_t *data, size_t size)
 	return size;
 }
 
+/**
+ * @brief Returns how many items are ready to be read the radio.
+ * Be careful: CircularBuffer.available() returns the number of free spaces, not the number of items already stored unlike Stream.available().
+ * 
+ * @return int Number of items ready in the RX-FIFO.
+ */
 int Si446x::available()
 {
-	return rxSinglePacketBuffer.available();
+	return rxSinglePacketBuffer.size();
 }
 
 int Si446x::read()
 {
-	if (!available())
+	if (rxSinglePacketBuffer.isEmpty())
 	{
 		return -1;
 	}
