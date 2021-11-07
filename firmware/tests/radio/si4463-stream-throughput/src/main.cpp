@@ -9,9 +9,12 @@
  * 	NSEL		5		A3
  *	IRQ			4		D3
  *	SDN			16		D6
- *  
- * MODE_SELECT_PIN determines which device is client or server.
  * 
+ * Upload this code to two devices.  The MODE_SELECT_PIN determines which device is client or server.  
+ * Leave the MODE_SELECT_PIN open on one device, tie it to ground on the other device.
+ * 
+ * Results with 4GFSK (Rsymb(sps): 2400=4800bps, Fdev(Hz): 350)
+ * ------------------------------------------------------------
  * Packet size	Packet interval	Bitrate
  * [byte]		[ms]			[bps]
  * ------------------------------------
