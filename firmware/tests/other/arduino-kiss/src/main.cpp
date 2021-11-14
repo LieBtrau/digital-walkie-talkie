@@ -1,11 +1,26 @@
 #include <Arduino.h>
 #include "BluetoothSerial.h"
 #include "KissTnc.h"
+#include "lookdave.h"
+#include "AsyncDelay.h"
+
+const int PACKETS_PER_SUPERFRAME = 2;
+const int PTT_BUTTON = 27;
+
+struct codec2Config
+{
+	int packetInterval; //!< in ms
+	int packetSize;		//!< in bytes
+};
+codec2Config codec2_1200 = {40, 6};
+codec2Config *codec2;
+int txDataCounter = 0;
 
 BluetoothSerial SerialBT;
 KissTnc kisstnc(&SerialBT);
-byte dataBuffer[500];
+byte rxDataBuffer[500];
 long rxDataCounter = 0;
+AsyncDelay superFrameTimer;
 
 void exitKissHandler()
 {
@@ -27,10 +42,10 @@ void errorHandler(int err, const char *file, int line)
  */
 void dataReceivedHandler(int length)
 {
-	kisstnc.readBytes(dataBuffer, length);
+	kisstnc.readBytes(rxDataBuffer, length);
 	for (int i = 0; i < length; i++)
 	{
-		Serial.printf("%02x", dataBuffer[i]);
+		Serial.printf("%02x", rxDataBuffer[i]);
 		if ((++rxDataCounter) % 30 == 0)
 		{
 			Serial.println();
@@ -40,7 +55,7 @@ void dataReceivedHandler(int length)
 
 void setHardwareHandler(int length)
 {
-	kisstnc.readBytes(dataBuffer, length);
+	kisstnc.readBytes(rxDataBuffer, length);
 	Serial.printf("Set hardware: %d bytes\r\n", length);
 }
 
@@ -59,10 +74,43 @@ void setup()
 	kisstnc.onSetHardwareReceived(setHardwareHandler);
 	kisstnc.onRadioParameterUpdate(parameterUpdateHandler);
 	delay(1000);
-	Serial.printf("Build %s\r\n", __TIMESTAMP__);
+	Serial.printf("Build %s\r\n", __TIMESTAMP__); //timestamp only gets updated when this file is being recompiled.
+	do
+	{
+		Serial.println("Waiting for bluetooth connection...");
+	} while (!SerialBT.connected(10000));
+	codec2 = &codec2_1200;
+	superFrameTimer.start(codec2->packetInterval * PACKETS_PER_SUPERFRAME, AsyncDelay::MILLIS);
+	pinMode(PTT_BUTTON, INPUT_PULLUP);
+	pinMode(BUILTIN_LED, OUTPUT);
 }
 
 void loop()
 {
+	//RX-data
 	kisstnc.loop();
+
+	//TX-data
+	if (superFrameTimer.isExpired())
+	{
+		digitalWrite(LED_BUILTIN, digitalRead(PTT_BUTTON) == LOW ? HIGH : LOW);
+		if (digitalRead(PTT_BUTTON) == LOW)
+		{
+			kisstnc.beginPacket();
+			for (int i = 0; i < codec2->packetSize * PACKETS_PER_SUPERFRAME; i++)
+			{
+				if (txDataCounter < lookdave_bit_len)
+				{
+					kisstnc.write(lookdave_bit[txDataCounter++]);
+				}
+				else
+				{
+					txDataCounter = 0;
+					break;
+				}
+			}
+			kisstnc.endPacket();
+		}
+		superFrameTimer.repeat(); // Count from when the delay expired, not now
+	}
 }
