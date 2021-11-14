@@ -46,7 +46,7 @@ void KissTnc::endPacket()
 	if (!_txSinglePacketBuffer.isEmpty())
 	{
 		_host->write(FEND);
-		_host->write(CMD_DATAFRAME);//Only the "Data frame" code should be sent from the TNC to the host.
+		_host->write(CMD_DATAFRAME); //Only the "Data frame" code should be sent from the TNC to the host.
 		while (_txSinglePacketBuffer.size())
 		{
 			byte c = _txSinglePacketBuffer.pop();
@@ -202,9 +202,25 @@ void KissTnc::onSetHardwareReceived(void (*callback)(int))
 	_onSetHardwareReceived = callback;
 }
 
-void KissTnc::onRadioParameterUpdate(void (*callback)(byte, byte, byte, byte, byte))
+void KissTnc::onTxDelayUpdate(void (*callback)(byte txdelay))
 {
-	_onRadioParameterUpdate = callback;
+	_onTxDelayUpdate = callback;
+}
+void KissTnc::onPersistanceUpdate(void (*callback)(byte p))
+{
+	_onPersistanceUpdate = callback;
+}
+void KissTnc::onSlotTimeUpdate(void (*callback)(byte slotTime))
+{
+	_onSlotTimeUpdate = callback;
+}
+void KissTnc::onTxTailUpdate(void (*callback)(byte txTail))
+{
+	_onTxTailUpdate = callback;
+}
+void KissTnc::onFullDuplexUpdate(void (*callback)(byte fullDuplex))
+{
+	_onFullDuplexUpdate = callback;
 }
 
 void KissTnc::error(int c, const char *file, int lineNr)
@@ -243,6 +259,41 @@ void KissTnc::handlePacketReady()
 			_onDataReceived(_rxSinglePacketBuffer.size());
 		}
 		break;
+	case CMD_TXDELAY:
+		_txDelay = _rxSinglePacketBuffer.pop();
+		if (_onTxDelayUpdate != nullptr)
+		{
+			_onTxDelayUpdate(_txDelay);
+		}
+		break;
+	case CMD_PERSISTENCE:
+		_p = _rxSinglePacketBuffer.pop();
+		if (_onPersistanceUpdate != nullptr)
+		{
+			_onPersistanceUpdate(_p);
+		}
+		break;
+	case CMD_SLOTTIME:
+		_slotTime = _rxSinglePacketBuffer.pop();
+		if (_onSlotTimeUpdate != nullptr)
+		{
+			_onSlotTimeUpdate(_slotTime);
+		}
+		break;
+	case CMD_TXTAIL:
+		_txTail = _rxSinglePacketBuffer.pop();
+		if (_onTxTailUpdate != nullptr)
+		{
+			_onTxTailUpdate(_txTail);
+		}
+		break;
+	case CMD_FULLDUPLEX:
+		_fullDuplex = _rxSinglePacketBuffer.pop();
+		if (_onFullDuplexUpdate != nullptr)
+		{
+			_onFullDuplexUpdate(_fullDuplex);
+		}
+		break;
 	case CMD_SETHARDWARE:
 		if (_onSetHardwareReceived != nullptr)
 		{
@@ -250,32 +301,8 @@ void KissTnc::handlePacketReady()
 		}
 		break;
 	default:
-		//Grouping commands which have only one data byte
-		switch (_command)
-		{
-		case CMD_TXDELAY:
-			_txDelay = _rxSinglePacketBuffer.pop();
-			break;
-		case CMD_P:
-			_p = _rxSinglePacketBuffer.pop();
-			break;
-		case CMD_SLOTTIME:
-			_slotTime = _rxSinglePacketBuffer.pop();
-			break;
-		case CMD_TXTAIL:
-			_txTail = _rxSinglePacketBuffer.pop();
-			break;
-		case CMD_FULLDUPLEX:
-			_fullDuplex = _rxSinglePacketBuffer.pop();
-			break;
-		default:
-			//Invalid command ()
-			error(_command, __FILE__, __LINE__);
-			break;
-		}
-		if (_onRadioParameterUpdate != nullptr)
-		{
-			_onRadioParameterUpdate(_txDelay, _p, _slotTime, _txTail, _fullDuplex);
-		}
+		//Invalid command ()
+		error(_command, __FILE__, __LINE__);
+		break;
 	}
 }

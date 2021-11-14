@@ -30,13 +30,17 @@ private:
     void (*_onExitKiss)() = nullptr;
     void (*_onError)(int, const char *, int) = nullptr;
     void (*_onDataReceived)(int) = nullptr;
+    void (*_onTxDelayUpdate)(byte) = nullptr;
+    void (*_onPersistanceUpdate)(byte) = nullptr;
+    void (*_onSlotTimeUpdate)(byte) = nullptr;
+    void (*_onTxTailUpdate)(byte) = nullptr;
+    void (*_onFullDuplexUpdate)(byte) = nullptr;
     void (*_onSetHardwareReceived)(int) = nullptr;
-    void (*_onRadioParameterUpdate)(byte, byte, byte, byte, byte) = nullptr;
     typedef enum
     {
         CMD_DATAFRAME = 0,
         CMD_TXDELAY = 1,
-        CMD_P = 2,
+        CMD_PERSISTENCE = 2,
         CMD_SLOTTIME = 3,
         CMD_TXTAIL = 4,
         CMD_FULLDUPLEX = 5,
@@ -68,6 +72,10 @@ public:
     void onError(void (*callback)(int, const char *, int));
     void onDataReceived(void (*callback)(int));
     void onSetHardwareReceived(void (*callback)(int));
-    void onRadioParameterUpdate(void (*callback)(byte txdelay, byte p, byte slotTime, byte txTail, byte fullDuplex));
+    void onTxDelayUpdate(void (*callback)(byte txdelay));
+    void onPersistanceUpdate(void (*callback)(byte p));
+    void onSlotTimeUpdate(void (*callback)(byte slotTime));
+    void onTxTailUpdate(void (*callback)(byte txTail));
+    void onFullDuplexUpdate(void (*callback)(byte fullDuplex));
     void loop();
 };
