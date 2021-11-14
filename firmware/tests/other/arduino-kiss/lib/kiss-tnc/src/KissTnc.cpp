@@ -68,6 +68,11 @@ void KissTnc::endPacket()
 	}
 }
 
+/**
+ * @brief Return the number of data bytes that have been received.
+ * Remark : the CircularBuffer.size() function is needed here, not the CircularBuffer.available() function.
+ * @return int 
+ */
 int KissTnc::available()
 {
 	return _rxSinglePacketBuffer.size();
@@ -91,6 +96,10 @@ int KissTnc::peek()
 	return _rxSinglePacketBuffer.last();
 }
 
+/**
+ * @brief Function that checks for incoming KISS data, decodes these packets and takes action accordingly.
+ * 
+ */
 void KissTnc::loop()
 {
 	// Check if we have incoming data to turn into a packet
@@ -249,6 +258,10 @@ bool KissTnc::addRxData(byte c)
 	return true;
 }
 
+/**
+ * @brief Fires the function handlers
+ * 
+ */
 void KissTnc::handlePacketReady()
 {
 	switch (_command)

@@ -66,6 +66,7 @@ public:
 
     void beginPacket();
     void endPacket();
+    void loop();
 
     //Callback
     void onExitKiss(void (*callback)());
@@ -77,5 +78,4 @@ public:
     void onSlotTimeUpdate(void (*callback)(byte slotTime));
     void onTxTailUpdate(void (*callback)(byte txTail));
     void onFullDuplexUpdate(void (*callback)(byte fullDuplex));
-    void loop();
 };
