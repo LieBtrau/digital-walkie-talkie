@@ -841,6 +841,10 @@ int Si446x::read()
 
 int Si446x::peek()
 {
+	if (rxSinglePacketBuffer.isEmpty())
+	{
+		return -1;
+	}
 	return rxSinglePacketBuffer.last();
 }
 
