@@ -7,6 +7,11 @@ Test Arduino KISS with Android apps
 3. Bind the bluetooth of the ESP32 to your Android device
 4. Open the Codec2_talkie app and connect to the ESP32.
 5. On the serial port of the ESP32 you'll see the loggings from the KISS-interface.
+6. Codec2 packets will be printed as HEX-data.  You can convert this data to a WAV-file using : 
+    1. Paste this hexadecimal output in a file named: audio.hex
+    2. Convert that file to raw bits using : xxd -r -p audio.hex audio.bit
+    3. Convert that raw bit file to raw audio using (e.g. for codec2-1200): c2dec 1200 audio.bit audio.raw
+    4. Convert the raw audio file to wav using : sox -e signed-integer -b 16 -r 8000 -c 1 audio.raw audio.wav
 
 # Remarks
 The [M17 KISS HT](https://github.com/mobilinkd/m17-kiss-ht) Android application is very similar to the [Codec2_talkie](https://github.com/sh123/codec2_talkie/releases), but it doesn't support Bluetooth Connections, only Bluetooth Low Energy (BLE).
