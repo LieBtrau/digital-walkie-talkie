@@ -46,8 +46,8 @@ void KissTnc::endPacket()
 	if (!_txSinglePacketBuffer.isEmpty())
 	{
 		_host->write(FEND);
-		_host->write(CMD_DATAFRAME); //Only the "Data frame" code should be sent from the TNC to the host.
-		while (_txSinglePacketBuffer.available())
+		_host->write(CMD_DATAFRAME);//Only the "Data frame" code should be sent from the TNC to the host.
+		while (_txSinglePacketBuffer.size())
 		{
 			byte c = _txSinglePacketBuffer.pop();
 			switch (c)
