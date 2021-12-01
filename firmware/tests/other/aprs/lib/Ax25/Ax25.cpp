@@ -54,9 +54,9 @@ AX25Frame::AX25Frame(const byte *buffer, size_t bufferLen)
 	protocolID = *(ptrBuf++);
 	// Get the data from the information field
 	infoLen = buffer + bufferLen - ptrBuf;
-	info = new byte[infoLen];
-	memcpy(info, ptrBuf, infoLen-1);
-	info[infoLen]='\0';
+	info = new byte[infoLen + 1];
+	memcpy(info, ptrBuf, infoLen);
+	info[infoLen] = '\0';
 }
 
 AX25Frame::AX25Frame(const AX25Frame &frame)
