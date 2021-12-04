@@ -95,11 +95,12 @@ public:
 		DIGIPEATER7,
 		DIGIPEATER8
 	} Address;
+	byte digipeaterCount = 0;
 	CallSign addresses[10];
-	byte controlfield = 0;	  //!< The control field.
-	byte protocolID = 0;  //!< The protocol identifier (PID) field.
-	word infoLen = 0;	  //!< Number of bytes in the information field.
-	byte *info = nullptr; //!< The info field.
+	byte controlfield = 0; //!< The control field.
+	byte protocolID = 0;   //!< The protocol identifier (PID) field.
+	word infoLen = 0;	   //!< Number of bytes in the information field.
+	byte *info = nullptr;  //!< The info field.
 	/*!
 		\brief Overloaded constructor, for frames without info field.
 		\param destCallsign Callsign of the destination station.
@@ -151,11 +152,11 @@ public:
 		\brief Overload for assignment operator.
 		\param frame rvalue AX25Frame.
 	  */
-	//AX25Frame &operator=(const AX25Frame &frame);
+	// AX25Frame &operator=(const AX25Frame &frame);
 
 	void encode(byte *outBuffer, size_t &bufferLen);
 
-
 private:
-	CallSign decodeAddress(const byte *buffer, bool& isLastAddress);
+	CallSign decodeAddress(const byte *buffer, bool &isLastAddress);
+	void encodeAddress(CallSign cs, byte *buffer);
 };
