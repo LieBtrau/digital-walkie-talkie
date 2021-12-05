@@ -79,6 +79,14 @@ libAprs::PACKET_TYPE libAprs::getPacketType()
     }
 }
 
+void libAprs::setComment(const byte *buffer, byte len)
+{
+    commentLen = len;
+    comment = new byte[len + 1];
+    memcpy(comment, buffer, len);
+    comment[len] = '\0';
+}
+
 AprsPositionReport::~AprsPositionReport()
 {
     delete[] latitude;
@@ -97,11 +105,11 @@ AprsPositionReport::AprsPositionReport(const byte *buffer, size_t len) : libAprs
         memset(latitude, '\0', 9);
         memcpy(latitude, buffer + 1, 8);
         // symbol table ID
-        symbolTableId = buffer[8];
+        symbolTableId = buffer[9];
         // longitude
         longitude = new char[10];
         memset(longitude, '\0', 10);
-        memcpy(longitude, buffer + 9, 9);
+        memcpy(longitude, buffer + 10, 9);
         // symbol code
         symbolCode = buffer[19];
         if (hasAprsExtension(buffer + 20))
@@ -114,8 +122,7 @@ AprsPositionReport::AprsPositionReport(const byte *buffer, size_t len) : libAprs
         }
         else
         {
-            commentLen = len - 20;
-            memcpy(comment, buffer + 20, commentLen);
+            setComment(buffer + 20, len - 20);
         }
         break;
     case POS_WITH_TIME_WITH_MSG:
@@ -125,6 +132,26 @@ AprsPositionReport::AprsPositionReport(const byte *buffer, size_t len) : libAprs
     default:
         break;
     }
+}
+
+const char *AprsPositionReport::getLatitude()
+{
+    return latitude;
+}
+
+const char *AprsPositionReport::getLongitude()
+{
+    return longitude;
+}
+
+byte AprsPositionReport::getSymbolTableId()
+{
+    return symbolTableId;
+}
+
+byte AprsPositionReport::getSymbolCode()
+{
+    return symbolCode;
 }
 
 AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])

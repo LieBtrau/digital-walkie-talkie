@@ -25,6 +25,7 @@ protected:
     byte *comment = nullptr;
     size_t commentLen = 0;
     bool hasAprsExtension(const byte *buffer);
+    void setComment(const byte* buffer, byte len);
 
 public:
     typedef enum
@@ -48,12 +49,16 @@ class AprsPositionReport : public libAprs
 private:
     char *latitude = nullptr;
     char *longitude = nullptr;
-    byte symbolTableId;
-    byte symbolCode;
+    byte symbolTableId=0;
+    byte symbolCode=0;
 
 public:
     AprsPositionReport(const byte *buffer, size_t len);
     ~AprsPositionReport();
+    const char* getLatitude();
+    const char* getLongitude();
+    byte getSymbolTableId();
+    byte getSymbolCode();
 };
 
 /**
