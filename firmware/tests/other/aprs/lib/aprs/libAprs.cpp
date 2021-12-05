@@ -174,13 +174,25 @@ AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])
     messageText = new char[len - 11 + 1];
     memcpy(messageText, buffer + 11, len - 11);
     messageText[len - 11] = '\0';
-    // Get Message ID (if present)
-    char *messageIdPtr = strchr(messageText, '{');
-    if (messageIdPtr != nullptr)
+
+    // Check if the message is an acknowledgement or a reject
+    // Why doesn't the APRS standard include a '{' in the acknowledgement?  It would have made parsing so much easier.
+    if (((strstr(messageText, "ack") == messageText)||(strstr(messageText, "rej") == messageText)) && strspn(messageText + 3, "0123456789") == strlen(messageText + 3))
     {
-        // Break away the messageID from the message Text
-        *messageIdPtr = '\0';
-        messageId = atoi(messageIdPtr + 1);
+        // Yes, it's an acknowledgement
+        messageId = atoi(messageText + 3);
+        messageText[3]='\0';
+    }
+    else
+    {
+        // Get Message ID (if present)
+        char *messageIdPtr = strchr(messageText, '{');
+        if (messageIdPtr != nullptr)
+        {
+            // Break away the messageID from the message Text
+            *messageIdPtr = '\0';
+            messageId = atoi(messageIdPtr + 1);
+        }
     }
 }
 
