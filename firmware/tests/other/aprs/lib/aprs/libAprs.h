@@ -25,7 +25,7 @@ protected:
     byte *comment = nullptr;
     size_t commentLen = 0;
     bool hasAprsExtension(const byte *buffer);
-    void setComment(const byte* buffer, byte len);
+    void setComment(const byte *buffer, byte len);
 
 public:
     typedef enum
@@ -35,7 +35,8 @@ public:
         PKT_LOCATION
     } PACKET_TYPE;
     PACKET_TYPE getPacketType();
-    static libAprs *decode(byte *buffer, size_t len);
+    static libAprs *fromAprs(byte *buffer, size_t len);
+    virtual void toAprs(byte *buffer, size_t &len) = 0;
     libAprs(byte dti);
     ~libAprs();
 };
@@ -49,16 +50,17 @@ class AprsPositionReport : public libAprs
 private:
     char *latitude = nullptr;
     char *longitude = nullptr;
-    byte symbolTableId=0;
-    byte symbolCode=0;
+    byte symbolTableId = 0;
+    byte symbolCode = 0;
 
 public:
     AprsPositionReport(const byte *buffer, size_t len);
     ~AprsPositionReport();
-    const char* getLatitude();
-    const char* getLongitude();
+    const char *getLatitude();
+    const char *getLongitude();
     byte getSymbolTableId();
     byte getSymbolCode();
+    void toAprs(byte *buffer, size_t &len);
 };
 
 /**
@@ -74,7 +76,8 @@ class AprsMessage : public libAprs
 private:
     char *addressee = nullptr;
     char *messageText = nullptr;
-    int messageId = 0;
+    int messageNo = 0;
+    byte messageLen = 0;
 
 public:
     AprsMessage(const byte *buffer, size_t len);
@@ -82,4 +85,6 @@ public:
     const char *getAddressee();
     const char *getMessage();
     int getMessageId();
+    bool setMessageText(const byte *buffer, size_t len, int msgNr = 0);
+    void toAprs(byte *buffer, size_t &len);
 };
