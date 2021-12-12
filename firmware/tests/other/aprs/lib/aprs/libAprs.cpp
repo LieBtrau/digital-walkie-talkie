@@ -10,7 +10,14 @@ libAprs::~libAprs()
 	delete[] comment;
 }
 
-libAprs *libAprs::fromAprs(byte *buffer, size_t len)
+/**
+ * @brief Decode a byte array that contains APRS-data
+ * 
+ * @param buffer pointer to a byte array with APRS-data
+ * @param len the number of bytes in the APRS-packet inside the buffer
+ * @return libAprs* pointer to a derived class of libAprs
+ */
+libAprs *libAprs::decode(byte *buffer, size_t len)
 {
 	libAprs *aprsPacket = nullptr;
 	switch (buffer[0])
@@ -154,7 +161,7 @@ byte AprsPositionReport::getSymbolCode()
 	return symbolCode;
 }
 
-char *AprsPositionReport::toAprs()
+char *AprsPositionReport::encode()
 {
 	return nullptr;
 }
@@ -247,7 +254,7 @@ bool AprsMessage::setMessageText(const char *text, int msgNr)
  * 
  * @return char* string containing the APRS-data.  The user is responsible for freeing up the memory afterwards.
  */
-char *AprsMessage::toAprs()
+char *AprsMessage::encode()
 {
 	size_t messageLen = strlen(messageText);
 	char *outputBuffer = new char[11 + messageLen + 1 + 5];

@@ -36,8 +36,8 @@ public:
         PKT_LOCATION
     } PACKET_TYPE;
     PACKET_TYPE getPacketType();
-    static libAprs *fromAprs(byte *buffer, size_t len);
-    virtual char* toAprs() = 0;
+    static libAprs *decode(byte *buffer, size_t len);
+    virtual char* encode() = 0;
     libAprs(byte dti);
     ~libAprs();
 };
@@ -61,7 +61,7 @@ public:
     const char *getLongitude();
     byte getSymbolTableId();
     byte getSymbolCode();
-    char* toAprs();
+    char* encode();
 };
 
 /**
@@ -86,5 +86,5 @@ public:
     const char *getMessage();
     int getMessageId();
     bool setMessageText(const char *buffer, int msgNr = 0);
-    char* toAprs();
+    char* encode();
 };
