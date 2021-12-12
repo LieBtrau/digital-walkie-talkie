@@ -24,13 +24,13 @@ void setup()
 					  aprsMsg->getMessage(),
 					  aprsMsg->getMessageId());
 		Serial.println("Output composed APRS-message");
-		byte outBuffer[200];
-		size_t outlen;
-		aprsMsg->toAprs(outBuffer, outlen);
-		for (int i = 0; i < outlen; i++)
+		char *outBuffer = aprsMsg->toAprs();
+		//AX25Frame ax25out("APDR16", 0, "N0CALL", 0, 0x03, 0xF0, outBuffer);
+		for (int i = 0; i < strlen(outBuffer); i++)
 		{
 			Serial.printf("0x%02x, ", outBuffer[i]);
 		}
+		delete[] outBuffer;
 	}
 
 	if (aprsPacket->getPacketType() == libAprs::PKT_LOCATION)

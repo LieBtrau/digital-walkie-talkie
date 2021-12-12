@@ -154,8 +154,9 @@ byte AprsPositionReport::getSymbolCode()
 	return symbolCode;
 }
 
-void AprsPositionReport::toAprs(byte *buffer, size_t &len)
+char *AprsPositionReport::toAprs()
 {
+	return nullptr;
 }
 
 AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])
@@ -175,10 +176,9 @@ AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])
 		*endOfAddressee = '\0';
 	}
 	// Get Message Text
-	messageLen = len - 11;
-	messageText = new char[messageLen + 1];
-	memcpy(messageText, buffer + 11, messageLen);
-	messageText[messageLen] = '\0';
+	messageText = new char[len - 11 + 1];
+	memcpy(messageText, buffer + 11, len - 11);
+	messageText[len - 11] = '\0';
 
 	// Check if the message is an acknowledgement or a reject
 	// Why doesn't the APRS standard include a '{' in the acknowledgement?  It would have made parsing so much easier.
@@ -186,8 +186,7 @@ AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])
 	{
 		// Yes, it's an acknowledgement
 		messageNo = atoi(messageText + 3);
-		messageLen = 3;
-		messageText[messageLen] = '\0';
+		messageText[3] = '\0';
 	}
 	else
 	{
@@ -196,7 +195,6 @@ AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])
 		if (messageIdPtr != nullptr)
 		{
 			// Break away the messageID from the message Text
-			messageLen = messageIdPtr - messageText;
 			*messageIdPtr = '\0';
 			messageNo = atoi(messageIdPtr + 1);
 		}
@@ -224,43 +222,48 @@ int AprsMessage::getMessageId()
 	return messageNo;
 }
 
-bool AprsMessage::setMessageText(const byte *buffer, size_t len, int msgNr)
+bool AprsMessage::setMessageText(const char *text, int msgNr)
 {
+	size_t bufferlen = strlen(text);
 	// Check maximum length
-	if (len > 67)
+	if (strlen(text) > 67)
 	{
 		return false;
 	}
 	// Scan for forbidden characters
-	if (memchr(buffer, '|', len) == nullptr || memchr(buffer, '~', len) == nullptr || memchr(buffer, '{', len) == nullptr)
+	if (strpbrk(text, "|~{") != nullptr)
 	{
 		return false;
 	}
 	delete[] messageText;
-	messageText = new char[len + 1];
-	memcpy(messageText, buffer, len);
-	messageText[len] = '\0';
-	messageLen = len;
+	messageText = new char[bufferlen + 1];
+	strcpy(messageText, text);
 	messageNo = msgNr;
 	return true;
 }
 
-void AprsMessage::toAprs(byte *buffer, size_t &len)
+/**
+ * @brief Convert the object to an APRS-string
+ * 
+ * @return char* string containing the APRS-data.  The user is responsible for freeing up the memory afterwards.
+ */
+char *AprsMessage::toAprs()
 {
-	//Addressee
-	buffer[0] = ':';
-	memset(buffer + 1, ' ', 9);
-	memcpy(buffer + 1, addressee, strlen(addressee));
-	buffer[10] = ':';
-	//MessageText
-	memcpy(buffer + 11, messageText, messageLen);
-	//Message No
+	size_t messageLen = strlen(messageText);
+	char *outputBuffer = new char[11 + messageLen + 1 + 5];
+	// Addressee
+	outputBuffer[0] = ':';
+	memset(outputBuffer + 1, ' ', 9);
+	memcpy(outputBuffer + 1, addressee, strlen(addressee));
+	outputBuffer[10] = ':';
+	// MessageText
+	strcpy(outputBuffer + 11, messageText);
+	// Message No
 	if (messageNo == 0)
 	{
-		len = 11 + messageLen;
-		return;
+		return outputBuffer;
 	}
-	buffer[11 + messageLen] = '{';
-	sprintf((char*)buffer + 11 + messageLen + 1, "%d", messageNo);
-	len = 11 + messageLen + 1 + strlen((char*)buffer+11+messageLen+1);
+	outputBuffer[11 + messageLen] = '{';
+	sprintf((char *)outputBuffer + 11 + messageLen + 1, "%d", messageNo);
+	return outputBuffer;
 }

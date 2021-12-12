@@ -3,6 +3,7 @@
 
 /**
  * @brief Base class describing APRS-packet format
+ * APRS is a protocol that uses printable (and thus human readable) ASCII characters 
  *
  */
 class libAprs
@@ -36,7 +37,7 @@ public:
     } PACKET_TYPE;
     PACKET_TYPE getPacketType();
     static libAprs *fromAprs(byte *buffer, size_t len);
-    virtual void toAprs(byte *buffer, size_t &len) = 0;
+    virtual char* toAprs() = 0;
     libAprs(byte dti);
     ~libAprs();
 };
@@ -60,7 +61,7 @@ public:
     const char *getLongitude();
     byte getSymbolTableId();
     byte getSymbolCode();
-    void toAprs(byte *buffer, size_t &len);
+    char* toAprs();
 };
 
 /**
@@ -75,9 +76,8 @@ class AprsMessage : public libAprs
 {
 private:
     char *addressee = nullptr;
-    char *messageText = nullptr;
+    char *messageText = nullptr;//!< Text only.  No '/0' allowed.
     int messageNo = 0;
-    byte messageLen = 0;
 
 public:
     AprsMessage(const byte *buffer, size_t len);
@@ -85,6 +85,6 @@ public:
     const char *getAddressee();
     const char *getMessage();
     int getMessageId();
-    bool setMessageText(const byte *buffer, size_t len, int msgNr = 0);
-    void toAprs(byte *buffer, size_t &len);
+    bool setMessageText(const char *buffer, int msgNr = 0);
+    char* toAprs();
 };
