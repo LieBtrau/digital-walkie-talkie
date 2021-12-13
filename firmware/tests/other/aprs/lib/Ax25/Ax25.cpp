@@ -97,15 +97,15 @@ AX25Frame::~AX25Frame()
 // 	return (*this);
 // }
 
-void AX25Frame::encode(byte *outBuffer, size_t &bufferLen)
+byte * AX25Frame::encode(size_t &bufferLen)
 {
-	outBuffer = nullptr;
+	byte* outBuffer = nullptr;
 	bufferLen = 0;
 
 	// check destination callsign length (6 characters max)
 	if (strlen(addresses[DESTINATION].name) > RADIOLIB_AX25_MAX_CALLSIGN_LEN)
 	{
-		return;
+		return nullptr;
 	}
 
 	// calculate frame length without FCS (destination address, source address, repeater addresses, control, PID, info)
@@ -137,6 +137,7 @@ void AX25Frame::encode(byte *outBuffer, size_t &bufferLen)
 	{
 		memcpy(frameBuffPtr, info, infoLen);
 	}
+	return outBuffer;
 }
 
 /**

@@ -154,7 +154,12 @@ public:
 	  */
 	// AX25Frame &operator=(const AX25Frame &frame);
 
-	void encode(byte *outBuffer, size_t &bufferLen);
+	/**
+	 * @brief Get the raw AX25-frame 
+	 * @param bufferLen number of bytes in the databuffer
+	 * @return byte* will point to a buffer containing the AX25 bytes upon return.  You'll need to release this buffer yourself.
+	 */
+	byte* encode(size_t &bufferLen);
 
 private:
 	CallSign decodeAddress(const byte *buffer, bool &isLastAddress);
