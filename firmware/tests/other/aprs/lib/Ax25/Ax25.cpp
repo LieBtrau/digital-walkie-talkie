@@ -2,140 +2,153 @@
 
 #include "Ax25.h"
 
-AX25Frame::AX25Frame(const char *destCallsign, byte destSSID, const char *srcCallsign, byte srcSSID, byte control)
-	: AX25Frame(destCallsign, destSSID, srcCallsign, srcSSID, control, 0, nullptr, 0)
+AX25Frame::AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+					 byte control, byte protocolID, const byte *info, uint16_t infoLen)
 {
-}
+	if (digipeaterCount > 8)
+	{
+		return;
+	}
+	_digipeaterCount = digipeaterCount;
+	_addresses = new Ax25Callsign[digipeaterCount + 2];
 
-AX25Frame::AX25Frame(const char *destCallsign, byte destSSID, const char *srcCallsign, byte srcSSID, byte control, byte protocolID, const char *info)
-	: AX25Frame(destCallsign, destSSID, srcCallsign, srcSSID, control, protocolID, (byte *)info, strlen(info))
-{
-}
-
-AX25Frame::AX25Frame(const char *destCallsign, byte destSSID, const char *srcCallsign, byte srcSSID, byte control, byte protocolID, byte *info, uint16_t infoLen)
-{
 	// destination callsign/SSID
-	strcpy(addresses[DESTINATION].name, destCallsign);
-	addresses[DESTINATION].ssid = destSSID;
-
+	_addresses[DESTINATION] = *destCallsign;
 	// source callsign/SSID
-	strcpy(addresses[SOURCE].name, srcCallsign);
-	addresses[SOURCE].ssid = srcSSID;
-
+	_addresses[SOURCE] = *srcCallsign;
+	// digipeater list
+	for (size_t i = 0; i < digipeaterCount; i++)
+	{
+		_addresses[DIGIPEATER1 + i] = digipeaterList[i];
+	}
 	// control field
-	this->controlfield = control;
-
+	_controlfield = control;
 	// PID field
-	this->protocolID = protocolID;
-
+	_protocolID = protocolID;
 	// info field
-	this->infoLen = infoLen;
+	_infoLen = infoLen;
 	if (infoLen > 0)
 	{
-		this->info = new byte[infoLen];
-		memcpy(this->info, info, infoLen);
+		this->_info = new byte[infoLen];
+		memcpy(this->_info, info, infoLen);
 	}
 }
 
-AX25Frame::AX25Frame(const byte *buffer, size_t bufferLen)
+AX25Frame::AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+					 byte control, byte protocolID, const char *info) : AX25Frame(destCallsign, srcCallsign, digipeaterList, digipeaterCount,
+																				  control, protocolID, (const byte *)info, strlen(info))
 {
-	byte *ptrBuf = (byte *)buffer;
-	CallSign *ptrCallsign = addresses;
+}
+
+AX25Frame::AX25Frame(const byte *ax25data, size_t datalen)
+{
+	byte *ptrBuf = (byte *)ax25data;
+	_addresses = new Ax25Callsign[10]; // not known yet how many addresses really are needed, so allocate the maximum amount.
 	bool isLastAddress;
 	// Decode callsigns : destination, source, digipeaters
+	size_t addressCounter = 0;
 	do
 	{
-		*(ptrCallsign++) = decodeAddress(ptrBuf, isLastAddress);
+		_addresses[addressCounter++] = decodeAddress(ptrBuf, isLastAddress);
 		ptrBuf += 7;
-	} while ((ptrBuf < buffer + 70) && (!isLastAddress));
-	digipeaterCount = ptrCallsign - addresses - 2;
+	} while ((ptrBuf < ax25data + 70) && (!isLastAddress));
+	_digipeaterCount = addressCounter - 2;
 	// Decode control field.  For APRS, it's always 0x03.
-	controlfield = *(ptrBuf++);
+	_controlfield = *(ptrBuf++);
 	// Decode protocol ID.  For APRS, it's always 0xF0 (no layer 3 protocol)
-	protocolID = *(ptrBuf++);
+	_protocolID = *(ptrBuf++);
 	// Get the data from the information field
-	infoLen = buffer + bufferLen - ptrBuf;
-	info = new byte[infoLen + 1];
-	memcpy(info, ptrBuf, infoLen);
-	info[infoLen] = '\0';
+	_infoLen = ax25data + datalen - ptrBuf;
+	_info = new byte[_infoLen + 1];
+	memcpy(_info, ptrBuf, _infoLen);
+	_info[_infoLen] = '\0';
 }
 
 AX25Frame::AX25Frame(const AX25Frame &frame)
 {
-	*this = frame;
+	_digipeaterCount = frame._digipeaterCount;
+	_addresses = new Ax25Callsign[_digipeaterCount + 2];
+	for (size_t i = 0; i < _digipeaterCount + 2; i++)
+	{
+		_addresses[i] = frame._addresses[i];
+	}
+	_controlfield = frame._controlfield;
+	_protocolID = frame._protocolID;
+	_infoLen = frame._infoLen;
+	if (_infoLen > 0)
+	{
+		_info = new byte[_infoLen + 1];
+		memcpy(_info, frame._info, _infoLen);
+		_info[_infoLen] = '\0';
+	}
 }
 
 AX25Frame::~AX25Frame()
 {
-	// deallocate info field
-	if (infoLen > 0)
-	{
-		delete[] this->info;
-	}
+	delete[] _addresses;
+	delete[] _info;
 }
 
-// AX25Frame &AX25Frame::operator=(const AX25Frame &frame)
-// {
-// 	// destination callsign/SSID
-// 	strcpy(this->destCallsign, frame.destCallsign);
-// 	this->destSSID = frame.destSSID;
-
-// 	// source callsign/SSID
-// 	strcpy(this->srcCallsign, frame.srcCallsign);
-// 	this->srcSSID = frame.srcSSID;
-
-// 	// control field
-// 	this->control = frame.control;
-
-// 	// PID field
-// 	this->protocolID = frame.protocolID;
-
-// 	// info field
-// 	this->infoLen = frame.infoLen;
-// 	memcpy(this->info, frame.info, this->infoLen);
-
-// 	return (*this);
-// }
-
-byte * AX25Frame::encode(size_t &bufferLen)
+AX25Frame &AX25Frame::operator=(const AX25Frame &frame)
 {
-	byte* outBuffer = nullptr;
+	_digipeaterCount = frame._digipeaterCount;
+	for (size_t i = 0; i < _digipeaterCount + 2; i++)
+	{
+		_addresses[i] = frame._addresses[i];
+	}
+	_controlfield = frame._controlfield;
+	_protocolID = frame._protocolID;
+	_infoLen = frame._infoLen;
+	if (_infoLen > 0)
+	{
+		delete[] _info;
+		_info = new byte[_infoLen + 1];
+		memcpy(_info, frame._info, _infoLen);
+		_info[_infoLen] = '\0';
+	}
+
+	return (*this);
+}
+
+byte *AX25Frame::encode(size_t &bufferLen)
+{
+	byte *outBuffer = nullptr;
 	bufferLen = 0;
 
 	// check destination callsign length (6 characters max)
-	if (strlen(addresses[DESTINATION].name) > RADIOLIB_AX25_MAX_CALLSIGN_LEN)
+	if (_addresses[DESTINATION].getName() == nullptr || _addresses[SOURCE].getName() == nullptr)
 	{
 		return nullptr;
 	}
 
 	// calculate frame length without FCS (destination address, source address, repeater addresses, control, PID, info)
-	bufferLen = (2 + digipeaterCount) * (RADIOLIB_AX25_MAX_CALLSIGN_LEN + 1) + 1 + 1 + infoLen;
+	bufferLen = (2 + _digipeaterCount) * (Ax25Callsign::MAX_CALLSIGN_LEN + 1) + 1 + 1 + _infoLen;
 	outBuffer = new byte[bufferLen + 2];
 	byte *frameBuffPtr = outBuffer;
 
 	// TODO set callsign
-	encodeAddress(addresses[DESTINATION], frameBuffPtr);
-	frameBuffPtr += 7;
-	encodeAddress(addresses[SOURCE], frameBuffPtr);
-	frameBuffPtr += 7;
-	for (int i = 0; i < digipeaterCount; i++)
+	encodeAddress(_addresses[DESTINATION], frameBuffPtr);
+	frameBuffPtr += Ax25Callsign::MAX_CALLSIGN_LEN + 1;
+	encodeAddress(_addresses[SOURCE], frameBuffPtr);
+	frameBuffPtr += Ax25Callsign::MAX_CALLSIGN_LEN + 1;
+	for (int i = 0; i < _digipeaterCount; i++)
 	{
-		encodeAddress(addresses[DIGIPEATER1 + i], frameBuffPtr);
-		frameBuffPtr += 7;
+		encodeAddress(_addresses[DIGIPEATER1 + i], frameBuffPtr);
+		frameBuffPtr += Ax25Callsign::MAX_CALLSIGN_LEN + 1;
 	}
 	// set HDLC extension end bit
 	*(frameBuffPtr - 1) |= RADIOLIB_AX25_SSID_HDLC_EXTENSION_END;
 	// set control field
-	*(frameBuffPtr++) = controlfield;
+	*(frameBuffPtr++) = _controlfield;
 	// set PID field of the frames that have it
-	if (protocolID != 0x00)
+	if (_protocolID != 0x00)
 	{
-		*(frameBuffPtr++) = protocolID;
+		*(frameBuffPtr++) = _protocolID;
 	}
 	// set info field of the frames that have it
-	if (infoLen > 0)
+	if (_infoLen > 0)
 	{
-		memcpy(frameBuffPtr, info, infoLen);
+		memcpy(frameBuffPtr, _info, _infoLen);
 	}
 	return outBuffer;
 }
@@ -147,31 +160,35 @@ byte * AX25Frame::encode(size_t &bufferLen)
  * @param isLastAddress will be true when the last address has been read.
  * @return AX25Frame::CallSign
  */
-AX25Frame::CallSign AX25Frame::decodeAddress(const byte *buffer, bool &isLastAddress)
+Ax25Callsign AX25Frame::decodeAddress(const byte *buffer, bool &isLastAddress)
 {
-	CallSign callsign;
-	for (size_t i = 0; i < 6; i++)
+	char name[Ax25Callsign::MAX_CALLSIGN_LEN + 1];
+	memset(name, '\0', sizeof(name));
+	size_t i = 0;
+	while (i < Ax25Callsign::MAX_CALLSIGN_LEN && (buffer[i] != (' ' << 1)))
 	{
-		callsign.name[i] = (buffer[i] != 0x40 ? buffer[i] : '\0') >> 1;
+		name[i] = buffer[i] >> 1;
+		i++;
 	}
-	isLastAddress = (buffer[6] & 0x01) != 1 ? false : true;
-	callsign.ssid = (buffer[6] >> 1) & 0xF;
-	return callsign;
+	isLastAddress = (buffer[Ax25Callsign::MAX_CALLSIGN_LEN] & 0x01) != 1 ? false : true;
+	byte ssid = (buffer[Ax25Callsign::MAX_CALLSIGN_LEN] >> 1) & 0xF;
+	return Ax25Callsign(name, ssid);
 }
 
 /**
  * @brief Convert callsign to a byte array so that it can be sent out
- * 
+ *
  * @param cs 		call sign to be converter
  * @param buffer 	output will be placed here
  */
-void AX25Frame::encodeAddress(CallSign cs, byte *buffer)
+void AX25Frame::encodeAddress(Ax25Callsign cs, byte *buffer)
 {
 	// set destination callsign - all address field bytes are shifted by one bit to make room for HDLC address extension bit
-	memset(buffer, ' ' << 1, RADIOLIB_AX25_MAX_CALLSIGN_LEN);
-	for (size_t i = 0; i < strlen(cs.name); i++)
+	memset(buffer, ' ' << 1, Ax25Callsign::MAX_CALLSIGN_LEN);
+	const char *name = cs.getName();
+	for (size_t i = 0; i < strlen(name); i++)
 	{
-		*(buffer + i) = cs.name[i] << 1;
+		*(buffer + i) = name[i] << 1;
 	}
-	buffer[6] = RADIOLIB_AX25_SSID_RESERVED_BITS | (cs.ssid & 0x0F) << 1;
+	buffer[Ax25Callsign::MAX_CALLSIGN_LEN] = RADIOLIB_AX25_SSID_RESERVED_BITS | (cs.getSsid() & 0x0F) << 1;
 }

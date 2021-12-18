@@ -1,10 +1,11 @@
-#include "libAprs.h"
+#include "AprsMessage.h"
+#include "AprsPositionReport.h"
 
-libAprs::libAprs(byte dti) : dataTypeId((DTI)dti)
+AprsPacket::AprsPacket(byte dti) : dataTypeId((DTI)dti)
 {
 }
 
-libAprs::~libAprs()
+AprsPacket::~AprsPacket()
 {
 	delete[] dataExtension;
 	delete[] comment;
@@ -13,24 +14,24 @@ libAprs::~libAprs()
 /**
  * @brief Decode a byte array that contains APRS-data
  * 
- * @param buffer pointer to a byte array with APRS-data
- * @param len the number of bytes in the APRS-packet inside the buffer
+ * @param ax25_information_field pointer to a byte array with APRS-data
+ * @param info_len the number of bytes in the APRS-packet inside the buffer
  * @return libAprs* pointer to a derived class of libAprs
  */
-libAprs *libAprs::decode(byte *buffer, size_t len)
+AprsPacket *AprsPacket::decode(byte *ax25_information_field, size_t info_len)
 {
-	libAprs *aprsPacket = nullptr;
-	switch (buffer[0])
+	AprsPacket *aprsPacket = nullptr;
+	switch (ax25_information_field[0])
 	{
 	case MESSAGE:
 		// Message packet
-		aprsPacket = new AprsMessage(buffer, len);
+		aprsPacket = new AprsMessage(ax25_information_field, info_len);
 		break;
 	case POS_NO_TIME_NO_MSG:
 	case POS_NO_TIME_WITH_MSG:
 	case POS_WITH_TIME_WITH_MSG:
 	case POS_WITH_TIME_NO_MSG:
-		aprsPacket = new AprsPositionReport(buffer, len);
+		aprsPacket = new AprsPositionReport(ax25_information_field, info_len);
 		break;
 	default:
 		// Unsupported packet
@@ -48,7 +49,7 @@ libAprs *libAprs::decode(byte *buffer, size_t len)
  * @return true APRS extension presetn
  * @return false no APRS extension
  */
-bool libAprs::hasAprsExtension(const byte *buffer)
+bool AprsPacket::hasAprsExtension(const byte *buffer)
 {
 	if (buffer[3] == '/')
 	{
@@ -70,7 +71,7 @@ bool libAprs::hasAprsExtension(const byte *buffer)
 	return false;
 }
 
-libAprs::PACKET_TYPE libAprs::getPacketType()
+AprsPacket::PACKET_TYPE AprsPacket::getPacketType()
 {
 	switch (dataTypeId)
 	{
@@ -86,191 +87,12 @@ libAprs::PACKET_TYPE libAprs::getPacketType()
 	}
 }
 
-void libAprs::setComment(const byte *buffer, byte len)
+bool AprsPacket::setComment(const byte *buffer, byte len)
 {
 	commentLen = len;
 	comment = new byte[len + 1];
 	memcpy(comment, buffer, len);
 	comment[len] = '\0';
-}
-
-AprsPositionReport::~AprsPositionReport()
-{
-	delete[] latitude;
-	delete[] longitude;
-}
-
-AprsPositionReport::AprsPositionReport(const byte *buffer, size_t len) : libAprs(buffer[0])
-{
-	switch (dataTypeId)
-	{
-	case POS_NO_TIME_NO_MSG:
-	case POS_NO_TIME_WITH_MSG:
-		// Parse 20 byte header
-		// latitude
-		latitude = new char[9];
-		memset(latitude, '\0', 9);
-		memcpy(latitude, buffer + 1, 8);
-		// symbol table ID
-		symbolTableId = buffer[9];
-		// longitude
-		longitude = new char[10];
-		memset(longitude, '\0', 10);
-		memcpy(longitude, buffer + 10, 9);
-		// symbol code
-		symbolCode = buffer[19];
-		if (hasAprsExtension(buffer + 20))
-		{
-			// Parse extension data
-			//...
-			// Copy comment data
-			commentLen = len - 27;
-			memcpy(comment, buffer + 27, commentLen);
-		}
-		else
-		{
-			setComment(buffer + 20, len - 20);
-		}
-		break;
-	case POS_WITH_TIME_WITH_MSG:
-	case POS_WITH_TIME_NO_MSG:
-		// Parse 27 byte header
-		break;
-	default:
-		break;
-	}
-}
-
-const char *AprsPositionReport::getLatitude()
-{
-	return latitude;
-}
-
-const char *AprsPositionReport::getLongitude()
-{
-	return longitude;
-}
-
-byte AprsPositionReport::getSymbolTableId()
-{
-	return symbolTableId;
-}
-
-byte AprsPositionReport::getSymbolCode()
-{
-	return symbolCode;
-}
-
-char *AprsPositionReport::encode()
-{
-	return nullptr;
-}
-
-AprsMessage::AprsMessage(const byte *buffer, size_t len) : libAprs(buffer[0])
-{
-	if (buffer[10] != ':')
-	{
-		// invalid message
-		return;
-	}
-	// Get Addressee
-	addressee = new char[10];
-	memset(addressee, '\0', 10);
-	memcpy(addressee, buffer + 1, 9);
-	char *endOfAddressee = strchr(addressee, ' ');
-	if (endOfAddressee != nullptr)
-	{
-		*endOfAddressee = '\0';
-	}
-	// Get Message Text
-	messageText = new char[len - 11 + 1];
-	memcpy(messageText, buffer + 11, len - 11);
-	messageText[len - 11] = '\0';
-
-	// Check if the message is an acknowledgement or a reject
-	// Why doesn't the APRS standard include a '{' in the acknowledgement?  It would have made parsing so much easier.
-	if (((strstr(messageText, "ack") == messageText) || (strstr(messageText, "rej") == messageText)) && strspn(messageText + 3, "0123456789") == strlen(messageText + 3))
-	{
-		// Yes, it's an acknowledgement
-		messageNo = atoi(messageText + 3);
-		messageText[3] = '\0';
-	}
-	else
-	{
-		// Get Message No (if present)
-		char *messageIdPtr = strchr(messageText, '{');
-		if (messageIdPtr != nullptr)
-		{
-			// Break away the messageID from the message Text
-			*messageIdPtr = '\0';
-			messageNo = atoi(messageIdPtr + 1);
-		}
-	}
-}
-
-AprsMessage::~AprsMessage()
-{
-	delete[] addressee;
-	delete[] messageText;
-}
-
-const char *AprsMessage::getAddressee()
-{
-	return addressee;
-}
-
-const char *AprsMessage::getMessage()
-{
-	return messageText;
-}
-
-int AprsMessage::getMessageId()
-{
-	return messageNo;
-}
-
-bool AprsMessage::setMessageText(const char *text, int msgNr)
-{
-	size_t bufferlen = strlen(text);
-	// Check maximum length
-	if (strlen(text) > 67)
-	{
-		return false;
-	}
-	// Scan for forbidden characters
-	if (strpbrk(text, "|~{") != nullptr)
-	{
-		return false;
-	}
-	delete[] messageText;
-	messageText = new char[bufferlen + 1];
-	strcpy(messageText, text);
-	messageNo = msgNr;
-	return true;
-}
-
-/**
- * @brief Convert the object to an APRS-string
- * 
- * @return char* string containing the APRS-data.  The user is responsible for freeing up the memory afterwards.
- */
-char *AprsMessage::encode()
-{
-	size_t messageLen = strlen(messageText);
-	char *outputBuffer = new char[11 + messageLen + 1 + 5];
-	// Addressee
-	outputBuffer[0] = ':';
-	memset(outputBuffer + 1, ' ', 9);
-	memcpy(outputBuffer + 1, addressee, strlen(addressee));
-	outputBuffer[10] = ':';
-	// MessageText
-	strcpy(outputBuffer + 11, messageText);
-	// Message No
-	if (messageNo == 0)
-	{
-		return outputBuffer;
-	}
-	outputBuffer[11 + messageLen] = '{';
-	sprintf((char *)outputBuffer + 11 + messageLen + 1, "%d", messageNo);
-	return outputBuffer;
+	//The comment may contain any printable ASCII characters (except | and ~, which are reserved for TNC channel switching).
+	return strpbrk((const char*)comment, "|~") == nullptr ? false : true;
 }

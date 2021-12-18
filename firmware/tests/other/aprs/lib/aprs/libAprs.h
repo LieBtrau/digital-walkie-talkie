@@ -1,12 +1,44 @@
 #pragma once
 #include "Arduino.h"
 
+
+// /**
+//  * @brief Dealing with sending and receiving APRS-packets from a TNC-client
+//  */
+// class AprsClient
+// {
+// private:
+//     void (*_read)(const byte* buffer, size_t len) = nullptr;
+//     void (*_write)(const byte* buffer, size_t len) = nullptr;
+//     char* myCallsign = nullptr;
+//     byte _mySsid = 0;
+//     char* destCallsign=nullptr;
+//     byte destSsid = 0;
+
+// public:
+//     void setMyCallsign(const char* callsign, byte ssid);
+//     void setDestination(const char* callsign, byte ssid);
+//     /**
+//      * @brief Callback for incoming AX.25 frames
+//      * AX.25 frames coming from the TNC that need to be encoded.
+//      * @param callback 
+//      */
+//     void read(void (*callback)(const byte* buffer, size_t len));
+//     /**
+//      * @brief Callback for outgoing AX.25 frames
+//      * AX.25 frames that must be sent downto the TNC.
+//      * @param callback 
+//      */
+//     void write(void (*callback)(const byte* buffer, size_t len));
+//     ~AprsClient();
+// };
+
 /**
  * @brief Base class describing APRS-packet format
  * APRS is a protocol that uses printable (and thus human readable) ASCII characters 
  *
  */
-class libAprs
+class AprsPacket
 {
 private:
     byte *dataExtension = nullptr;
@@ -26,7 +58,7 @@ protected:
     byte *comment = nullptr;
     size_t commentLen = 0;
     bool hasAprsExtension(const byte *buffer);
-    void setComment(const byte *buffer, byte len);
+    bool setComment(const byte *buffer, byte len);
 
 public:
     typedef enum
@@ -35,56 +67,11 @@ public:
         PKT_TEXT,
         PKT_LOCATION
     } PACKET_TYPE;
+    static const byte CONTROL = 0x03;
+    static const byte PROTOCOL_ID = 0xF0;
     PACKET_TYPE getPacketType();
-    static libAprs *decode(byte *buffer, size_t len);
+    static AprsPacket *decode(byte *buffer, size_t len);
     virtual char* encode() = 0;
-    libAprs(byte dti);
-    ~libAprs();
-};
-
-/**
- * @brief Position and DF reports
- * According to chapter 8 POSITION AND DF REPORT DATA FORMATS of APRS 101
- */
-class AprsPositionReport : public libAprs
-{
-private:
-    char *latitude = nullptr;
-    char *longitude = nullptr;
-    byte symbolTableId = 0;
-    byte symbolCode = 0;
-
-public:
-    AprsPositionReport(const byte *buffer, size_t len);
-    ~AprsPositionReport();
-    const char *getLatitude();
-    const char *getLongitude();
-    byte getSymbolTableId();
-    byte getSymbolCode();
-    char* encode();
-};
-
-/**
- * @brief APRS packet containing human readable info
- * APRS messages, bulletins and announcements are packets containing free
- * format text strings, and are intended to convey human-readable information.
- * A message is intended for reception by a single specified recipient, and an
- * acknowledgement is usually expected. Bulletins and announcements are
- * intended for reception by multiple recipients, and are not acknowledged.
- */
-class AprsMessage : public libAprs
-{
-private:
-    char *addressee = nullptr;
-    char *messageText = nullptr;//!< Text only.  No '/0' allowed.
-    int messageNo = 0;
-
-public:
-    AprsMessage(const byte *buffer, size_t len);
-    ~AprsMessage();
-    const char *getAddressee();
-    const char *getMessage();
-    int getMessageId();
-    bool setMessageText(const char *buffer, int msgNr = 0);
-    char* encode();
+    AprsPacket(byte dti);
+    ~AprsPacket();
 };

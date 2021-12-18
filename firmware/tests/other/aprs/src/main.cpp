@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include "Ax25.h"
-#include "libAprs.h"
+#include "AprsMessage.h"
+#include "AprsPositionReport.h"
+
 
 void setup()
 {
@@ -15,8 +17,8 @@ void setup()
 							0x20, 0x68, 0x74, 0x74, 0x70, 0x73, 0x3a, 0x2f, 0x2f, 0x61, 0x70, 0x72, 0x73, 0x64, 0x72, 0x6f, 0x69, 0x64,
 							0x2e, 0x6f, 0x72, 0x67, 0x2f};
 	AX25Frame rxframe((const byte *)ax25bufferMsg, sizeof(ax25bufferMsg));
-	libAprs *aprsPacket = libAprs::decode(rxframe.info, rxframe.infoLen);
-	if (aprsPacket->getPacketType() == libAprs::PKT_TEXT)
+	AprsPacket *aprsPacket = AprsPacket::decode(rxframe._info, rxframe._infoLen);
+	if (aprsPacket->getPacketType() == AprsPacket::PKT_TEXT)
 	{
 		AprsMessage *aprsMsg = (AprsMessage *)aprsPacket;
 		Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
@@ -25,7 +27,9 @@ void setup()
 					  aprsMsg->getMessageId());
 		Serial.print("Output composed APRS-message: ");
 		char *outBuffer = aprsMsg->encode();
-		AX25Frame ax25out("APDR16", 0, "N0CALL", 0, 0x03, 0xF0, outBuffer);
+		Ax25Callsign destination("APDR16", 0);
+		Ax25Callsign source("N0CALL", 0);
+		AX25Frame ax25out(&destination, &source, nullptr, 0,AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, outBuffer);
 		delete[] outBuffer;
 		size_t bufferLen;
 		byte *ax25Buffer = ax25out.encode(bufferLen);
@@ -36,7 +40,7 @@ void setup()
 		delete[] ax25Buffer;
 	}
 
-	if (aprsPacket->getPacketType() == libAprs::PKT_LOCATION)
+	if (aprsPacket->getPacketType() == AprsPacket::PKT_LOCATION)
 	{
 		AprsPositionReport *aprsPos = (AprsPositionReport *)aprsPacket;
 		Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
