@@ -108,10 +108,10 @@ public:
 		\param info Information field, in the form of arbitrary binary buffer.
 		\param infoLen Number of bytes in the information field.
 	  */
-	AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
 			  byte control, byte protocolID, const byte *info, uint16_t infoLen);
 
-	AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
 			  byte control, byte protocolID, const char *info);
 
 	AX25Frame(const byte *outBuffer, size_t bufferLen);

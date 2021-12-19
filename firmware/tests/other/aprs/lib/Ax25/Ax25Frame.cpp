@@ -1,8 +1,8 @@
 // Based on : https://github.com/jgromes/RadioLib/blob/master/src/protocols/AX25/AX25.cpp
 
-#include "Ax25.h"
+#include "Ax25Frame.h"
 
-AX25Frame::AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+AX25Frame::AX25Frame(const Ax25Callsign& destCallsign, const Ax25Callsign& srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
 					 byte control, byte protocolID, const byte *info, uint16_t infoLen)
 {
 	if (digipeaterCount > 8)
@@ -13,9 +13,9 @@ AX25Frame::AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCa
 	_addresses = new Ax25Callsign[digipeaterCount + 2];
 
 	// destination callsign/SSID
-	_addresses[DESTINATION] = *destCallsign;
+	_addresses[DESTINATION] = destCallsign;//calls overloaded assignment operator
 	// source callsign/SSID
-	_addresses[SOURCE] = *srcCallsign;
+	_addresses[SOURCE] = srcCallsign;
 	// digipeater list
 	for (size_t i = 0; i < digipeaterCount; i++)
 	{
@@ -34,7 +34,7 @@ AX25Frame::AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCa
 	}
 }
 
-AX25Frame::AX25Frame(const Ax25Callsign *destCallsign, const Ax25Callsign *srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
 					 byte control, byte protocolID, const char *info) : AX25Frame(destCallsign, srcCallsign, digipeaterList, digipeaterCount,
 																				  control, protocolID, (const byte *)info, strlen(info))
 {

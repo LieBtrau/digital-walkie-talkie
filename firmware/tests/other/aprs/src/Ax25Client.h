@@ -1,13 +1,13 @@
 #pragma once
 
-//#include "KissTnc.h"
-#include "Ax25.h"
+#include "KissTnc.h"
+#include "Ax25Frame.h"
 #include "Ax25Callsign.h"
 
 class Ax25Client
 {
 public:
-    //Ax25Client(KissTnc *tnc, const Ax25Callsign *callsign);
+    Ax25Client(KissTnc *tnc, const Ax25Callsign *callsign);
     ~Ax25Client();
     void setDestinationAddress(const Ax25Callsign *callsign);
     void setDigipeaterAddresses(const Ax25Callsign *list, size_t count);
@@ -16,7 +16,7 @@ public:
     void loop();
 
 private:
-    //KissTnc *_tnc;
+    KissTnc *_tnc;
     Ax25Callsign _destinationAddress;
     Ax25Callsign _sourceAddress;
     Ax25Callsign *_digipeaterList = nullptr;

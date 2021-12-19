@@ -1,8 +1,7 @@
 #include <Arduino.h>
-#include "Ax25.h"
+#include "Ax25Frame.h"
 #include "AprsMessage.h"
 #include "AprsPositionReport.h"
-
 
 void setup()
 {
@@ -27,9 +26,7 @@ void setup()
 					  aprsMsg->getMessageId());
 		Serial.print("Output composed APRS-message: ");
 		char *outBuffer = aprsMsg->encode();
-		Ax25Callsign destination("APDR16", 0);
-		Ax25Callsign source("N0CALL", 0);
-		AX25Frame ax25out(&destination, &source, nullptr, 0,AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, outBuffer);
+		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), nullptr, 0, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, outBuffer);
 		delete[] outBuffer;
 		size_t bufferLen;
 		byte *ax25Buffer = ax25out.encode(bufferLen);
