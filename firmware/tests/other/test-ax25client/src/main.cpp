@@ -53,30 +53,33 @@ void fullDuplexUpdateHandler(byte fullDuplex)
 
 void ax25receivedHandler(const Ax25Callsign &destination, const Ax25Callsign &sender, const byte *info_field, size_t info_length)
 {
+	AprsMessage *aprsMsg;
+	AprsPositionReport *aprsPos;
 	Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName(), sender.getName());
 
 	AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
-	if (aprsPacket->getPacketType() == AprsPacket::PKT_TEXT)
+	switch (aprsPacket->getPacketType())
 	{
-		AprsMessage *aprsMsg = (AprsMessage *)aprsPacket;
+	case AprsPacket::PKT_TEXT:
+		aprsMsg = (AprsMessage *)aprsPacket;
 		Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
 					  aprsMsg->getAddressee(),
 					  aprsMsg->getMessage(),
 					  aprsMsg->getMessageId());
 		delete aprsMsg;
-	}
-
-	if (aprsPacket->getPacketType() == AprsPacket::PKT_LOCATION)
-	{
-		AprsPositionReport *aprsPos = (AprsPositionReport *)aprsPacket;
+		break;
+	case AprsPacket::PKT_LOCATION:
+		aprsPos = (AprsPositionReport *)aprsPacket;
 		Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
 					  aprsPos->getLatitude(),
 					  aprsPos->getLongitude(),
 					  aprsPos->getSymbolTableId(),
 					  aprsPos->getSymbolCode());
 		delete aprsPos;
+		break;
+	default:
+		break;
 	}
-
 }
 
 void setup()
