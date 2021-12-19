@@ -2,7 +2,7 @@
 
 #include "Ax25Frame.h"
 
-AX25Frame::AX25Frame(const Ax25Callsign& destCallsign, const Ax25Callsign& srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
+AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
 					 byte control, byte protocolID, const byte *info, uint16_t infoLen)
 {
 	if (digipeaterCount > 8)
@@ -13,7 +13,7 @@ AX25Frame::AX25Frame(const Ax25Callsign& destCallsign, const Ax25Callsign& srcCa
 	_addresses = new Ax25Callsign[digipeaterCount + 2];
 
 	// destination callsign/SSID
-	_addresses[DESTINATION] = destCallsign;//calls overloaded assignment operator
+	_addresses[DESTINATION] = destCallsign; // calls overloaded assignment operator
 	// source callsign/SSID
 	_addresses[SOURCE] = srcCallsign;
 	// digipeater list
@@ -108,6 +108,26 @@ AX25Frame &AX25Frame::operator=(const AX25Frame &frame)
 	}
 
 	return (*this);
+}
+
+Ax25Callsign AX25Frame::getDestination()
+{
+	return _addresses[DESTINATION];
+}
+
+Ax25Callsign AX25Frame::getSource()
+{
+	return _addresses[SOURCE];
+}
+
+byte *AX25Frame::getInfoField()
+{
+	return _info;
+}
+
+size_t AX25Frame::getInfoLength()
+{
+	return _infoLen;
 }
 
 byte *AX25Frame::encode(size_t &bufferLen)

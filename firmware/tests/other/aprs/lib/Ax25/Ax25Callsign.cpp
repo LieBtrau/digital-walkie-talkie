@@ -49,7 +49,7 @@ Ax25Callsign &Ax25Callsign::operator=(const Ax25Callsign &obj)
     return *this;
 }
 
-const char *Ax25Callsign::getName()
+const char *Ax25Callsign::getName() const
 {
     return _name;
 }

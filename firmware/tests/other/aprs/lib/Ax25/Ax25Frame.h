@@ -77,26 +77,6 @@
 class AX25Frame
 {
 public:
-	typedef enum
-	{
-		DESTINATION,
-		SOURCE,
-		DIGIPEATER1,
-		DIGIPEATER2,
-		DIGIPEATER3,
-		DIGIPEATER4,
-		DIGIPEATER5,
-		DIGIPEATER6,
-		DIGIPEATER7,
-		DIGIPEATER8
-	} Address;
-	byte _digipeaterCount = 0;
-	Ax25Callsign* _addresses=nullptr;
-	byte _controlfield = 0; //!< The control field.
-	byte _protocolID = 0;   //!< The protocol identifier (PID) field.
-	word _infoLen = 0;	   //!< Number of bytes in the information field.
-	byte *_info = nullptr;  //!< The info field.
-
 	/*!
 		\brief Default constructor.
 		\param destCallsign Callsign of the destination station.
@@ -139,7 +119,31 @@ public:
 	 */
 	byte *encode(size_t &bufferLen);
 
+	Ax25Callsign getDestination();
+	Ax25Callsign getSource();
+	byte* getInfoField();
+	size_t getInfoLength();
+
 private:
+	typedef enum
+	{
+		DESTINATION,
+		SOURCE,
+		DIGIPEATER1,
+		DIGIPEATER2,
+		DIGIPEATER3,
+		DIGIPEATER4,
+		DIGIPEATER5,
+		DIGIPEATER6,
+		DIGIPEATER7,
+		DIGIPEATER8
+	} Address;
+	byte _digipeaterCount = 0;
+	Ax25Callsign* _addresses=nullptr;
+	byte _controlfield = 0; //!< The control field.
+	byte _protocolID = 0;   //!< The protocol identifier (PID) field.
+	word _infoLen = 0;	   //!< Number of bytes in the information field.
+	byte *_info = nullptr;  //!< The info field.
 	Ax25Callsign decodeAddress(const byte *buffer, bool &isLastAddress);
 	void encodeAddress(Ax25Callsign cs, byte *buffer);
 };
