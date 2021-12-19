@@ -2,6 +2,8 @@
 #include "BluetoothSerial.h"
 #include "KissTnc.h"
 #include "Ax25Client.h"
+#include "AprsMessage.h"
+#include "AprsPositionReport.h"
 
 BluetoothSerial SerialBT;
 KissTnc kisstnc(&SerialBT);
@@ -51,15 +53,30 @@ void fullDuplexUpdateHandler(byte fullDuplex)
 
 void ax25receivedHandler(const Ax25Callsign &destination, const Ax25Callsign &sender, const byte *info_field, size_t info_length)
 {
-	Serial.printf("\r\nDestination: %s\r\nSender: %s", destination.getName(), sender.getName());
-	for (int i = 0; i < info_length; i++)
+	Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName(), sender.getName());
+
+	AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
+	if (aprsPacket->getPacketType() == AprsPacket::PKT_TEXT)
 	{
-		if (i % 20 == 0)
-		{
-			Serial.println();
-		}
-		Serial.printf("0x%02x, ", info_field[i]);
+		AprsMessage *aprsMsg = (AprsMessage *)aprsPacket;
+		Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
+					  aprsMsg->getAddressee(),
+					  aprsMsg->getMessage(),
+					  aprsMsg->getMessageId());
+		delete aprsMsg;
 	}
+
+	if (aprsPacket->getPacketType() == AprsPacket::PKT_LOCATION)
+	{
+		AprsPositionReport *aprsPos = (AprsPositionReport *)aprsPacket;
+		Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
+					  aprsPos->getLatitude(),
+					  aprsPos->getLongitude(),
+					  aprsPos->getSymbolTableId(),
+					  aprsPos->getSymbolCode());
+		delete aprsPos;
+	}
+
 }
 
 void setup()

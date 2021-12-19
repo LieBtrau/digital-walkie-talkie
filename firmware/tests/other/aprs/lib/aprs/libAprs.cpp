@@ -18,7 +18,7 @@ AprsPacket::~AprsPacket()
  * @param info_len the number of bytes in the APRS-packet inside the buffer
  * @return libAprs* pointer to a derived class of libAprs
  */
-AprsPacket *AprsPacket::decode(byte *ax25_information_field, size_t info_len)
+AprsPacket *AprsPacket::decode(const byte *ax25_information_field, size_t info_len)
 {
 	AprsPacket *aprsPacket = nullptr;
 	switch (ax25_information_field[0])

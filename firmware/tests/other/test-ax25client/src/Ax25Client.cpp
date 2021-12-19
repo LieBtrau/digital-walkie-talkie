@@ -30,9 +30,9 @@ void Ax25Client::setDigipeaterAddresses(const Ax25Callsign *list, size_t count)
 
 bool Ax25Client::sendFrame(byte control, byte protocolId, const byte *info_field, size_t info_len)
 {
-    AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, _digipeaterCount, control, protocolId, info_field, info_len);
-    size_t bufferlen = 0;
-    byte *buffer = frame.encode(bufferlen);
+    //AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, _digipeaterCount, control, protocolId, info_field, info_len);
+    //size_t bufferlen = 0;
+    //byte *buffer = frame.encode(bufferlen);
     // _tnc->beginPacket();
     // _tnc->write(buffer, bufferlen);
     // _tnc->endPacket();
