@@ -52,7 +52,7 @@ private:
     byte _txDelay, _p, _slotTime, _txTail, _fullDuplex; //!< Radio parameter cache
 
 public:
-    KissTnc(Stream *host);
+    KissTnc(Stream &host);
     ~KissTnc();
     // from Print
     virtual size_t write(uint8_t c);

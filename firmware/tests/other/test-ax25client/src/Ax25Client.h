@@ -7,7 +7,7 @@
 class Ax25Client
 {
 public:
-    Ax25Client(KissTnc *tnc, const Ax25Callsign &callsign);
+    Ax25Client(KissTnc &tnc, const Ax25Callsign &callsign);
     ~Ax25Client();
     void setDestinationAddress(const Ax25Callsign *callsign);
     void setDigipeaterAddresses(const Ax25Callsign *list, size_t count);

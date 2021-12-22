@@ -5,7 +5,7 @@
  * 
  * @param host connection to the host computer (e.g. SerialPort, Bluetooth Serial)
  */
-KissTnc::KissTnc(Stream *host) : _host(host)
+KissTnc::KissTnc(Stream &host) : _host(&host)
 {
 }
 

@@ -2,12 +2,12 @@
 #include "BluetoothSerial.h"
 #include "KissTnc.h"
 #include "Ax25Client.h"
-#include "AprsMessage.h"
-#include "AprsPositionReport.h"
+#include "AprsClient.h"
 
 BluetoothSerial SerialBT;
-KissTnc kisstnc(&SerialBT);
-Ax25Client ax25client(&kisstnc, Ax25Callsign("NOCALL", 0));
+KissTnc kisstnc(SerialBT);
+Ax25Client ax25client(kisstnc, Ax25Callsign("NOCALL", 0));
+AprsClient aprsClient(ax25client);
 
 void exitKissHandler()
 {
@@ -53,33 +53,12 @@ void fullDuplexUpdateHandler(byte fullDuplex)
 
 void ax25receivedHandler(const Ax25Callsign &destination, const Ax25Callsign &sender, const byte *info_field, size_t info_length)
 {
-	AprsMessage *aprsMsg;
-	AprsPositionReport *aprsPos;
-	Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName(), sender.getName());
+	aprsClient.receiveFrame(destination, sender, info_field, info_length);
+}
 
-	AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
-	switch (aprsPacket->getPacketType())
-	{
-	case AprsPacket::PKT_TEXT:
-		aprsMsg = (AprsMessage *)aprsPacket;
-		Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
-					  aprsMsg->getAddressee(),
-					  aprsMsg->getMessage(),
-					  aprsMsg->getMessageId());
-		delete aprsMsg;
-		break;
-	case AprsPacket::PKT_LOCATION:
-		aprsPos = (AprsPositionReport *)aprsPacket;
-		Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
-					  aprsPos->getLatitude(),
-					  aprsPos->getLongitude(),
-					  aprsPos->getSymbolTableId(),
-					  aprsPos->getSymbolCode());
-		delete aprsPos;
-		break;
-	default:
-		break;
-	}
+void aprsMessageReceivedHandler(const char *addressee, const char *message)
+{
+	Serial.printf("Hey! Message received.\r\nAddressee:\"%s\"\r\nMessage text: \"%s\"\r\n", addressee, message);
 }
 
 void setup()
@@ -95,6 +74,7 @@ void setup()
 	kisstnc.onTxTailUpdate(txTailUpdateHandler);
 	kisstnc.onFullDuplexUpdate(fullDuplexUpdateHandler);
 	ax25client.setRxFrameCallback(ax25receivedHandler);
+	aprsClient.setMessageReceivedCallback(aprsMessageReceivedHandler);
 	delay(1000);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__); // timestamp only gets updated when this file is being recompiled.
 	do
