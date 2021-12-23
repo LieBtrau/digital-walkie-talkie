@@ -9,7 +9,7 @@ class Ax25Client
 public:
     Ax25Client(KissTnc &tnc, const Ax25Callsign &callsign);
     ~Ax25Client();
-    void setDestinationAddress(const Ax25Callsign *callsign);
+    void setDestinationAddress(const Ax25Callsign &callsign);
     void setDigipeaterAddresses(const Ax25Callsign *list, size_t count);
     bool sendFrame(byte control, byte protocolId, const byte *info_field, size_t info_len);
     void setRxFrameCallback(void (*callback)(const Ax25Callsign &destination, const Ax25Callsign &sender, const byte *info_field, size_t info_length));

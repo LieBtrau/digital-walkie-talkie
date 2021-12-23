@@ -3,11 +3,15 @@
 #include "KissTnc.h"
 #include "Ax25Client.h"
 #include "AprsClient.h"
+#include "AprsMessage.h"
+#include "AsyncDelay.h"
 
 BluetoothSerial SerialBT;
 KissTnc kisstnc(SerialBT);
-Ax25Client ax25client(kisstnc, Ax25Callsign("NOCALL", 0));
+Ax25Client ax25client(kisstnc, Ax25Callsign("I0CALL", 0));
 AprsClient aprsClient(ax25client);
+const int PTT_BUTTON = 27;
+AsyncDelay superFrameTimer;
 
 void exitKissHandler()
 {
@@ -74,6 +78,7 @@ void setup()
 	kisstnc.onTxTailUpdate(txTailUpdateHandler);
 	kisstnc.onFullDuplexUpdate(fullDuplexUpdateHandler);
 	ax25client.setRxFrameCallback(ax25receivedHandler);
+	ax25client.setDestinationAddress(Ax25Callsign("APDR16", 0));
 	aprsClient.setMessageReceivedCallback(aprsMessageReceivedHandler);
 	delay(1000);
 	Serial.printf("Build %s\r\n", __TIMESTAMP__); // timestamp only gets updated when this file is being recompiled.
@@ -81,10 +86,23 @@ void setup()
 	{
 		Serial.println("Waiting for bluetooth connection...");
 	} while (!SerialBT.connected(10000));
+	superFrameTimer.start(1000, AsyncDelay::MILLIS);
+	pinMode(PTT_BUTTON, INPUT_PULLUP);
 	pinMode(BUILTIN_LED, OUTPUT);
 }
 
 void loop()
 {
 	ax25client.loop();
+	if (superFrameTimer.isExpired())
+	{
+		if (digitalRead(PTT_BUTTON) == LOW)
+		{
+			AprsMessage testMsg((const char *)"Test", 1);
+			testMsg.setAddressee("N0CALL");
+			char *info_field = testMsg.encode();
+			ax25client.sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)info_field, strlen(info_field));
+			superFrameTimer.restart();
+		}
+	}
 }

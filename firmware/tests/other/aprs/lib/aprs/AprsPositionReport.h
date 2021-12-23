@@ -1,6 +1,6 @@
 #pragma once
 
-#include "libAprs.h"
+#include "AprsPacket.h"
 
 /**
  * @brief Position and DF reports

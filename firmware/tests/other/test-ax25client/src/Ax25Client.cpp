@@ -14,9 +14,9 @@ Ax25Client::~Ax25Client()
     delete[] _digipeaterList;
 }
 
-void Ax25Client::setDestinationAddress(const Ax25Callsign *callsign)
+void Ax25Client::setDestinationAddress(const Ax25Callsign &callsign)
 {
-    _destinationAddress = *callsign;
+    _destinationAddress = callsign;
 }
 
 void Ax25Client::setDigipeaterAddresses(const Ax25Callsign *list, size_t count)
@@ -30,12 +30,23 @@ void Ax25Client::setDigipeaterAddresses(const Ax25Callsign *list, size_t count)
 
 bool Ax25Client::sendFrame(byte control, byte protocolId, const byte *info_field, size_t info_len)
 {
-    // AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, _digipeaterCount, control, protocolId, info_field, info_len);
-    // size_t bufferlen = 0;
-    // byte *buffer = frame.encode(bufferlen);
-    //  _tnc->beginPacket();
-    //  _tnc->write(buffer, bufferlen);
-    //  _tnc->endPacket();
+    AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, _digipeaterCount, control, protocolId, info_field, info_len);
+    size_t bufferlen = 0;
+    byte *buffer = frame.encode(bufferlen);
+     _tnc->beginPacket();
+     _tnc->write(buffer, bufferlen);
+     _tnc->endPacket();
+    Serial.println("Writing packet: ");
+    int rxDataCounter = 0;
+    for (int i = 0; i < bufferlen; i++)
+    {
+        Serial.printf("0x%02x, ", buffer[i]);
+        if ((++rxDataCounter) % 20 == 0)
+        {
+            Serial.println();
+        }
+    }
+    Serial.println();
     return true;
 }
 

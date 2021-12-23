@@ -37,9 +37,9 @@ public:
     } PACKET_TYPE;
     static const byte CONTROL = 0x03;
     static const byte PROTOCOL_ID = 0xF0;
+    AprsPacket(byte dti);
+    virtual ~AprsPacket();
     PACKET_TYPE getPacketType();
     static AprsPacket *decode(const byte *buffer, size_t len);
     virtual char* encode() = 0;
-    AprsPacket(byte dti);
-    virtual ~AprsPacket();
 };

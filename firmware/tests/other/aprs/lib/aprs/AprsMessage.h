@@ -1,6 +1,6 @@
 #pragma once
 
-#include "libAprs.h"
+#include "AprsPacket.h"
 
 /**
  * @brief APRS packet containing human readable info
@@ -12,17 +12,30 @@
  */
 class AprsMessage : public AprsPacket
 {
-private:
-    char *addressee = nullptr;
-    char *messageText = nullptr;//!< Text only.  No '/0' allowed.
-    int messageNo = 0;
 
 public:
+    typedef enum
+    {
+        MSG_NOT_DEFINED,
+        MSG_PLAIN,
+        MSG_ACK,
+        MSG_REJECT
+    } MESSAGE_TYPE;
     AprsMessage(const byte *buffer, size_t len);
+    AprsMessage(const char* text, int msgNr);
     ~AprsMessage();
     const char *getAddressee();
     const char *getMessage();
     int getMessageId();
-    bool setMessageText(const char *buffer, int msgNr = 0);
-    char* encode();
+    bool setMessageText(const char *text, int msgNr = 0);
+    bool setAddressee(const char* addressee);
+    bool isAckRequired();
+    MESSAGE_TYPE getMessageType();
+    char *encode();
+
+private:
+    char *_addressee = nullptr;
+    char *messageText = nullptr; //!< Text only.  No '/0' allowed.
+    int _messageNo = 0;
+    MESSAGE_TYPE _msgType = MSG_NOT_DEFINED;
 };

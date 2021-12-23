@@ -44,10 +44,18 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         if (_messageReceivedCallback != nullptr)
         {
             _messageReceivedCallback(aprsMsg->getAddressee(), aprsMsg->getMessage());
+            if (aprsMsg->isAckRequired())
+            {
+                AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
+                ackMsg.setAddressee(sender.getName());
+                char *info_field = ackMsg.encode();
+                _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)info_field, strlen(info_field));
+                delete[] info_field;
+            }
         }
         else
         {
-            //Simply dump message on to serial output
+            // Simply dump message on to serial output
             Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
                           aprsMsg->getAddressee(),
                           aprsMsg->getMessage(),
@@ -57,17 +65,16 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         break;
     case AprsPacket::PKT_LOCATION:
         aprsPos = (AprsPositionReport *)aprsPacket;
-        if(_locationReceivedCallback!=nullptr)
+        if (_locationReceivedCallback != nullptr)
         {
-            
         }
         else
         {
-        Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
-                      aprsPos->getLatitude(),
-                      aprsPos->getLongitude(),
-                      aprsPos->getSymbolTableId(),
-                      aprsPos->getSymbolCode());
+            Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
+                          aprsPos->getLatitude(),
+                          aprsPos->getLongitude(),
+                          aprsPos->getSymbolTableId(),
+                          aprsPos->getSymbolCode());
         }
         delete aprsPos;
         break;
