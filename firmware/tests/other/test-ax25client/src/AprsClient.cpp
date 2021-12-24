@@ -34,7 +34,7 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
 {
     AprsMessage *aprsMsg;
     AprsPositionReport *aprsPos;
-    Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName(), sender.getName());
+    Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName().c_str(), sender.getName().c_str());
 
     AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
     switch (aprsPacket->getPacketType())
@@ -47,7 +47,7 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
             if (aprsMsg->isAckRequired())
             {
                 AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
-                ackMsg.setAddressee(sender.getName());
+                ackMsg.setAddressee(sender.getName().c_str());
                 char *info_field = ackMsg.encode();
                 _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)info_field, strlen(info_field));
                 delete[] info_field;

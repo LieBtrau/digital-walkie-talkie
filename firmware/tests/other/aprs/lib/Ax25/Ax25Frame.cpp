@@ -136,7 +136,7 @@ byte *AX25Frame::encode(size_t &bufferLen)
 	bufferLen = 0;
 
 	// check destination callsign length (6 characters max)
-	if (_addresses[DESTINATION].getName() == nullptr || _addresses[SOURCE].getName() == nullptr)
+	if (_addresses[DESTINATION].getName().empty() || _addresses[SOURCE].getName().empty())
 	{
 		return nullptr;
 	}
@@ -205,7 +205,7 @@ void AX25Frame::encodeAddress(Ax25Callsign cs, byte *buffer)
 {
 	// set destination callsign - all address field bytes are shifted by one bit to make room for HDLC address extension bit
 	memset(buffer, ' ' << 1, Ax25Callsign::MAX_CALLSIGN_LEN);
-	const char *name = cs.getName();
+	const char *name = cs.getName().c_str();
 	for (size_t i = 0; i < strlen(name); i++)
 	{
 		*(buffer + i) = name[i] << 1;
