@@ -157,7 +157,7 @@ byte *AX25Frame::encode(size_t &bufferLen)
 		frameBuffPtr += Ax25Callsign::MAX_CALLSIGN_LEN + 1;
 	}
 	// set HDLC extension end bit
-	*(frameBuffPtr - 1) |= RADIOLIB_AX25_SSID_HDLC_EXTENSION_END;
+	*(frameBuffPtr - 1) |= SSID_HDLC_EXTENSION_END;
 	// set control field
 	*(frameBuffPtr++) = _controlfield;
 	// set PID field of the frames that have it
@@ -210,5 +210,5 @@ void AX25Frame::encodeAddress(Ax25Callsign cs, byte *buffer)
 	{
 		*(buffer + i) = name[i] << 1;
 	}
-	buffer[Ax25Callsign::MAX_CALLSIGN_LEN] = RADIOLIB_AX25_SSID_RESERVED_BITS | (cs.getSsid() & 0x0F) << 1;
+	buffer[Ax25Callsign::MAX_CALLSIGN_LEN] = SSID_RESERVED_BITS | (cs.getSsid() & 0x0F) << 1;
 }
