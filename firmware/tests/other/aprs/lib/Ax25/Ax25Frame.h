@@ -27,7 +27,7 @@ public:
 	  */
 	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const byte *info, uint16_t infoLen);
 
-	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const char *info);
+	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, std::string info);
 
 	AX25Frame(const byte *outBuffer, size_t bufferLen);
 	/*!

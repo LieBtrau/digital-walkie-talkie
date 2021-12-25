@@ -1,27 +1,10 @@
 #include "Ax25Callsign.h"
 
-#define DEBUG
-
-#ifdef DEBUG
-
-static int error(int err, const char *file, int line)
-{
-    printf("Error: %s (%d) at %s:%d\n", "" /* strerror[err] */, err, file, line);
-    // while (1);
-    return err;
-}
-#endif
-
 Ax25Callsign::Ax25Callsign(std::string name, byte ssid) : Ax25Callsign()
 {
-    if (name.length() > MAX_CALLSIGN_LEN)
-    {
-#ifdef DEBUG
-        error(-1, __FILE__, __LINE__);
-#endif
-    }
-
+    assert(!name.empty() && name.length() <= MAX_CALLSIGN_LEN);
     _name = name;
+    assert(ssid <= 0xF);
     _ssid = ssid;
 }
 

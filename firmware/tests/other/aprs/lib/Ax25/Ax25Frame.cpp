@@ -30,7 +30,8 @@ AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCa
 	}
 }
 
-AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const char *info) : AX25Frame(destCallsign, srcCallsign, digipeaterList, control, protocolID, (const byte *)info, strlen(info))
+AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, std::string info) : 
+AX25Frame(destCallsign, srcCallsign, digipeaterList, control, protocolID, (const byte *)info.c_str(), info.length())
 {
 }
 
@@ -121,10 +122,7 @@ byte *AX25Frame::encode(size_t &bufferLen)
 	bufferLen = 0;
 
 	// check destination callsign length (6 characters max)
-	if (_addresses[DESTINATION].getName().empty() || _addresses[SOURCE].getName().empty())
-	{
-		return nullptr;
-	}
+	assert(!_addresses[DESTINATION].getName().empty() && !_addresses[SOURCE].getName().empty());
 
 	// calculate frame length without FCS (destination address, source address, repeater addresses, control, PID, info)
 	bufferLen = (2 + _digipeaterCount) * (Ax25Callsign::MAX_CALLSIGN_LEN + 1) + 1 + 1 + _infoLen;
@@ -190,10 +188,10 @@ void AX25Frame::encodeAddress(Ax25Callsign cs, byte *buffer)
 {
 	// set destination callsign - all address field bytes are shifted by one bit to make room for HDLC address extension bit
 	memset(buffer, ' ' << 1, Ax25Callsign::MAX_CALLSIGN_LEN);
-	const char *name = cs.getName().c_str();
-	for (size_t i = 0; i < strlen(name); i++)
+	std::string name = cs.getName();
+	for (size_t i = 0; i < name.length(); i++)
 	{
-		*(buffer + i) = name[i] << 1;
+		*(buffer + i) = name.at(i) << 1;
 	}
 	buffer[Ax25Callsign::MAX_CALLSIGN_LEN] = SSID_RESERVED_BITS | (cs.getSsid() & 0x0F) << 1;
 }
