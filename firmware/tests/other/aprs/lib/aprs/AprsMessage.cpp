@@ -28,19 +28,10 @@ AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : 
 		// Yes, it's an acknowledgement or a reject
 		_messageNo = atoi(messageText + 3);
 		messageText[3] = '\0';
-		if (strcmp(messageText, "ack") == 0)
-		{
-			_msgType = MSG_ACK;
-		}
-		if (strcmp(messageText, "rej") == 0)
-		{
-			_msgType = MSG_REJECT;
-		}
 	}
 	else
 	{
 		// Get Message No (if present)
-		_msgType = MSG_PLAIN;
 		char *messageIdPtr = strchr(messageText, '{');
 		if (messageIdPtr != nullptr)
 		{
@@ -51,7 +42,7 @@ AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : 
 	}
 }
 
-AprsMessage::AprsMessage(const char* text, int msgNr): AprsPacket(AprsPacket::MESSAGE)
+AprsMessage::AprsMessage(const char *text, int msgNr) : AprsPacket(AprsPacket::MESSAGE)
 {
 	setMessageText(text, msgNr);
 }
@@ -97,14 +88,14 @@ bool AprsMessage::setMessageText(const char *text, int msgNr)
 	return true;
 }
 
-bool AprsMessage::setAddressee(const char* addressee)
+bool AprsMessage::setAddressee(const char *addressee)
 {
-	if(strlen(addressee)>6)
+	if (strlen(addressee) > 6)
 	{
 		return false;
 	}
 	delete[] _addressee;
-	_addressee = new char[strlen(addressee)+1];
+	_addressee = new char[strlen(addressee) + 1];
 	strcpy(_addressee, addressee);
 	return true;
 }
@@ -116,10 +107,8 @@ bool AprsMessage::setAddressee(const char* addressee)
  */
 char *AprsMessage::encode()
 {
-	if(_addressee==nullptr)
-	{
-		return nullptr;
-	}
+	assert(_addressee != nullptr);
+	assert(getMessageType() != MSG_NOT_DEFINED);
 	size_t messageLen = strlen(messageText);
 	char *outputBuffer = new char[11 + messageLen + 1 + 5];
 	// Addressee
@@ -134,17 +123,34 @@ char *AprsMessage::encode()
 	{
 		return outputBuffer;
 	}
-	outputBuffer[11 + messageLen] = '{';
-	sprintf((char *)outputBuffer + 11 + messageLen + 1, "%d", _messageNo);
+	char *ptr = outputBuffer + 11 + messageLen;
+	if (getMessageType() == MSG_PLAIN)
+	{
+		*ptr = '{';
+		ptr++;
+	}
+	sprintf(ptr, "%d", _messageNo);
 	return outputBuffer;
 }
 
 bool AprsMessage::isAckRequired()
 {
-	return _msgType == MSG_PLAIN && _messageNo > 0;
+	return getMessageType() == MSG_PLAIN && _messageNo > 0;
 }
 
 AprsMessage::MESSAGE_TYPE AprsMessage::getMessageType()
 {
-	return _msgType;
+	if(strlen(messageText)==0)
+	{
+		return MSG_NOT_DEFINED;
+	}
+	if (strcmp(messageText, "ack") == 0 && _messageNo > 0)
+	{
+		return MSG_ACK;
+	}
+	if (strcmp(messageText, "rej") == 0 && _messageNo > 0)
+	{
+		return MSG_REJECT;
+	}
+	return MSG_PLAIN;
 }

@@ -44,6 +44,7 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         if (_messageReceivedCallback != nullptr)
         {
             _messageReceivedCallback(aprsMsg->getAddressee(), aprsMsg->getMessage());
+            Serial.printf("Message id: %d\r\n", aprsMsg->getMessageId());
             if (aprsMsg->isAckRequired())
             {
                 AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());

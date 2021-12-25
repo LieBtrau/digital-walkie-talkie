@@ -37,5 +37,4 @@ private:
     char *_addressee = nullptr;
     char *messageText = nullptr; //!< Text only.  No '/0' allowed.
     int _messageNo = 0;
-    MESSAGE_TYPE _msgType = MSG_NOT_DEFINED;
 };
