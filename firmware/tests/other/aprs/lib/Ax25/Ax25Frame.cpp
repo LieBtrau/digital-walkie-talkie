@@ -2,24 +2,20 @@
 
 #include "Ax25Frame.h"
 
-AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
-					 byte control, byte protocolID, const byte *info, uint16_t infoLen)
+AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const byte *info, uint16_t infoLen)
 {
-	if (digipeaterCount > 8)
-	{
-		return;
-	}
-	_digipeaterCount = digipeaterCount;
-	_addresses = new Ax25Callsign[digipeaterCount + 2];
-
 	// destination callsign/SSID
 	_addresses[DESTINATION] = destCallsign; // calls overloaded assignment operator
 	// source callsign/SSID
 	_addresses[SOURCE] = srcCallsign;
 	// digipeater list
-	for (size_t i = 0; i < digipeaterCount; i++)
+	int index = 0;
+	for (auto digipeater : digipeaterList)
 	{
-		_addresses[DIGIPEATER1 + i] = digipeaterList[i];
+		if (!digipeater.getName().empty())
+		{
+			_addresses[DIGIPEATER1 + index++];
+		}
 	}
 	// control field
 	_controlfield = control;
@@ -34,16 +30,13 @@ AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCa
 	}
 }
 
-AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
-					 byte control, byte protocolID, const char *info) : AX25Frame(destCallsign, srcCallsign, digipeaterList, digipeaterCount,
-																				  control, protocolID, (const byte *)info, strlen(info))
+AX25Frame::AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const char *info) : AX25Frame(destCallsign, srcCallsign, digipeaterList, control, protocolID, (const byte *)info, strlen(info))
 {
 }
 
 AX25Frame::AX25Frame(const byte *ax25data, size_t datalen)
 {
 	byte *ptrBuf = (byte *)ax25data;
-	_addresses = new Ax25Callsign[10]; // not known yet how many addresses really are needed, so allocate the maximum amount.
 	bool isLastAddress;
 	// Decode callsigns : destination, source, digipeaters
 	size_t addressCounter = 0;
@@ -67,11 +60,7 @@ AX25Frame::AX25Frame(const byte *ax25data, size_t datalen)
 AX25Frame::AX25Frame(const AX25Frame &frame)
 {
 	_digipeaterCount = frame._digipeaterCount;
-	_addresses = new Ax25Callsign[_digipeaterCount + 2];
-	for (size_t i = 0; i < _digipeaterCount + 2; i++)
-	{
-		_addresses[i] = frame._addresses[i];
-	}
+	_addresses = frame._addresses;
 	_controlfield = frame._controlfield;
 	_protocolID = frame._protocolID;
 	_infoLen = frame._infoLen;
@@ -85,17 +74,13 @@ AX25Frame::AX25Frame(const AX25Frame &frame)
 
 AX25Frame::~AX25Frame()
 {
-	delete[] _addresses;
 	delete[] _info;
 }
 
 AX25Frame &AX25Frame::operator=(const AX25Frame &frame)
 {
 	_digipeaterCount = frame._digipeaterCount;
-	for (size_t i = 0; i < _digipeaterCount + 2; i++)
-	{
-		_addresses[i] = frame._addresses[i];
-	}
+	_addresses = frame._addresses;
 	_controlfield = frame._controlfield;
 	_protocolID = frame._protocolID;
 	_infoLen = frame._infoLen;

@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "array"
 #include "Arduino.h"
 #include "Ax25Callsign.h"
 
@@ -24,11 +25,9 @@ public:
 		\param info Information field, in the form of arbitrary binary buffer.
 		\param infoLen Number of bytes in the information field.
 	  */
-	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
-			  byte control, byte protocolID, const byte *info, uint16_t infoLen);
+	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const byte *info, uint16_t infoLen);
 
-	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const Ax25Callsign *digipeaterList, size_t digipeaterCount,
-			  byte control, byte protocolID, const char *info);
+	AX25Frame(const Ax25Callsign &destCallsign, const Ax25Callsign &srcCallsign, const std::array<Ax25Callsign, 8> digipeaterList, byte control, byte protocolID, const char *info);
 
 	AX25Frame(const byte *outBuffer, size_t bufferLen);
 	/*!
@@ -57,12 +56,12 @@ public:
 
 	Ax25Callsign getDestination();
 	Ax25Callsign getSource();
-	byte* getInfoField();
+	byte *getInfoField();
 	size_t getInfoLength();
 
 private:
-	const byte SSID_RESERVED_BITS=0b01100000;		//  6     5     reserved bits in SSID
-	const byte SSID_HDLC_EXTENSION_END=0b00000001;	//  0     0     address field end
+	const byte SSID_RESERVED_BITS = 0b01100000;		 //  6     5     reserved bits in SSID
+	const byte SSID_HDLC_EXTENSION_END = 0b00000001; //  0     0     address field end
 	typedef enum
 	{
 		DESTINATION,
@@ -77,11 +76,11 @@ private:
 		DIGIPEATER8
 	} Address;
 	byte _digipeaterCount = 0;
-	Ax25Callsign* _addresses=nullptr;
+	std::array<Ax25Callsign, 10> _addresses;
 	byte _controlfield = 0; //!< The control field.
-	byte _protocolID = 0;   //!< The protocol identifier (PID) field.
-	word _infoLen = 0;	   //!< Number of bytes in the information field.
-	byte *_info = nullptr;  //!< The info field.
+	byte _protocolID = 0;	//!< The protocol identifier (PID) field.
+	word _infoLen = 0;		//!< Number of bytes in the information field.
+	byte *_info = nullptr;	//!< The info field.
 	Ax25Callsign decodeAddress(const byte *buffer, bool &isLastAddress);
 	void encodeAddress(Ax25Callsign cs, byte *buffer);
 };

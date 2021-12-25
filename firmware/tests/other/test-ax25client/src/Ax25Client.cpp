@@ -11,7 +11,6 @@ Ax25Client::Ax25Client(KissTnc &tnc, const Ax25Callsign &callsign) : _tnc(&tnc),
 
 Ax25Client::~Ax25Client()
 {
-    delete[] _digipeaterList;
 }
 
 void Ax25Client::setDestinationAddress(const Ax25Callsign &callsign)
@@ -19,18 +18,19 @@ void Ax25Client::setDestinationAddress(const Ax25Callsign &callsign)
     _destinationAddress = callsign;
 }
 
-void Ax25Client::setDigipeaterAddresses(const Ax25Callsign *list, size_t count)
+bool Ax25Client::addDigipeaterAddress(const Ax25Callsign &callsign)
 {
-    _digipeaterList = new Ax25Callsign[count];
-    for (size_t i = 0; i < count; i++)
+    if(_digipeaterCount>_digipeaterList.size()-1)
     {
-        _digipeaterList[i] = list[i];
+        return false;
     }
+    _digipeaterList[_digipeaterCount++] = callsign;
+    return true;
 }
 
 bool Ax25Client::sendFrame(byte control, byte protocolId, const byte *info_field, size_t info_len)
 {
-    AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, _digipeaterCount, control, protocolId, info_field, info_len);
+    AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, control, protocolId, info_field, info_len);
     size_t bufferlen = 0;
     byte *buffer = frame.encode(bufferlen);
      _tnc->beginPacket();

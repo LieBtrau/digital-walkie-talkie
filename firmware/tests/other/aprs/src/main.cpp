@@ -16,7 +16,7 @@ void setup()
 							0x20, 0x68, 0x74, 0x74, 0x70, 0x73, 0x3a, 0x2f, 0x2f, 0x61, 0x70, 0x72, 0x73, 0x64, 0x72, 0x6f, 0x69, 0x64,
 							0x2e, 0x6f, 0x72, 0x67, 0x2f};
 	AX25Frame rxframe((const byte *)ax25bufferMsg, sizeof(ax25bufferMsg));
-	AprsPacket *aprsPacket = AprsPacket::decode(rxframe._info, rxframe._infoLen);
+	AprsPacket *aprsPacket = AprsPacket::decode(rxframe.getInfoField(), rxframe.getInfoLength());
 	if (aprsPacket->getPacketType() == AprsPacket::PKT_TEXT)
 	{
 		AprsMessage *aprsMsg = (AprsMessage *)aprsPacket;
@@ -26,7 +26,8 @@ void setup()
 					  aprsMsg->getMessageId());
 		Serial.print("Output composed APRS-message: ");
 		char *outBuffer = aprsMsg->encode();
-		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), nullptr, 0, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, outBuffer);
+		std::array<Ax25Callsign, 8> digipeaterList;
+		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), digipeaterList, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, outBuffer);
 		delete[] outBuffer;
 		size_t bufferLen;
 		byte *ax25Buffer = ax25out.encode(bufferLen);
