@@ -2,42 +2,38 @@
 
 AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : AprsPacket(ax25_information_field[0])
 {
-	if (ax25_information_field[10] != ':')
-	{
-		// invalid message
-		return;
-	}
+	assert(ax25_information_field[10] == ':');
 	// Get Addressee
-	_addressee = new char[10];
-	memset(_addressee, '\0', 10);
-	memcpy(_addressee, ax25_information_field + 1, 9);
-	char *endOfAddressee = strchr(_addressee, ' ');
-	if (endOfAddressee != nullptr)
+	for (int i = 1; i < 10; i++)
 	{
-		*endOfAddressee = '\0';
+		if(ax25_information_field[i]!=' ')
+		{
+		_addressee += ax25_information_field[i];
+		}
+		else
+		{
+			break;
+		}
 	}
 	// Get Message Text
-	messageText = new char[info_len - 11 + 1];
-	memcpy(messageText, ax25_information_field + 11, info_len - 11);
-	messageText[info_len - 11] = '\0';
+	_messageText+=(char*)(ax25_information_field+11);
 
 	// Check if the message is an acknowledgement or a reject
 	// Why doesn't the APRS standard include a '{' in the acknowledgement?  It would have made parsing so much easier.
-	if (((strstr(messageText, "ack") == messageText) || (strstr(messageText, "rej") == messageText)) && strspn(messageText + 3, "0123456789") == strlen(messageText + 3))
+	if (((_messageText.find("ack") == 0) || (_messageText.find("rej") == 0)) && _messageText.find_first_not_of("0123456789", 3) != std::string::npos)
 	{
 		// Yes, it's an acknowledgement or a reject
-		_messageNo = atoi(messageText + 3);
-		messageText[3] = '\0';
+		_messageNo = atoi(_messageText.substr(3).c_str());
 	}
 	else
 	{
 		// Get Message No (if present)
-		char *messageIdPtr = strchr(messageText, '{');
-		if (messageIdPtr != nullptr)
+		std::size_t bracketPos = _messageText.find('{');
+		if (bracketPos != std::string::npos)
 		{
 			// Break away the messageID from the message Text
-			*messageIdPtr = '\0';
-			_messageNo = atoi(messageIdPtr + 1);
+			_messageNo = atoi(_messageText.substr(bracketPos + 1).c_str());
+			_messageText.erase(bracketPos);
 		}
 	}
 }
@@ -49,18 +45,16 @@ AprsMessage::AprsMessage(const char *text, int msgNr) : AprsPacket(AprsPacket::M
 
 AprsMessage::~AprsMessage()
 {
-	delete[] _addressee;
-	delete[] messageText;
 }
 
 const char *AprsMessage::getAddressee()
 {
-	return _addressee;
+	return _addressee.c_str();
 }
 
 const char *AprsMessage::getMessage()
 {
-	return messageText;
+	return _messageText.c_str();
 }
 
 int AprsMessage::getMessageId()
@@ -68,69 +62,64 @@ int AprsMessage::getMessageId()
 	return _messageNo;
 }
 
-bool AprsMessage::setMessageText(const char *text, int msgNr)
+bool AprsMessage::setMessageText(const std::string text, int msgNr)
 {
-	size_t bufferlen = strlen(text);
 	// Check maximum length
-	if (strlen(text) > 67)
+	if (text.length() > 67)
 	{
 		return false;
 	}
 	// Scan for forbidden characters
-	if (strpbrk(text, "|~{") != nullptr)
+	if (text.find_first_of("|~{") != std::string::npos)
 	{
 		return false;
 	}
-	delete[] messageText;
-	messageText = new char[bufferlen + 1];
-	strcpy(messageText, text);
+	_messageText = text;
 	_messageNo = msgNr;
 	return true;
 }
 
-bool AprsMessage::setAddressee(const char *addressee)
+bool AprsMessage::setAddressee(const std::string addressee)
 {
-	if (strlen(addressee) > 6)
+	if (addressee.length() > 6)
 	{
 		return false;
 	}
-	delete[] _addressee;
-	_addressee = new char[strlen(addressee) + 1];
-	strcpy(_addressee, addressee);
+	_addressee = addressee;
 	return true;
 }
 
 /**
  * @brief Convert the object to an APRS-string
  *
- * @return char* string containing the APRS-data.  The user is responsible for freeing up the memory afterwards.
+ * @return char* string containing the APRS-data.
  */
-char *AprsMessage::encode()
+const char *AprsMessage::encode()
 {
-	assert(_addressee != nullptr);
+	assert(!_addressee.empty());
 	assert(getMessageType() != MSG_NOT_DEFINED);
-	size_t messageLen = strlen(messageText);
-	char *outputBuffer = new char[11 + messageLen + 1 + 5];
+	std::string outputBuffer;
 	// Addressee
-	outputBuffer[0] = ':';
-	memset(outputBuffer + 1, ' ', 9);
-	memcpy(outputBuffer + 1, _addressee, strlen(_addressee));
-	outputBuffer[10] = ':';
+	outputBuffer += ':';
+	outputBuffer.append(_addressee);
+	while (outputBuffer.length() < 10)
+		outputBuffer += ' ';
+	outputBuffer += ':';
 	// MessageText
-	strcpy(outputBuffer + 11, messageText);
+	outputBuffer.append(_messageText);
 	// Message No
 	if (_messageNo == 0)
 	{
-		return outputBuffer;
+		return outputBuffer.c_str();
 	}
-	char *ptr = outputBuffer + 11 + messageLen;
 	if (getMessageType() == MSG_PLAIN)
 	{
-		*ptr = '{';
-		ptr++;
+		outputBuffer += '{';
 	}
-	sprintf(ptr, "%d", _messageNo);
-	return outputBuffer;
+	char buffer[6];
+	itoa(_messageNo, buffer, 10);
+	outputBuffer += buffer;
+	return outputBuffer.c_str();
 }
 
 bool AprsMessage::isAckRequired()
@@ -140,15 +129,15 @@ bool AprsMessage::isAckRequired()
 
 AprsMessage::MESSAGE_TYPE AprsMessage::getMessageType()
 {
-	if(strlen(messageText)==0)
+	if (_messageText.empty() || _messageText.length() == 0)
 	{
 		return MSG_NOT_DEFINED;
 	}
-	if (strcmp(messageText, "ack") == 0 && _messageNo > 0)
+	if (_messageText.compare("ack") == 0 && _messageNo > 0)
 	{
 		return MSG_ACK;
 	}
-	if (strcmp(messageText, "rej") == 0 && _messageNo > 0)
+	if (_messageText.compare("rej") == 0 && _messageNo > 0)
 	{
 		return MSG_REJECT;
 	}

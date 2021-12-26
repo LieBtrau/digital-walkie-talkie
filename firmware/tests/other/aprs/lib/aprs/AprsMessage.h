@@ -27,14 +27,14 @@ public:
     const char *getAddressee();
     const char *getMessage();
     int getMessageId();
-    bool setMessageText(const char *text, int msgNr = 0);
-    bool setAddressee(const char* addressee);
+    bool setMessageText(const std::string text, int msgNr = 0);
+    bool setAddressee(const std::string addressee);
     bool isAckRequired();
     MESSAGE_TYPE getMessageType();
-    char *encode();
+    const char *encode();
 
 private:
-    char *_addressee = nullptr;
-    char *messageText = nullptr; //!< Text only.  No '/0' allowed.
+    std::string _addressee;
+    std::string _messageText; //!< Text only.  No '/0' allowed.
     int _messageNo = 0;
 };
