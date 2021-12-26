@@ -22,16 +22,16 @@ public:
         MSG_REJECT
     } MESSAGE_TYPE;
     AprsMessage(const byte *buffer, size_t len);
-    AprsMessage(const char* text, int msgNr);
+    AprsMessage(const char *text, int msgNr);
     ~AprsMessage();
-    const char *getAddressee();
-    const char *getMessage();
-    int getMessageId();
+    const char *getAddressee() const;
+    const char *getMessage() const;
+    int getMessageId() const;
+    MESSAGE_TYPE getMessageType() const;
+    bool isAckRequired() const;
+    const char *encode() const;
     bool setMessageText(const std::string text, int msgNr = 0);
     bool setAddressee(const std::string addressee);
-    bool isAckRequired();
-    MESSAGE_TYPE getMessageType();
-    const char *encode();
 
 private:
     std::string _addressee;

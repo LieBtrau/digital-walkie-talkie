@@ -67,7 +67,7 @@ byte AprsPositionReport::getSymbolCode()
 	return symbolCode;
 }
 
-const char *AprsPositionReport::encode()
+const char *AprsPositionReport::encode() const
 {
 	return nullptr;
 }

@@ -21,5 +21,5 @@ public:
     const char *getLongitude();
     byte getSymbolTableId();
     byte getSymbolCode();
-    const char* encode();
+    const char* encode() const;
 };

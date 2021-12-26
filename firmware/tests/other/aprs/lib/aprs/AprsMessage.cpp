@@ -47,17 +47,17 @@ AprsMessage::~AprsMessage()
 {
 }
 
-const char *AprsMessage::getAddressee()
+const char *AprsMessage::getAddressee() const
 {
 	return _addressee.c_str();
 }
 
-const char *AprsMessage::getMessage()
+const char *AprsMessage::getMessage() const
 {
 	return _messageText.c_str();
 }
 
-int AprsMessage::getMessageId()
+int AprsMessage::getMessageId() const
 {
 	return _messageNo;
 }
@@ -94,7 +94,7 @@ bool AprsMessage::setAddressee(const std::string addressee)
  *
  * @return char* string containing the APRS-data.
  */
-const char *AprsMessage::encode()
+const char *AprsMessage::encode() const
 {
 	assert(!_addressee.empty());
 	assert(getMessageType() != MSG_NOT_DEFINED);
@@ -122,12 +122,12 @@ const char *AprsMessage::encode()
 	return outputBuffer.c_str();
 }
 
-bool AprsMessage::isAckRequired()
+bool AprsMessage::isAckRequired() const
 {
 	return getMessageType() == MSG_PLAIN && _messageNo > 0;
 }
 
-AprsMessage::MESSAGE_TYPE AprsMessage::getMessageType()
+AprsMessage::MESSAGE_TYPE AprsMessage::getMessageType() const
 {
 	if (_messageText.empty() || _messageText.length() == 0)
 	{

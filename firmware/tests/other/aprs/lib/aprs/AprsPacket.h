@@ -41,5 +41,5 @@ public:
     virtual ~AprsPacket();
     PACKET_TYPE getPacketType();
     static AprsPacket *decode(const byte *buffer, size_t len);
-    virtual const char* encode() = 0;
+    virtual const char* encode() const = 0;
 };
