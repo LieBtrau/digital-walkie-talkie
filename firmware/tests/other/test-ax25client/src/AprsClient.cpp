@@ -8,10 +8,45 @@ AprsClient::AprsClient(Ax25Client &ax25client) : _ax25Client(&ax25client)
 
 AprsClient::~AprsClient()
 {
+    delete[] _info_field;
 }
 
-bool AprsClient::sendMessage(Ax25Callsign &destination, const char *message)
+/**
+ * @brief Send a message to someone, with or without requesting an ACK
+ * When sending a new message, attempts to resend a message that hasn't been ack'ed yet will be abandoned.
+ * @param destination callsign of the addressee, no SSID
+ * @param message message text
+ * @param ackRequired true when ack required, else false.
+ * @return int ID of the sent message, can later be matched with the ACK to confirm reception of a certain message.  Will be 0 when no ack is expected.
+ */
+int AprsClient::sendMessage(Ax25Callsign &destination, const char *message, bool ackRequired)
 {
+    AprsMessage aprsMessage(message, ackRequired ? ++_messageCounter : 0);
+    aprsMessage.setAddressee(destination.getName().c_str());
+    _info_field = aprsMessage.encode();
+    if (ackRequired)
+    {
+        _sendTrialCounter = MAX_TX_RETRIES;
+        _resendTimer.start(30000, AsyncDelay::MILLIS);
+        if (sendMessage())
+        {
+            return _messageCounter;
+        }
+    }
+    else
+    {
+        _sendTrialCounter = 0;
+        sendMessage();
+    }
+    return 0;
+}
+
+bool AprsClient::sendMessage()
+{
+    if (_info_field != nullptr)
+    {
+        return _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)_info_field, strlen(_info_field));
+    }
     return false;
 }
 
@@ -30,29 +65,26 @@ void AprsClient::setMessageReceivedCallback(void (*callback)(const char *address
     _messageReceivedCallback = callback;
 }
 
+void AprsClient::setAckReceivedCallback(void (*callback)(int messageId))
+{
+    _ackReceivedCallback = callback;
+}
+
 void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsign &sender, const byte *info_field, size_t info_length)
 {
     AprsMessage *aprsMsg;
     AprsPositionReport *aprsPos;
-    Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName().c_str(), sender.getName().c_str());
+    // Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName().c_str(), sender.getName().c_str());
 
     AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
     switch (aprsPacket->getPacketType())
     {
     case AprsPacket::PKT_TEXT:
         aprsMsg = (AprsMessage *)aprsPacket;
+        // Serial.printf("Message id: %d\r\n", aprsMsg->getMessageId());
         if (_messageReceivedCallback != nullptr)
         {
             _messageReceivedCallback(aprsMsg->getAddressee(), aprsMsg->getMessage());
-            Serial.printf("Message id: %d\r\n", aprsMsg->getMessageId());
-            if (aprsMsg->isAckRequired())
-            {
-                AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
-                ackMsg.setAddressee(sender.getName().c_str());
-                char *info_field = ackMsg.encode();
-                _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)info_field, strlen(info_field));
-                delete[] info_field;
-            }
         }
         else
         {
@@ -61,6 +93,23 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
                           aprsMsg->getAddressee(),
                           aprsMsg->getMessage(),
                           aprsMsg->getMessageId());
+        }
+        if (aprsMsg->getMessageType() == AprsMessage::MSG_ACK && aprsMsg->getMessageId() == _messageCounter)
+        {
+            // ACK received on last sent message
+            _sendTrialCounter = 0;
+            if (_ackReceivedCallback != nullptr)
+            {
+                _ackReceivedCallback(_messageCounter);
+            }
+        }
+        if (aprsMsg->isAckRequired())
+        {
+            AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
+            ackMsg.setAddressee(sender.getName().c_str());
+            char *info_field = ackMsg.encode();
+            _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)info_field, strlen(info_field));
+            delete[] info_field;
         }
         delete aprsMsg;
         break;
@@ -81,5 +130,19 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         break;
     default:
         break;
+    }
+}
+
+void AprsClient::loop()
+{
+    _ax25Client->loop();
+    if (_resendTimer.isExpired() && _sendTrialCounter > 0)
+    {
+        _sendTrialCounter--;
+        sendMessage();
+        if (_sendTrialCounter > 0)
+        {
+            _resendTimer.restart();
+        }
     }
 }
