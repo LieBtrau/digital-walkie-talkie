@@ -22,7 +22,7 @@ int AprsClient::sendMessage(Ax25Callsign &destination, const char *message, bool
 {
     AprsMessage aprsMessage(message, ackRequired ? ++_messageCounter : 0);
     aprsMessage.setAddressee(destination.getName().c_str());
-    strcpy(_info_field,aprsMessage.encode());
+    strcpy(_info_field, aprsMessage.encode());
     if (ackRequired)
     {
         _sendTrialCounter = MAX_TX_RETRIES;
@@ -93,23 +93,27 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
                           aprsMsg->getMessage(),
                           aprsMsg->getMessageId());
         }
-        if (aprsMsg->getMessageType() == AprsMessage::MSG_ACK && aprsMsg->getMessageId() == _messageCounter)
+        if (aprsMsg->getAddressee() == _ax25Client->getMyCallsign())
         {
-            // ACK received on last sent message
-            _sendTrialCounter = 0;
-            if (_ackReceivedCallback != nullptr)
+            //Message is meant for me.  Check what to do with it.
+            if (aprsMsg->getMessageType() == AprsMessage::MSG_ACK && aprsMsg->getMessageId() == _messageCounter)
             {
-                _ackReceivedCallback(_messageCounter);
+                // ACK received on last sent message, so we can stop trying to resend it.
+                _sendTrialCounter = 0;
+                if (_ackReceivedCallback != nullptr)
+                {
+                    _ackReceivedCallback(_messageCounter);
+                }
             }
-        }
-        if (aprsMsg->isAckRequired())
-        {
-            AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
-            ackMsg.setAddressee(sender.getName().c_str());
-            const char *info_field = ackMsg.encode();
-            char buffer[100];
-            strcpy(buffer, info_field);
-            _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)buffer, strlen(info_field));
+            if (aprsMsg->isAckRequired())
+            {
+                AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
+                ackMsg.setAddressee(sender.getName().c_str());
+                const char *info_field = ackMsg.encode();
+                char buffer[100];
+                strcpy(buffer, info_field);
+                _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)buffer, strlen(info_field));
+            }
         }
         delete aprsMsg;
         break;
