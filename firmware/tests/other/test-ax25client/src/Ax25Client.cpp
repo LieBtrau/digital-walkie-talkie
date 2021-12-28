@@ -60,6 +60,11 @@ void Ax25Client::loop()
     _tnc->loop();
 }
 
+const std::string Ax25Client::getMyCallsign()
+{
+    return _sourceAddress.getName();
+}
+
 /**
  * @brief Handle incoming AX.25 frames into the TNC
  * Parse the incoming data buffer and convert it to an AX25Frame-object.  If the callback is not empty, then execute the callback

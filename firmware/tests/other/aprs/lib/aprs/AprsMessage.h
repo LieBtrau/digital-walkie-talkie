@@ -24,7 +24,7 @@ public:
     AprsMessage(const byte *buffer, size_t len);
     AprsMessage(const char *text, int msgNr);
     ~AprsMessage();
-    const char *getAddressee() const;
+    const std::string getAddressee() const;
     const char *getMessage() const;
     int getMessageId() const;
     MESSAGE_TYPE getMessageType() const;
