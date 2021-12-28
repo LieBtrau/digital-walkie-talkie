@@ -18,7 +18,7 @@ public:
 private:
     const byte MAX_TX_RETRIES = 7;
     Ax25Client *_ax25Client;
-    char *_info_field = nullptr;
+    char _info_field[100];
     int _messageCounter = 0;
     byte _sendTrialCounter = 0;
     AsyncDelay _resendTimer;

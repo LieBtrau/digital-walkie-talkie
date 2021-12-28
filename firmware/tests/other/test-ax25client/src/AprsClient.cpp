@@ -8,7 +8,6 @@ AprsClient::AprsClient(Ax25Client &ax25client) : _ax25Client(&ax25client)
 
 AprsClient::~AprsClient()
 {
-    delete[] _info_field;
 }
 
 /**
@@ -23,7 +22,7 @@ int AprsClient::sendMessage(Ax25Callsign &destination, const char *message, bool
 {
     AprsMessage aprsMessage(message, ackRequired ? ++_messageCounter : 0);
     aprsMessage.setAddressee(destination.getName().c_str());
-    _info_field = aprsMessage.encode();
+    strcpy(_info_field,aprsMessage.encode());
     if (ackRequired)
     {
         _sendTrialCounter = MAX_TX_RETRIES;
@@ -107,9 +106,10 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         {
             AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
             ackMsg.setAddressee(sender.getName().c_str());
-            char *info_field = ackMsg.encode();
-            _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)info_field, strlen(info_field));
-            delete[] info_field;
+            const char *info_field = ackMsg.encode();
+            char buffer[100];
+            strcpy(buffer, info_field);
+            _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)buffer, strlen(info_field));
         }
         delete aprsMsg;
         break;

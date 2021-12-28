@@ -27,7 +27,7 @@ void setup()
 		const char *outBuffer = aprsMsg->encode();
 		Serial.printf("Output composed APRS-message: %s", outBuffer);
 		std::array<Ax25Callsign, 8> digipeaterList;
-		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), digipeaterList, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, outBuffer);
+		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), digipeaterList, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte*)outBuffer, strlen(outBuffer));
 		size_t bufferLen;
 		byte *ax25Buffer = ax25out.encode(bufferLen);
 		for (int i = 0; i < bufferLen; i++)

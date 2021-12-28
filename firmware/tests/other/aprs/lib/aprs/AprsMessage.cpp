@@ -20,10 +20,11 @@ AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : 
 
 	// Check if the message is an acknowledgement or a reject
 	// Why doesn't the APRS standard include a '{' in the acknowledgement?  It would have made parsing so much easier.
-	if (((_messageText.find("ack") == 0) || (_messageText.find("rej") == 0)) && _messageText.find_first_not_of("0123456789", 3) != std::string::npos)
+	if (((_messageText.find("ack") == 0) || (_messageText.find("rej") == 0)) && _messageText.find_first_not_of("0123456789", 3) == std::string::npos)
 	{
 		// Yes, it's an acknowledgement or a reject
 		_messageNo = atoi(_messageText.substr(3).c_str());
+		_messageText.erase(3);
 	}
 	else
 	{

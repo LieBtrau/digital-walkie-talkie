@@ -60,11 +60,13 @@ void loop()
 	aprsClient.loop();
 	if (superFrameTimer.isExpired())
 	{
+		digitalWrite(BUILTIN_LED, digitalRead(BUILTIN_LED) == HIGH ? LOW : HIGH);
 		if (digitalRead(PTT_BUTTON) == LOW)
 		{
 			Ax25Callsign peer("N0CALL", 0);
 			messageId = aprsClient.sendMessage(peer, "Test", true);
 			superFrameTimer.restart();
 		}
+		superFrameTimer.restart();
 	}
 }
