@@ -53,9 +53,9 @@ const std::string AprsMessage::getAddressee() const
 	return _addressee;
 }
 
-const char *AprsMessage::getMessage() const
+const std::string AprsMessage::getMessage() const
 {
-	return _messageText.c_str();
+	return _messageText;
 }
 
 int AprsMessage::getMessageId() const

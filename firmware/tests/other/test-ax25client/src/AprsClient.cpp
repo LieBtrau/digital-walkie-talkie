@@ -83,14 +83,14 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         // Serial.printf("Message id: %d\r\n", aprsMsg->getMessageId());
         if (_messageReceivedCallback != nullptr)
         {
-            _messageReceivedCallback(aprsMsg->getAddressee().c_str(), aprsMsg->getMessage());
+            _messageReceivedCallback(aprsMsg->getAddressee().c_str(), aprsMsg->getMessage().c_str());
         }
         else
         {
             // Simply dump message on to serial output
             Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
                           aprsMsg->getAddressee().c_str(),
-                          aprsMsg->getMessage(),
+                          aprsMsg->getMessage().c_str(),
                           aprsMsg->getMessageId());
         }
         if (aprsMsg->getAddressee() == _ax25Client->getMyCallsign())

@@ -25,7 +25,7 @@ public:
     AprsMessage(const char *text, int msgNr);
     ~AprsMessage();
     const std::string getAddressee() const;
-    const char *getMessage() const;
+    const std::string getMessage() const;
     int getMessageId() const;
     MESSAGE_TYPE getMessageType() const;
     bool isAckRequired() const;
