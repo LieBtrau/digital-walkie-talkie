@@ -22,9 +22,9 @@ void setup()
 		AprsMessage *aprsMsg = (AprsMessage *)aprsPacket;
 		Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
 					  aprsMsg->getAddressee(),
-					  aprsMsg->getMessage(),
+					  aprsMsg->getMessage().c_str(),
 					  aprsMsg->getMessageId());
-		const char *outBuffer = aprsMsg->encode();
+		const char *outBuffer = aprsMsg->encode().c_str();
 		Serial.printf("Output composed APRS-message: %s", outBuffer);
 		std::array<Ax25Callsign, 8> digipeaterList;
 		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), digipeaterList, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte*)outBuffer, strlen(outBuffer));

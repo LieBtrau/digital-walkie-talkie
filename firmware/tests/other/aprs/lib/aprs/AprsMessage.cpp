@@ -39,7 +39,7 @@ AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : 
 	}
 }
 
-AprsMessage::AprsMessage(const char *text, int msgNr) : AprsPacket(AprsPacket::MESSAGE)
+AprsMessage::AprsMessage(const std::string& text, int msgNr) : AprsPacket(AprsPacket::MESSAGE)
 {
 	setMessageText(text, msgNr);
 }
@@ -95,7 +95,7 @@ bool AprsMessage::setAddressee(const std::string addressee)
  *
  * @return char* string containing the APRS-data.
  */
-const char *AprsMessage::encode() const
+const std::string AprsMessage::encode() const
 {
 	assert(!_addressee.empty());
 	assert(getMessageType() != MSG_NOT_DEFINED);
@@ -120,7 +120,7 @@ const char *AprsMessage::encode() const
 	char buffer[6];
 	itoa(_messageNo, buffer, 10);
 	outputBuffer += buffer;
-	return outputBuffer.c_str();
+	return outputBuffer;
 }
 
 bool AprsMessage::isAckRequired() const
