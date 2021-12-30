@@ -20,7 +20,7 @@ void Ax25Client::setDestinationAddress(const Ax25Callsign &callsign)
 
 bool Ax25Client::addDigipeaterAddress(const Ax25Callsign &callsign)
 {
-    if(_digipeaterCount>_digipeaterList.size()-1)
+    if (_digipeaterCount > _digipeaterList.size() - 1)
     {
         return false;
     }
@@ -28,14 +28,19 @@ bool Ax25Client::addDigipeaterAddress(const Ax25Callsign &callsign)
     return true;
 }
 
+bool Ax25Client::sendFrame(byte control, byte protocolId, const std::string &info_field)
+{
+    return sendFrame(control, protocolId, (const byte *)info_field.data(), info_field.length());
+}
+
 bool Ax25Client::sendFrame(byte control, byte protocolId, const byte *info_field, size_t info_len)
 {
     AX25Frame frame(_destinationAddress, _sourceAddress, _digipeaterList, control, protocolId, info_field, info_len);
     size_t bufferlen = 0;
     byte *buffer = frame.encode(bufferlen);
-     _tnc->beginPacket();
-     _tnc->write(buffer, bufferlen);
-     _tnc->endPacket();
+    _tnc->beginPacket();
+    _tnc->write(buffer, bufferlen);
+    _tnc->endPacket();
     // Serial.println("Writing packet: ");
     // int rxDataCounter = 0;
     // for (int i = 0; i < bufferlen; i++)

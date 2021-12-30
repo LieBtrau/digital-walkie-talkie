@@ -12,6 +12,7 @@ public:
     void setDestinationAddress(const Ax25Callsign &callsign);
     bool addDigipeaterAddress(const Ax25Callsign &callsign);
     bool sendFrame(byte control, byte protocolId, const byte *info_field, size_t info_len);
+    bool sendFrame(byte control, byte protocolId, const std::string& info_field);
     void setRxFrameCallback(void (*callback)(const Ax25Callsign &destination, const Ax25Callsign &sender, const byte *info_field, size_t info_length));
     const std::string getMyCallsign();
     void loop();

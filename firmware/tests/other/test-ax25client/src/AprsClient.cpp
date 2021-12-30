@@ -21,7 +21,7 @@ AprsClient::~AprsClient()
 int AprsClient::sendMessage(Ax25Callsign &destination, const char *message, bool ackRequired)
 {
     AprsMessage aprsMessage(message, ackRequired ? ++_messageCounter : 0);
-    aprsMessage.setAddressee(destination.getName().c_str());
+    aprsMessage.setAddressee(destination.getName());
     strcpy(_info_field, aprsMessage.encode().c_str());
     if (ackRequired)
     {
@@ -107,12 +107,9 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
             }
             if (aprsMsg->isAckRequired())
             {
-                AprsMessage ackMsg((const char *)"ack", aprsMsg->getMessageId());
-                ackMsg.setAddressee(sender.getName().c_str());
-                const char *info_field = ackMsg.encode().c_str();
-                char buffer[100];
-                strcpy(buffer, info_field);
-                _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)buffer, strlen(info_field));
+                AprsMessage ackMsg("ack", aprsMsg->getMessageId());
+                ackMsg.setAddressee(sender.getName());
+                _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, ackMsg.encode());
             }
         }
         delete aprsMsg;
