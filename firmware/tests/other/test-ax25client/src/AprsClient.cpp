@@ -18,11 +18,11 @@ AprsClient::~AprsClient()
  * @param ackRequired true when ack required, else false.
  * @return int ID of the sent message, can later be matched with the ACK to confirm reception of a certain message.  Will be 0 when no ack is expected.
  */
-int AprsClient::sendMessage(Ax25Callsign &destination, const char *message, bool ackRequired)
+int AprsClient::sendMessage(Ax25Callsign &destination, std::string& message, bool ackRequired)
 {
     AprsMessage aprsMessage(message, ackRequired ? ++_messageCounter : 0);
     aprsMessage.setAddressee(destination.getName());
-    strcpy(_info_field, aprsMessage.encode().c_str());
+    _info_field= aprsMessage.encode();
     if (ackRequired)
     {
         _sendTrialCounter = MAX_TX_RETRIES;
@@ -42,11 +42,7 @@ int AprsClient::sendMessage(Ax25Callsign &destination, const char *message, bool
 
 bool AprsClient::sendMessage()
 {
-    if (_info_field != nullptr)
-    {
-        return _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)_info_field, strlen(_info_field));
-    }
-    return false;
+    return _ax25Client->sendFrame(AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, _info_field);
 }
 
 bool AprsClient::sendLocation(float latitude, float longitude)
@@ -59,7 +55,7 @@ void AprsClient::setLocationReceivedCallback(void (*callback)(const Ax25Callsign
     _locationReceivedCallback = callback;
 }
 
-void AprsClient::setMessageReceivedCallback(void (*callback)(const char *addressee, const char *message))
+void AprsClient::setMessageReceivedCallback(void (*callback)(const std::string& addressee, const std::string& message))
 {
     _messageReceivedCallback = callback;
 }
@@ -95,7 +91,7 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         }
         if (aprsMsg->getAddressee() == _ax25Client->getMyCallsign())
         {
-            //Message is meant for me.  Check what to do with it.
+            // Message is meant for me.  Check what to do with it.
             if (aprsMsg->getMessageType() == AprsMessage::MSG_ACK && aprsMsg->getMessageId() == _messageCounter)
             {
                 // ACK received on last sent message, so we can stop trying to resend it.

@@ -24,9 +24,9 @@ void ax25receivedHandler(const Ax25Callsign &destination, const Ax25Callsign &se
 	aprsClient.receiveFrame(destination, sender, info_field, info_length);
 }
 
-void aprsMessageReceivedHandler(const char *addressee, const char *message)
+void aprsMessageReceivedHandler(const std::string& addressee, const std::string& message)
 {
-	Serial.printf("Hey! Message received.\r\nAddressee:\"%s\"\r\nMessage text: \"%s\"\r\n", addressee, message);
+	Serial.printf("Hey! Message received.\r\nAddressee:\"%s\"\r\nMessage text: \"%s\"\r\n", addressee.c_str(), message.c_str());
 }
 
 void aprsAckReceivedHandler(int id)
@@ -64,7 +64,8 @@ void loop()
 		if (digitalRead(PTT_BUTTON) == LOW)
 		{
 			Ax25Callsign peer("N0CALL", 0);
-			messageId = aprsClient.sendMessage(peer, "Test", true);
+			std::string msg = "Test";
+			messageId = aprsClient.sendMessage(peer, msg, true);
 			superFrameTimer.restart();
 		}
 		superFrameTimer.restart();
