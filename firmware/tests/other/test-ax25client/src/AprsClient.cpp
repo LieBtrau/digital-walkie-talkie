@@ -70,6 +70,10 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
     AprsMessage *aprsMsg;
     AprsPositionReport *aprsPos;
     // Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName().c_str(), sender.getName().c_str());
+		for (int i = 0; i < info_length; i++)
+		{
+			Serial.printf("%c", info_field[i]);
+		}
 
     AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
     switch (aprsPacket->getPacketType())
@@ -117,11 +121,12 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         }
         else
         {
-            Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
+            Serial.printf("\r\nLatitude: \"%f\"\r\nLongitude: \"%f\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
                           aprsPos->getLatitude(),
                           aprsPos->getLongitude(),
                           aprsPos->getSymbolTableId(),
                           aprsPos->getSymbolCode());
+            Serial.printf("\"%s\"\r\n", aprsPos->getComment().c_str());
         }
         delete aprsPos;
         break;

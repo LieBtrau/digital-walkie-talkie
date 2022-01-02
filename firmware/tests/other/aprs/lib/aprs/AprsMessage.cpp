@@ -3,12 +3,13 @@
 AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : AprsPacket(ax25_information_field[0])
 {
 	assert(ax25_information_field[10] == ':');
+	assert(info_len < !MAX_INFOFIELD_LEN);
 	// Get Addressee
 	for (int i = 1; i < 10; i++)
 	{
-		if(ax25_information_field[i]!=' ')
+		if (ax25_information_field[i] != ' ')
 		{
-		_addressee += ax25_information_field[i];
+			_addressee += ax25_information_field[i];
 		}
 		else
 		{
@@ -16,7 +17,7 @@ AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : 
 		}
 	}
 	// Get Message Text
-	_messageText+=(char*)(ax25_information_field+11);
+	_messageText += (char *)(ax25_information_field + 11);
 
 	// Check if the message is an acknowledgement or a reject
 	// Why doesn't the APRS standard include a '{' in the acknowledgement?  It would have made parsing so much easier.
@@ -39,7 +40,7 @@ AprsMessage::AprsMessage(const byte *ax25_information_field, size_t info_len) : 
 	}
 }
 
-AprsMessage::AprsMessage(const std::string& text, int msgNr) : AprsPacket(AprsPacket::MESSAGE)
+AprsMessage::AprsMessage(const std::string &text, int msgNr) : AprsPacket(AprsPacket::MESSAGE)
 {
 	setMessageText(text, msgNr);
 }

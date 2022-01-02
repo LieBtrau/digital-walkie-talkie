@@ -15,19 +15,20 @@ void setup()
 							0x31, 0x30, 0x30, 0x2e, 0x30, 0x30, 0x4e, 0x5c, 0x30, 0x30, 0x32, 0x30, 0x30, 0x2e, 0x30, 0x30, 0x45, 0x29,
 							0x20, 0x68, 0x74, 0x74, 0x70, 0x73, 0x3a, 0x2f, 0x2f, 0x61, 0x70, 0x72, 0x73, 0x64, 0x72, 0x6f, 0x69, 0x64,
 							0x2e, 0x6f, 0x72, 0x67, 0x2f};
-	AX25Frame rxframe((const byte *)ax25bufferMsg, sizeof(ax25bufferMsg));
+	// AX25Frame rxframe((const byte *)ax25bufferMsg, sizeof(ax25bufferMsg));
+	AX25Frame rxframe((const byte *)ax25bufferPos, sizeof(ax25bufferPos));
 	AprsPacket *aprsPacket = AprsPacket::decode(rxframe.getInfoField(), rxframe.getInfoLength());
 	if (aprsPacket->getPacketType() == AprsPacket::PKT_TEXT)
 	{
 		AprsMessage *aprsMsg = (AprsMessage *)aprsPacket;
 		Serial.printf("Addressee:\"%s\"\r\nMessage text: \"%s\"\r\nMessage ID: %d\r\n",
-					  aprsMsg->getAddressee(),
+					  aprsMsg->getAddressee().c_str(),
 					  aprsMsg->getMessage().c_str(),
 					  aprsMsg->getMessageId());
 		const char *outBuffer = aprsMsg->encode().c_str();
 		Serial.printf("Output composed APRS-message: %s", outBuffer);
 		std::array<Ax25Callsign, 8> digipeaterList;
-		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), digipeaterList, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte*)outBuffer, strlen(outBuffer));
+		AX25Frame ax25out(Ax25Callsign("APDR16", 0), Ax25Callsign("N0CALL", 0), digipeaterList, AprsPacket::CONTROL, AprsPacket::PROTOCOL_ID, (const byte *)outBuffer, strlen(outBuffer));
 		size_t bufferLen;
 		byte *ax25Buffer = ax25out.encode(bufferLen);
 		for (int i = 0; i < bufferLen; i++)
@@ -40,12 +41,23 @@ void setup()
 	if (aprsPacket->getPacketType() == AprsPacket::PKT_LOCATION)
 	{
 		AprsPositionReport *aprsPos = (AprsPositionReport *)aprsPacket;
-		Serial.printf("Latitude: \"%s\"\r\nLongitude: \"%s\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
-					  aprsPos->getLatitude(),
-					  aprsPos->getLongitude(),
-					  aprsPos->getSymbolTableId(),
-					  aprsPos->getSymbolCode());
+		AprsLocation location = aprsPos->getPosition();
+		AprsSymbol symbol = aprsPos->getSymbol();
+		Serial.printf("Latitude: \"%f\"\r\nLongitude: \"%f\"\r\nSymbolTableId=%s\r\nSymbolCode=%s\r\n",
+					  location.getLatitude(),
+					  location.getLongitude(),
+					  symbol.encodeTableId().c_str(),
+					  symbol.encodeSymbol().c_str());
+		Serial.printf("Output composed APRS-message: \"%s\"\r\n", aprsPos->encode().c_str());
 	}
+
+	AprsLocation location2;
+	location2.setLocation(2.0, 3.0);
+	AprsSymbol symb1('/', 'E');
+	std::string comment = std::string("hihi");
+	AprsPositionReport aprspos1(location2, comment);
+	aprspos1.setSymbol(symb1);
+	Serial.printf("Output composed APRS-message: \"%s\"\r\n", aprspos1.encode().c_str());
 	Serial.println("done");
 }
 

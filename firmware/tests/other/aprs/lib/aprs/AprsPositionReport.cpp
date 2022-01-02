@@ -2,40 +2,37 @@
 
 AprsPositionReport::~AprsPositionReport()
 {
-	delete[] latitude;
-	delete[] longitude;
 }
 
 AprsPositionReport::AprsPositionReport(const byte *ax25_information_field, size_t info_len) : AprsPacket(ax25_information_field[0])
 {
-	switch (dataTypeId)
+	assert(info_len < MAX_INFOFIELD_LEN);
+
+	std::string information_field(reinterpret_cast<const char *>(ax25_information_field), info_len);
+
+	switch (_dataTypeId)
 	{
 	case POS_NO_TIME_NO_MSG:
 	case POS_NO_TIME_WITH_MSG:
 		// Parse 20 byte header
-		// latitude
-		latitude = new char[9];
-		memset(latitude, '\0', 9);
-		memcpy(latitude, ax25_information_field + 1, 8);
+		// latitude, with conversion from decimal minutes to decimal degrees
+		_location.setLatitude(strtod(information_field.substr(1, 7).c_str(), nullptr) / (information_field.at(8) == 'S' ? -100 : 100));
 		// symbol table ID
-		symbolTableId = ax25_information_field[9];
-		// longitude
-		longitude = new char[10];
-		memset(longitude, '\0', 10);
-		memcpy(longitude, ax25_information_field + 10, 9);
+		_symbol.setTableId(information_field.at(9));
+		// longitude, with conversion from decimal minutes to decimal degrees
+		_location.setLongitude(strtod(information_field.substr(10, 8).c_str(), nullptr) / (information_field.at(18) == 'W'? -100 : 100));
 		// symbol code
-		symbolCode = ax25_information_field[19];
-		if (hasAprsExtension(ax25_information_field + 20))
+		_symbol.setSymbol(information_field.at(19));
+		if (hasAprsExtension(information_field.substr(20)))
 		{
 			// Parse extension data
 			//...
 			// Copy comment data
-			commentLen = info_len - 27;
-			memcpy(comment, ax25_information_field + 27, commentLen);
+			_comment = information_field.substr(27);
 		}
 		else
 		{
-			setComment(ax25_information_field + 20, info_len - 20);
+			_comment = information_field.substr(20);
 		}
 		break;
 	case POS_WITH_TIME_WITH_MSG:
@@ -47,27 +44,47 @@ AprsPositionReport::AprsPositionReport(const byte *ax25_information_field, size_
 	}
 }
 
-const char *AprsPositionReport::getLatitude()
+AprsPositionReport::AprsPositionReport(const AprsLocation &location, const std::string &comment) : AprsPacket(POS_NO_TIME_WITH_MSG)
 {
-	return latitude;
+	_location = location;
+	assert(setComment(comment));
 }
 
-const char *AprsPositionReport::getLongitude()
+AprsLocation AprsPositionReport::getPosition() const
 {
-	return longitude;
+	return _location;
 }
 
-byte AprsPositionReport::getSymbolTableId()
+AprsSymbol AprsPositionReport::getSymbol() const
 {
-	return symbolTableId;
+	return _symbol;
 }
 
-byte AprsPositionReport::getSymbolCode()
+void AprsPositionReport::setLocation(const AprsLocation &location)
 {
-	return symbolCode;
+	_location = location;
+}
+
+void AprsPositionReport::setSymbol(const AprsSymbol& symbol)
+{
+	_symbol = symbol;
 }
 
 const std::string AprsPositionReport::encode() const
 {
-	return nullptr;
+	std::string posReport;
+	switch (_dataTypeId)
+	{
+	case POS_NO_TIME_WITH_MSG:
+		posReport = POS_NO_TIME_WITH_MSG;
+		posReport += _location.encodeLatitude();
+		posReport += _symbol.encodeTableId();
+		posReport += _location.encodeLongitude();
+		posReport += _symbol.encodeSymbol();
+		posReport += _comment;
+		break;
+	default:
+		return std::string("");
+	}
+	return posReport;
 }

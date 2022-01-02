@@ -13,7 +13,7 @@ private:
     size_t dataExtensionLen = 0;
 
 protected:
-    typedef enum
+    typedef enum //see Chapter 5: APRS Data in the AX.25 Information Field
     {
         MESSAGE = ':',
         // 4 types of Position/DF (=direction finding) report
@@ -22,11 +22,11 @@ protected:
         POS_WITH_TIME_WITH_MSG = '@',
         POS_WITH_TIME_NO_MSG = '/'
     } DTI;
-    DTI dataTypeId; //!< APRS Data Type Identifier (see APRS101, chapter 5 APRS DATA IN THE AX.25 INFORMATION FIELD)
-    byte *comment = nullptr;
-    size_t commentLen = 0;
-    bool hasAprsExtension(const byte *buffer);
-    bool setComment(const byte *buffer, byte len);
+    static const size_t MAX_INFOFIELD_LEN = 256; //!< see APRS101, APPENDIX 1: APRS DATA FORMATS
+    DTI _dataTypeId; //!< APRS Data Type Identifier (see APRS101, chapter 5 APRS DATA IN THE AX.25 INFORMATION FIELD)
+    std::string _comment="";
+    bool hasAprsExtension(const std::string& buffer);
+    bool setComment(const std::string& comment);
 
 public:
     typedef enum
@@ -40,6 +40,7 @@ public:
     AprsPacket(byte dti);
     virtual ~AprsPacket();
     PACKET_TYPE getPacketType();
+    std::string getComment();
     static AprsPacket *decode(const byte *buffer, size_t len);
     virtual const std::string encode() const = 0;
 };

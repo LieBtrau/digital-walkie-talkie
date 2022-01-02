@@ -1,6 +1,8 @@
 #pragma once
 
 #include "AprsPacket.h"
+#include "AprsLocation.h"
+#include "AprsSymbol.h"
 
 /**
  * @brief Position and DF reports
@@ -8,18 +10,17 @@
  */
 class AprsPositionReport : public AprsPacket
 {
-private:
-    char *latitude = nullptr;
-    char *longitude = nullptr;
-    byte symbolTableId = 0;
-    byte symbolCode = 0;
-
 public:
     AprsPositionReport(const byte *buffer, size_t len);
+    AprsPositionReport(const AprsLocation& location, const std::string &comment);
     ~AprsPositionReport();
-    const char *getLatitude();
-    const char *getLongitude();
-    byte getSymbolTableId();
-    byte getSymbolCode();
+    AprsLocation getPosition() const;
+    AprsSymbol getSymbol() const;
+    void setLocation(const AprsLocation& location);
+    void setSymbol(const AprsSymbol& symbol);
     const std::string encode() const;
+
+private:
+    AprsLocation _location;
+    AprsSymbol _symbol;
 };
