@@ -9,7 +9,8 @@
 BluetoothSerial SerialBT;
 KissTnc kisstnc(SerialBT);
 Ax25Client ax25client(kisstnc, Ax25Callsign("I0CALL", 0));
-AprsClient aprsClient(ax25client);
+AprsSymbol symbol('/','E');
+AprsClient aprsClient(ax25client, symbol);
 const int PTT_BUTTON = 27;
 AsyncDelay superFrameTimer;
 int messageId = 0;
@@ -63,9 +64,11 @@ void loop()
 		digitalWrite(BUILTIN_LED, digitalRead(BUILTIN_LED) == HIGH ? LOW : HIGH);
 		if (digitalRead(PTT_BUTTON) == LOW)
 		{
-			Ax25Callsign peer("N0CALL", 0);
-			std::string msg = "Test";
-			messageId = aprsClient.sendMessage(peer, msg, true);
+			// Ax25Callsign peer("N0CALL", 0);
+			// std::string msg = "Test";
+			// messageId = aprsClient.sendMessage(peer, msg, true);
+
+			aprsClient.sendLocation(15.0,20.0);//21.869167, 33.747778); //Bir Tawil
 			superFrameTimer.restart();
 		}
 		superFrameTimer.restart();

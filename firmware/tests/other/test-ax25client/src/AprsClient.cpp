@@ -2,7 +2,7 @@
 #include "AprsMessage.h"
 #include "AprsPositionReport.h"
 
-AprsClient::AprsClient(Ax25Client &ax25client) : _ax25Client(&ax25client)
+AprsClient::AprsClient(Ax25Client &ax25client, const AprsSymbol& symbol) : _ax25Client(&ax25client), _symbol(symbol)
 {
 }
 
@@ -18,11 +18,11 @@ AprsClient::~AprsClient()
  * @param ackRequired true when ack required, else false.
  * @return int ID of the sent message, can later be matched with the ACK to confirm reception of a certain message.  Will be 0 when no ack is expected.
  */
-int AprsClient::sendMessage(Ax25Callsign &destination, std::string& message, bool ackRequired)
+int AprsClient::sendMessage(Ax25Callsign &destination, std::string &message, bool ackRequired)
 {
     AprsMessage aprsMessage(message, ackRequired ? ++_messageCounter : 0);
     aprsMessage.setAddressee(destination.getName());
-    _info_field= aprsMessage.encode();
+    _info_field = aprsMessage.encode();
     if (ackRequired)
     {
         _sendTrialCounter = MAX_TX_RETRIES;
@@ -47,7 +47,15 @@ bool AprsClient::sendMessage()
 
 bool AprsClient::sendLocation(float latitude, float longitude)
 {
-    return false;
+    AprsLocation location2(latitude, longitude);
+    AprsSymbol symb1('/', 'E');
+    std::string comment = std::string("hihi");
+    AprsPositionReport aprspos1(location2, comment);
+    aprspos1.setSymbol(symb1);
+    _info_field = aprspos1.encode();
+    Serial.printf("Send location : \"%s\"\r\n", _info_field.c_str());
+    _sendTrialCounter = 0;
+    return sendMessage();
 }
 
 void AprsClient::setLocationReceivedCallback(void (*callback)(const Ax25Callsign &sender, float latitude, float longitude))
@@ -55,7 +63,7 @@ void AprsClient::setLocationReceivedCallback(void (*callback)(const Ax25Callsign
     _locationReceivedCallback = callback;
 }
 
-void AprsClient::setMessageReceivedCallback(void (*callback)(const std::string& addressee, const std::string& message))
+void AprsClient::setMessageReceivedCallback(void (*callback)(const std::string &addressee, const std::string &message))
 {
     _messageReceivedCallback = callback;
 }
@@ -70,10 +78,10 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
     AprsMessage *aprsMsg;
     AprsPositionReport *aprsPos;
     // Serial.printf("\r\nDestination: %s\r\nSender: %s\r\n", destination.getName().c_str(), sender.getName().c_str());
-		for (int i = 0; i < info_length; i++)
-		{
-			Serial.printf("%c", info_field[i]);
-		}
+    for (int i = 0; i < info_length; i++)
+    {
+        Serial.printf("%c", info_field[i]);
+    }
 
     AprsPacket *aprsPacket = AprsPacket::decode(info_field, info_length);
     switch (aprsPacket->getPacketType())
@@ -121,11 +129,13 @@ void AprsClient::receiveFrame(const Ax25Callsign &destination, const Ax25Callsig
         }
         else
         {
-            Serial.printf("\r\nLatitude: \"%f\"\r\nLongitude: \"%f\"\r\nSymbolTableId=%d\r\nSymbolCode=%d\r\n",
-                          aprsPos->getLatitude(),
-                          aprsPos->getLongitude(),
-                          aprsPos->getSymbolTableId(),
-                          aprsPos->getSymbolCode());
+            AprsLocation loc = aprsPos->getPosition();
+            AprsSymbol symb = aprsPos->getSymbol();
+            Serial.printf("\r\nLatitude: \"%f\"\r\nLongitude: \"%f\"\r\nSymbolTableId=%s\r\nSymbolCode=%s\r\n",
+                          loc.getLatitude(),
+                          loc.getLongitude(),
+                          symb.encodeTableId().c_str(),
+                          symb.encodeSymbol().c_str());
             Serial.printf("\"%s\"\r\n", aprsPos->getComment().c_str());
         }
         delete aprsPos;

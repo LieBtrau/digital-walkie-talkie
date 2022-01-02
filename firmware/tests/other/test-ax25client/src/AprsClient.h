@@ -1,11 +1,12 @@
 #pragma once
 #include "Ax25Client.h"
 #include "AsyncDelay.h"
+#include "AprsSymbol.h"
 
 class AprsClient
 {
 public:
-    AprsClient(Ax25Client &ax25client);
+    AprsClient(Ax25Client &ax25client, const AprsSymbol& symbol);
     ~AprsClient();
     int sendMessage(Ax25Callsign &destination, std::string& message, bool ackRequired = false);
     bool sendLocation(float latitude, float longitude);
@@ -22,6 +23,7 @@ private:
     int _messageCounter = 0;
     byte _sendTrialCounter = 0;
     AsyncDelay _resendTimer;
+    AprsSymbol _symbol;
     void (*_locationReceivedCallback)(const Ax25Callsign &sender, float latitude, float longitude) = nullptr;
     void (*_messageReceivedCallback)(const std::string& addressee, const std::string& message) = nullptr;
     void (*_ackReceivedCallback)(int messageId) = nullptr;

@@ -41,17 +41,12 @@ bool Ax25Client::sendFrame(byte control, byte protocolId, const byte *info_field
     _tnc->beginPacket();
     _tnc->write(buffer, bufferlen);
     _tnc->endPacket();
-    // Serial.println("Writing packet: ");
-    // int rxDataCounter = 0;
-    // for (int i = 0; i < bufferlen; i++)
-    // {
-    //     Serial.printf("0x%02x, ", buffer[i]);
-    //     if ((++rxDataCounter) % 20 == 0)
-    //     {
-    //         Serial.println();
-    //     }
-    // }
-    // Serial.println();
+    Serial.println("Writing packet: ");
+    for (int i = 0; i < bufferlen; i++)
+    {
+        Serial.printf("0x%02x, ", buffer[i]);
+    }
+    Serial.println();
     return true;
 }
 
