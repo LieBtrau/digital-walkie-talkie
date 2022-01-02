@@ -16,11 +16,11 @@ AprsPositionReport::AprsPositionReport(const byte *ax25_information_field, size_
 	case POS_NO_TIME_WITH_MSG:
 		// Parse 20 byte header
 		// latitude, with conversion from decimal minutes to decimal degrees
-		_location.setLatitude(strtod(information_field.substr(1, 7).c_str(), nullptr) / (information_field.at(8) == 'S' ? -100 : 100));
+		_location.setLatitude(information_field.substr(1, 7));
 		// symbol table ID
 		_symbol.setTableId(information_field.at(9));
 		// longitude, with conversion from decimal minutes to decimal degrees
-		_location.setLongitude(strtod(information_field.substr(10, 8).c_str(), nullptr) / (information_field.at(18) == 'W'? -100 : 100));
+		_location.setLongitude(information_field.substr(10, 8));
 		// symbol code
 		_symbol.setSymbol(information_field.at(19));
 		if (hasAprsExtension(information_field.substr(20)))

@@ -68,7 +68,7 @@ void loop()
 			// std::string msg = "Test";
 			// messageId = aprsClient.sendMessage(peer, msg, true);
 
-			aprsClient.sendLocation(15.0,20.0);//21.869167, 33.747778); //Bir Tawil
+			aprsClient.sendLocation(-54.806933, -68.307325);
 			superFrameTimer.restart();
 		}
 		superFrameTimer.restart();
