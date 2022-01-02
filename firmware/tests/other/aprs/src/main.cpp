@@ -51,8 +51,7 @@ void setup()
 		Serial.printf("Output composed APRS-message: \"%s\"\r\n", aprsPos->encode().c_str());
 	}
 
-	AprsLocation location2;
-	location2.setLocation(2.0, 3.0);
+	AprsLocation location2(2.0,3.0);
 	AprsSymbol symb1('/', 'E');
 	std::string comment = std::string("hihi");
 	AprsPositionReport aprspos1(location2, comment);
