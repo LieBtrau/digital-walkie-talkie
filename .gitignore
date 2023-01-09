@@ -7,3 +7,4 @@ README
 **/.vscode
 .piopm
 **/Gerber
+.ipynb_checkpoints
