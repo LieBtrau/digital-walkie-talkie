@@ -1,0 +1,1 @@
+/home/christoph/git/rattlegram-modem/code/short_bch_code_encoder.hh
