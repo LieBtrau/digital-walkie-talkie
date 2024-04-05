@@ -31,7 +31,7 @@ sox ../m17-tools/apollo11_1.wav -t raw - | c2enc 2400 - - | c2dec 2400 - - | pla
 ```
 
 ## Opus
-* pen source, royalty free
+* Open source, royalty free
 * replacement for Speex
 * down to 6kbps
 * used in VoIP-applications (e.g. WhatsApp)
@@ -43,7 +43,7 @@ sox ../m17-tools/apollo11_1.wav -t raw - | c2enc 2400 - - | c2dec 2400 - - | pla
 ## Speech-to-text-to-speech
 Using a speech codec, data transmission can be brought down to about 1200bps.  But how can we reduce data even further?  Let's take a 1min52s mono 8kHz speech sample as an example.
 
-* [ve9qrp.wav](https://cdn.hackaday.io/files/1742317454299104/ve9qrp.wav) : : 1.799.212 bytes : **128000bps**
+* [ve9qrp.wav](https://cdn.hackaday.io/files/1742317454299104/ve9qrp.wav) : 1.799.212 bytes : **128000bps**
 * ve9qrp.bin : codec2 1200bps encoded : 16.866 bytes : **1200bps**
 * [ve9qrp.txt](https://cdn.hackaday.io/files/1742317454299104/ve9qrp.txt) : audio transcription of ve9qpr.wav : 1.178 bytes : **85bps**
 
