@@ -1,3 +1,9 @@
+# Overview
+1. [Bell 202 1200bps](#Bell-202-1200bps) : slow
+2. [Aicodix modem - Rattlegram - Ribbit](#Aicodix-modem---Rattlegram---Ribbit) : fast and versatile, but not suitable for audio streaming
+3. [M17](#M17) : fast and suitable for audio streaming, but not suitable for PMR446 radios
+4. [FDMDV](#FDMDV) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
+
 # Bell 202 1200bps
 `minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
 
@@ -388,3 +394,42 @@ No audio is being decoded.  Debug info shows that data can not be recovered.
 
 ##### Conclusion
 It's clear from the spectrograms that these PMR446 radios are not suitable for M17.  The audio path is not flat and the audio is band limited.  The [OpenRTX-project has a list of suitable radios](https://openrtx.org/#/M17/m17), but many of these radios need hardware modificiations in the audio path.  
+
+----
+
+# FDMDV
+This modem gets installed with codec2.
+
+## Full digital loopback audio test
+Other coding rates than 1400 for Codec2 are possible, but FreeDV uses 1400.  The following command line tools are used:
+```bash
+sox ../m17-tools/apollo11_1.wav -t raw - | c2enc 1400 - - | fdmdv_mod - - | fdmdv_demod - - | c2dec 1400 - - | play -q -b 16 -r 8000 -c1 -t s16 -
+```
+
+## Full digital loopback random data test
+FDMDV is likely designed to work specifically with Codec2.  Is it possible to just send random data through it?
+```bash
+fdmdv_mod audio-codec.md - | fdmdv_demod - audio-codec_out.md 
+diff audio-codec.md audio-codec_out.md 
+Binary files audio-codec.md and audio-codec_out.md differ
+```
+
+## Inspect the FDMDV audio
+Save the encoded audio to a WAV-file:
+```bash
+sox ../m17-tools/apollo11_1.wav -t wav - | c2enc 1400 - - | fdmdv_mod - - | sox -t raw -r 8000 -b 16 -c 1 -e signed-integer - fdmdv.wav
+``` 
+It can now be inspected in Audacity.  The spectrogram shows that the energy is in the 1-2.0kHz range so it should work on PMR446 radios.
+
+## Real time loopback test
+Test your radio setup first with REW: generate 1kHz audio and check with spectrogram that you can receive without distortion.
+
+The computer gives an under-run error when trying to real-time encode and play the audio.  So the transmitter (Yaesu FT-65E) will play the audio we created in the previous step. 
+```bash
+play fdmdv.wav
+```
+The receiving station (Midland G9Pro) will record the audio and decode it in real-time.  The demodulator doesn't seem to check for energy level in the incoming audio.  It starts decoding noise, which generates junk audio when no signal is present.
+```bash
+rec -c 1 -b 16 -t s16 -r 8000 - | fdmdv_demod - - | c2dec 1400 - - | aplay -c 1 -f S16_LE -r 8000 --device plughw:CARD=PCH,DEV=0
+```
+Sending FDMDV data over the PMR446 radio works.  The audio is decoded correctly, but is by times not very intelligible.  It would be better to have the option to use a higher coding rate (2400bps?) for codec2 and that the FDMDV-modem uses a wider audio bandwidth.  The PMR446 radios have more available bandwidth than the 1kHz used by FDMDV.  That should be possible with FreeDV.
