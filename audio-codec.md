@@ -2,16 +2,15 @@
 As the walkie talkie will use digital voice transmission, we need a way to digitize speech.  Several open source speech codecs are available.  We will focus on low-bitrate codecs because we want long range.  Opus and Speex won't do.  There's one codec that excels : **codec2**.
 
 ## Codec2
-
 * open source, royalty free replacement for AMBE.  At 2400bps, [AMBE+](https://www.rowetel.com/?p=5520) still performs better than Codec2.
-* bitrates as low as 700bps possible (but not usable, see [Codec2 evaluation](https://hackaday.io/project/174231-digital-walkie-talkie/log/182246-codec2-installation-test).
+* bitrates as low as 700bps possible (but not usable, see [Codec2 evaluation](#codec2-evaluation)).
 * open source
-* already implemented on embedded platforms : STM32, nRF52
-* used in [FreeDV](https://freedv.org/)</a>, [QRadioLink](http://qradiolink.org/)
+* already implemented on embedded platforms : STM32, nRF52, ESP32
+* used in [FreeDV](https://freedv.org/)</a>, [QRadioLink](http://qradiolink.org/), [M17](https://m17project.org/)
 
 ### Codec2 Configuration
 Audio input format : 16bit signed integer, 8kHz sample rate, mono
-Codec2 packet details (Referencen = [codec2 source code](https://github.com/blanu/codec2-arduino/blob/master/src/codec2/codec2.c)).
+Codec2 packet details (Reference = [codec2 source code](https://github.com/blanu/codec2-arduino/blob/master/src/codec2/codec2.c)).
 
 | Encoded Data rate [bps] | Bits/packet | Bytes/packet | Time interval [ms] | Packets/s |
 |------------------------|-------------|--------------|--------------------|-----------|
@@ -24,7 +23,8 @@ Codec2 packet details (Referencen = [codec2 source code](https://github.com/blan
 When using one of the lowest three data rates, there's a drawback that loosing a single packet will cost you 40ms of audio.
 
 ### Codec2 Evaluation
-Evaluation of Codec2 will be done using [command-line](#command-line-tools) tools and python tools.
+Evaluation of Codec2 will be done using [command-line](#command-line-tools) tools and [python tools](#python).
+In hindsight, using python was not needed.  There are already Codec2 ESP32 implementations around on the internet, so it's clear that it will work on an ESP32.
 
 #### Command line tools
 ```bash	
@@ -37,6 +37,12 @@ I tried playing with the 700bps bitrate, but that never yielded results that wer
 
 1200bps seems to me the minimum practically achievable bitrate.
 
+##### TEST1: encoding and decoding of streaming audio using FIFO
+```bash
+sox ../m17-tools/apollo11_1.wav -t raw - | c2enc 2400 - - | c2dec 2400 - - | play -q -b 16 -r 8000 -c1 -t s16 -
+```
+
+##### TEST2: encoding and decoding of streaming audio using FIFO and saving intermediate results
 ```bash
 $ c2enc 1200 ve9qrp.raw ~/ve9qrp.bit --natural && c2dec 1200 ~/ve9qrp.bit ~/ve9qrp_codec2_1200.raw --natural && aplay -f S16_LE ~/ve9qrp_codec2_1200.raw
 max_amp: 80 m_pitch: 320
@@ -62,7 +68,7 @@ So we see that codec2 achieves a 128k/1.2k = 106.7/1 compression ratio.  That's 
 
 Of course, this compression ratio comes at a price : computational complexity.  There's no way you could pull this off in real time with an AVR-microcontroller.  
 
-###### TEST0: offline encoding & decoding using cli-tools
+###### TEST3: offline encoding & decoding using cli-tools
 The codec2 examples you can find on the internet are presumably specially chosen to go well with the algorithm.  Let's grab [a video from youtube](https://www.youtube.com/watch?v=-PBf58Molvc) using a [Youtube Video Downloader](https://www.freemake.com/nl/free_video_downloader/).  This will give you an mp4-file.  Strip the audio from that video and convert the audio to 8kHz mono and strip it down to the first two minutes using a only a single command:
 ```bash
 ffmpeg -i youtube.mp4 -acodec pcm_s16le -ac 1 -ar 8000 -t 00:02:00 out.wav
@@ -75,15 +81,12 @@ ffmpeg -f s16le -ar 8k -ac 1 -i ve9qrp_decoded.raw ve9qrp_decoded.wav
 ```
 The sample from the Youtube video, after running it through codec2 sounds like [this](https://cdn.hackaday.io/files/1742317454299104/youtube_codec2_1200.wav).  No, it doesn't sound great, but keep in mind that the original video has a 44.1kHz stereo signal.  Converting that to 8kHz mono already has an audible impact.  Passing it through a 1200bps codec2 tunnel is responsible for the other artifacts.
 
-##### TEST1: Sine waves
+##### TEST4: Sine waves
 It's easy to generate [sine waves online](https://onlinetonegenerator.com/432Hz.html) and then downsampling them to 8kHz (sox 440.wav -r 8000 440_8kHz.wav).  Unfortunately, pure sine waves are filtered completely out by codec2.  The codec2 algorithm is designed to work with human speech, not with pure sine waves. 
 
-##### TEST4: encoding and decoding of streaming audio using FIFO
-```bash
-sox ../m17-tools/apollo11_1.wav -t raw - | c2enc 2400 - - | c2dec 2400 - - | play -q -b 16 -r 8000 -c1 -t s16 -
-```
-
 #### Python
+This is only here for reference.  If the only thing you want to do is encode and decode audio, then you don't need python.  
+
 When you're using Ubuntu, version 19 is needed.  The codec2 library is not available in the standard repositories.  You can install it using:
 ```bash
 sudo apt install python3-pip libcodec2-dev
@@ -115,15 +118,21 @@ You can encode and decode a file by using python or using cli-tools and compare 
 ##### TEST3: encoding and decoding of streaming audio
 [record_play_codec2](./software/record_play_codec2) : get input from line-in, encode it to Codec2, decode it and output it to line-out.  Works both on the Wandboard and on the laptop.  On the Wandboard, the samplerate filter had to be reduced from "sinc_best" to "sinc_medium", otherwise there was no sound.
 
+----
+
 ## Opus
 * Open source, royalty free
 * replacement for Speex
 * down to 6kbps
 * used in VoIP-applications (e.g. WhatsApp)
 
+----
+
 ## MELPe
 * NATO standard
 * licensed & copyrighted
+
+----
 
 ## Speech-to-text-to-speech
 Using a speech codec, data transmission can be brought down to about 1200bps.  But how can we reduce data even further?  Let's take a 1min52s mono 8kHz speech sample as an example.
