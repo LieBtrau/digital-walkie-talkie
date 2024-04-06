@@ -1,3 +1,124 @@
+# Bell 202 1200bps
+`minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
+
+The Bell 202 1200bps modulation used in APRS to send packets over the 2m FM-band.  
+
+## Test setup
+We use the same hardware test setup as in [sending from FT65-E to G9Pro](FrequencyResponse.ipynb#Connection).
+The sending station is the same as the receiving station.  The sending station sends data over the headphone output of the USB sound card.  The receiving station receives data from the microphone input of the same USB sound card.
+
+The input audio settings of the sound card don't seem to matter much.  1% and 100% both decode the message, although it's better to use a setting that doesn't overdrive your analog input.
+```bash
+$ pactl set-source-volume alsa_input.usb-GeneralPlus_USB_Audio_Device-00.mono-fallback 1%
+$ pactl set-source-volume alsa_input.usb-GeneralPlus_USB_Audio_Device-00.mono-fallback 100%
+```
+The analog output setting of your USB-sound card can be set to 100%
+```bash
+$ pactl set-sink-volume alsa_output.usb-GeneralPlus_USB_Audio_Device-00.analog-stereo 100%
+```
+
+## Test ✅
+Send a text file from one station to the other.  On the receiving side, the output is printed out on the command line.
+
+Sending station:
+```bash
+$ while true; do echo "The quick brown fox jumps over the lazy dog." | minimodem --tx 1200; done
+```
+
+Receiving station:
+```bash
+$ minimodem --rx 1200
+```
+
+## Result
+Experiments have shown that 1200bps is about the maximum for this way of generating audio FSK using the Midland G9-Pro and the Yaesu FT65-E.  2400baud doesn't work.
+
+----
+
+# Aicodix modem - Rattlegram - Ribbit
+This is the modem used in [Rattlegram](https://play.google.com/store/apps/details?id=com.aicodix.rattlegram&gl=US&pli=1)
+To build it, have a look at the [installation instructions](#Installation-instructions) below, but checkout the `master`-branch instead of the `short`-branch.
+
+Andreas Spiess made [a video about Rattlegram](https://www.youtube.com/watch?v=ubPP48ojJ3E).
+
+* OFDM
+* Selectable packet size
+* Not suitable for audio streaming which requires low latency
+* works with unmodified PMR446 radios (which have limited audio bandwidth)
+
+This modem normally operates on files.  To make it decode continuously you can run:
+```bash
+while arecord -f S16_LE -c 1 -r 8000 - | ./decode - - ; do echo ; sleep 1 ; done
+```
+
+## Master version
+
+### Offline test ✅
+```bash
+$ dd if=/dev/urandom of=uncoded.dat bs=1 count=5380
+5380+0 records in
+5380+0 records out
+5380 bytes (5.4 kB, 5.3 KiB) copied, 0.027005 s, 199 kB/s
+$ ./modem-master/encode encoded.wav 8000 16 1 uncoded.dat
+real PAPR: 7.04375 .. 11.5406 dB
+$ ./modem-master/decode decoded.dat encoded.wav 
+symbol pos: 2298
+coarse cfo: 2000 Hz 
+oper mode: 6
+call sign: ANONYMOUS
+demod .................................................. done
+coarse sfo: -0.0211067 ppm
+finer cfo: 2000 Hz 
+init Es/N0: 30.7753 dB
+$ diff -s uncoded.dat decoded.dat 
+Files uncoded.dat and decoded.dat are identical
+```
+Encoding 5380bytes results in 11s of audio.
+
+```python
+bytecount = 5380
+audio_duration = 11
+bitrate = bytecount * 8 / audio_duration
+print('bitrate = {:n}bps'.format(bitrate))
+```
+
+## Loopback test on USB sound card ✅
+### Audio level settings
+Loop back audio out to MIC-IN of the USB Sound card using a TRRS-cable. Alsamixer setting :
+* Speaker : 100
+* MIC : 7
+The tests have been performed with this setting.
+
+### Alternative audio level settings
+The `alsamixer`-settings that have been used in this test are unsuitable for the HTs.  The Yaesu FT65-E input audio signal should not be larger than 60mVpp, otherwise the audio will be distorted.
+* Speaker : 7 (-37.5dB gain) → 53mVpp at input of Yaesu FT65-E.
+  * The alsa speaker control changes with the main audio control in linux.
+* Microphone : audio settings → input → 100%
+  * The microphone level in alsa doesn't seem to do anything.  It's the linux sound settings input level which sets the microphone input level.
+
+```bash
+$ encode encoded.wav 8000 16 1 uncoded.dat 1450 NOCALL 13
+$ arecord -c 1 -f S16_LE -r 8000 -d 30 recorded.wav
+```
+Meanwhile on another terminal:
+```bash
+aplay encoded.wav
+```
+And when `arecord` has finished:
+```bash
+$ ./modem-master/decode decoded.dat recorded.wav 
+symbol pos: 13821
+coarse cfo: 1450 Hz 
+oper mode: 13
+call sign:    NOCALL
+demod .............................................................................................................................. done
+coarse sfo: 0.0544232 ppm
+finer cfo: 1450 Hz 
+init Es/N0: 31.7376 dB
+```
+Remark that the Es/N0, aka. signal-to-noise ratio is around 30dB.  I had trouble with my test setup, yielding only 5 to 6dB.  In those cases the callsign could still be decoded, but data decoding failed.
+
+
 ### Overview of functioning modes
 The _Bandwidth_ is dictated by the _Mode_.  The _Offset_ shifts the _Spectrum usage_ in the frequency domain.
 
