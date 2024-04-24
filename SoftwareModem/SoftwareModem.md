@@ -3,6 +3,7 @@
 2. [Aicodix modem - Rattlegram - Ribbit](#Aicodix-modem---Rattlegram---Ribbit) : fast and versatile, but not suitable for audio streaming
 3. [M17](#M17) : fast and suitable for audio streaming, but not suitable for PMR446 radios
 4. [FDMDV](#FDMDV) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
+5. [FreeDV 2400B](#FreeDV-2400B) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
 
 # Bell 202 1200bps
 `minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
@@ -462,3 +463,7 @@ play freeDV_2400B.wav
 Monitor the audio with REW Scope view to check if the audio is not distorted.  
 
 The audio sounds good.  This modem also decodes noise when no signal is present.  It would be better if the modem would check for energy in the incoming audio.
+
+## Real time loopback test using radios
+### Hardware setup
+Yaesu FT-65E sends audio to Midland G9Pro.  Input of Yaesu is connected to the output of the sound card.  Output of the Midland is connected to the input of the sound card.  Decoding works, but it's not very intelligible.  The audio has a lot of artefacts.  Maybe this is due to my setup and sound card.
