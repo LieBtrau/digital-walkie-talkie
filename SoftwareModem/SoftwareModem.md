@@ -466,4 +466,5 @@ The audio sounds good.  This modem also decodes noise when no signal is present.
 
 ## Real time loopback test using radios
 ### Hardware setup
-Yaesu FT-65E sends audio to Midland G9Pro.  Input of Yaesu is connected to the output of the sound card.  Output of the Midland is connected to the input of the sound card.  Decoding works, but it's not very intelligible, maybe due to the buffer under-runs.  The audio has a lot of artefacts.  Maybe this is due to my setup and sound card.
+Yaesu FT-65E sends audio to Midland G9Pro.  Input of Yaesu is connected to the output of the sound card.  Output of the Midland is connected to the input of the sound card.  Decoding works, but it's not very intelligible, maybe due to the buffer under-runs.  The audio has a lot of artefacts.
+Recording the audio output from the Midland G9Pro first and then decoding it offline works much better.
