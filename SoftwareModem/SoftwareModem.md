@@ -3,6 +3,7 @@
 2. [Aicodix modem - Rattlegram - Ribbit](#Aicodix-modem---Rattlegram---Ribbit) : fast and versatile, but not suitable for audio streaming
 3. [M17](#M17) : fast and suitable for audio streaming, but not suitable for PMR446 radios
 4. [FDMDV](#FDMDV) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
+5. [FreeDV 2400B](#FreeDV-2400B) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
 
 # Bell 202 1200bps
 `minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
@@ -397,8 +398,8 @@ It's clear from the spectrograms that these PMR446 radios are not suitable for M
 
 ----
 
-# FDMDV
-This modem gets installed with codec2.
+# FDMDV - FreeDV 1600
+This modem gets installed with codec2.  The tests have been done with the Ubuntu version of codec2.  
 
 ## Full digital loopback audio test
 Other coding rates than 1400 for Codec2 are possible, but FreeDV uses 1400.  The following command line tools are used:
@@ -413,6 +414,7 @@ fdmdv_mod audio-codec.md - | fdmdv_demod - audio-codec_out.md
 diff audio-codec.md audio-codec_out.md 
 Binary files audio-codec.md and audio-codec_out.md differ
 ```
+The [FreeDV data modes](https://github.com/LieBtrau/codec2/blob/master/README_data.md) are designed for that purpose.  The most suitable mode for PMR446 radios is DATAC1 with an audio bandwidth of 1.7kHz.  And a payload rate of 980bps.  This will not be investiged further, because Rattlegram is already capable faster data rates.
 
 ## Inspect the FDMDV audio
 Save the encoded audio to a WAV-file:
@@ -428,8 +430,41 @@ The computer gives an under-run error when trying to real-time encode and play t
 ```bash
 play fdmdv.wav
 ```
-The receiving station (Midland G9Pro) will record the audio and decode it in real-time.  The demodulator doesn't seem to check for energy level in the incoming audio.  It starts decoding noise, which generates junk audio when no signal is present.
+The receiving station (Midland G9Pro) will record the audio and decode it in real-time.  The demodulator doesn't seem to check for energy level in the incoming audio.  It starts decoding noise, which generates junk audio when no signal is present.  Using the latest master build (on 2024-04-07) had the same issue.  M17 doesn't have this issue.
 ```bash
 rec -c 1 -b 16 -t s16 -r 8000 - | fdmdv_demod - - | c2dec 1400 - - | aplay -c 1 -f S16_LE -r 8000 --device plughw:CARD=PCH,DEV=0
 ```
 Sending FDMDV data over the PMR446 radio works.  The audio is decoded correctly, but is by times not very intelligible.  It would be better to have the option to use a higher coding rate (2400bps?) for codec2 and that the FDMDV-modem uses a wider audio bandwidth.  The PMR446 radios have more available bandwidth than the 1kHz used by FDMDV.  That should be possible with FreeDV.
+
+# FreeDV 2400B
+This mode is designed specifically for VHF analog FM.
+You'll need to clone the [codec2 repository](https://github.com/drowe67/codec2) and build the tools yourself.
+
+## Full digital loopback audio test
+The mode can be tested on your PC using the following command line.  The modulated audio is passed through a 300Hz-3kHz bandpass filter to simulate the audio filters in the radios.  The audio is then demodulated and played back.:
+```bash
+$  ./freedv_tx 2400B ../../../m17-tools/apollo11_1.wav - | sox -t .s16 -r 48000 - -t .s16 - sinc 300-3000 | ./freedv_rx 2400B - - | play -t .s16 -r 8000 -
+```
+Remark that the modem sample rate is 48000Hz, but the audio sample rate is 8000Hz.  The audio is upsampled to 48000Hz before passing it to the modem.
+
+## Loop back test on USB sound card
+### Create the audio file
+```bash
+$  ./freedv_tx 2400B ../../../m17-tools/apollo11_1.wav - | sox -t .s16 -r 48000 - -t .s16 - sinc 300-3000 | sox -t raw -r 48000 -b 16 -c 1 -e signed-integer - freeDV_2400B.wav
+```
+### Record the audio and demodulate it
+```bash
+rec -c 1 -b 16 -t s16 -r 48000 - | ./freedv_rx 2400B - - | aplay -c 1 -f S16_LE -r 8000 --device plughw:CARD=PCH,DEV=0
+```
+### Play the audio
+```bash
+play freeDV_2400B.wav
+```
+Monitor the audio with REW Scope view to check if the audio is not distorted.  
+
+The audio sounds good.  This modem also decodes noise when no signal is present.  It would be better if the modem would check for energy in the incoming audio.
+
+## Real time loopback test using radios
+### Hardware setup
+Yaesu FT-65E sends audio to Midland G9Pro.  Input of Yaesu is connected to the output of the sound card.  Output of the Midland is connected to the input of the sound card.  Decoding works, but it's not very intelligible, maybe due to the buffer under-runs.  The audio has a lot of artefacts.
+Recording the audio output from the Midland G9Pro first and then decoding it offline works much better.
