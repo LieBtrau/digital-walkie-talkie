@@ -1,3 +1,5 @@
+The use of a digital module has been taken into consideration, but it's not the best choice for this project due to the limited flexibility.
+
 # LoRa versus FSK
 Two parameters are important here : sensitivity and adjacent channel blocking or selectivity.  Sensitivity is the minimum signal strength that can be received.  Blocking is the ability to receive a signal in the presence of a strong signal.  Sensitivity is important for long range communication, while blocking is important for multiple access communication.  
 
