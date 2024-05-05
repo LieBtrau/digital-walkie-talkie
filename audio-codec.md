@@ -1,5 +1,8 @@
 # Codec options
-As the walkie talkie will use digital voice transmission, we need a way to digitize speech.  Several open source speech codecs are available.  We will focus on low-bitrate codecs because we want long range.  Opus and Speex won't do.  There's one codec that excels : **codec2**.
+* **[Codec2](#codec2)** : open source, royalty free, already implemented on embedded platforms
+* [Opus](#opus) : only down to 6kbps
+* [MELPe](#melpe) : no open source available
+* [Speech-to-text-to-speech](#speech-to-text-to-speech) : uses a lot of resources
 
 ## Codec2
 * open source, royalty free replacement for AMBE.  At 2400bps, [AMBE+](https://www.rowetel.com/?p=5520) still performs better than Codec2.
