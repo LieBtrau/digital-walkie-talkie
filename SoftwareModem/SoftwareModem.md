@@ -1,9 +1,9 @@
 # Overview
-1. [Bell 202 1200bps](#Bell-202-1200bps) : slow
-2. [Aicodix modem - Rattlegram - Ribbit](#Aicodix-modem---Rattlegram---Ribbit) : fast and versatile, but not suitable for audio streaming
-3. [M17](#M17) : fast and suitable for audio streaming, but not suitable for PMR446 radios
-4. [FDMDV](#FDMDV) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
-5. [FreeDV 2400B](#FreeDV-2400B) : suitable for PMR446 radios, but can only be used with Codec2 audio data.  Audio output is not very intelligible.
+1. [Bell 202 1200bps](#bell-202-1200bps) : slow, but widely used
+2. [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) : high bitrate and versatile (small and large packet support), but not suitable for audio streaming
+3. [M17](#m17) : fast and suitable for audio streaming, but required audio bandwidth exceeds that of PMR446 radios.
+4. [FDMDV](#fdmdv---freedv-1600) : Codec2 audio only.  Suitable for PMR446 radios
+5. [FreeDV 2400B](#freedv-2400b) : Codec2 audio only.  Suitable for PMR446 radios
 
 # Bell 202 1200bps
 `minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
