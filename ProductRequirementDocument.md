@@ -1,7 +1,8 @@
 # Requirement
 ## Firmware
-* Should be firmware compatible to the [RNode](https://unsigned.io/hardware/RNode.html), so that the Unsigned.io tools can be used to interact with it.  This also includes the ability to function as a TNC for use with:
-  * ~~[APRSdroid](https://aprsdroid.org/)~~ Use [Sideband for Android](https://unsigned.io/software/Sideband.html) instead.  It's a better app and includes encryption.
+* Should be firmware compatible to the [OpenModem](https://unsigned.io/hardware/OpenModem.html), so that the Unsigned.io tools can be used to interact with it.  This also includes the ability to function as a TNC for use with:
+  * ~~[APRSdroid](https://aprsdroid.org/)~~ : APRS is an awful protocol to support : inconsistent, inefficient
+  * [Sideband for Android](https://unsigned.io/software/Sideband.html).  It's better thought out than APRSdroid and includes encryption.
   * [Codec2_talkie](https://github.com/sh123/codec2_talkie/releases)
 * Interfacing with the RNode should be done over Bluetooth.  No wired connections between the RNode and the smartphone.
 * Radio interface should be [M17-compatible](https://spec.m17project.org/), or very similar.  9600baud, 4FSK, 12.5kHz channel spacing.
@@ -10,7 +11,7 @@
 * Bluetooth serial port support
 * Battery operated
 * Charge via USB-C
-* [OHIS-interface](https://ohis.org/) to HTs.
+* [OHIS-SATA-interface](https://github.com/LieBtrau/ohis-ht-interface?tab=readme-ov-file#sata-interface) to HTs.
 
 # Prior Art
 * [M17 Analog Hotspot Gateway Project](https://github.com/nakhonthai/M17AnalogGateway/tree/master):
