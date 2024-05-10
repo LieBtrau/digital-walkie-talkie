@@ -246,21 +246,37 @@ make
 ```
 
 #### Offline test
+##### Offline test without filter
 ```bash
-$ ./encode encoded.wav 48000 16 1 1450 29 NOCALL uncoded.dat
-PAPR: 4.49018 .. 6.8622 dB
-```
-<img src="./measurements/Spectrogram_rattleGram_mode_29.png" alt="mode 29 spectrogram" width="500px"/>
-
-```bash
-$ $ ./decode encoded.wav decoded.dat
+$ ./encode - 48000 16 1 1450 29 NOCALL uncoded.dat | ./decode - decoded.dat
 symbol pos: 5716
 coarse cfo: 1450 Hz 
 oper mode: 29
 call sign:    NOCALL
+PAPR: 4.49018 .. 6.8622 dB
 demod ..... done
 Es/N0 (dB): 36.2695 36.1927 37.3462 38.1263 38.6745
+$ diff ./uncoded.dat ./decoded.dat
 ```
+
+<img src="./measurements/Spectrogram_rattleGram_mode_29.png" alt="mode 29 spectrogram" width="500px"/>
+
+#### Offline test with 300-3000Hz bandpass filter
+```bash
+$ ./encode 1.wav 48000 16 1 1450 29 NOCALL uncoded.dat
+$ sox -t wav -r 48000 1.wav -t wav - sinc 300-3000  | ./decode - decoded.dat
+symbol pos: 5715
+coarse cfo: 1450 Hz 
+oper mode: 29
+call sign:    NOCALL
+demod ....sox WARN sinc: sinc clipped 160 samples; decrease volume?
+sox WARN dither: dither clipped 146 samples; decrease volume?
+. done
+Es/N0 (dB): 34.0841 34.0125 35.3639 36.2742 36.9051
+$ diff ./uncoded.dat ./decoded.dat
+```
+
+Decoded audio is identical to the uncoded audio.  This should be ok for PMR446 radios.
 
 #### Loopback test on USB sound card
 ```bash
