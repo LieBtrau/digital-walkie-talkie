@@ -1,9 +1,12 @@
 # Overview
 1. [Bell 202 1200bps](#bell-202-1200bps) : slow, but widely used
-2. [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) : high bitrate and versatile (small and large packet support), but not suitable for audio streaming
-3. [M17](#m17) : fast and suitable for audio streaming, but required audio bandwidth exceeds that of PMR446 radios.
-4. [FDMDV](#fdmdv---freedv-1600) : Codec2 audio only.  Suitable for PMR446 radios
-5. [FreeDV 2400B](#freedv-2400b) : Codec2 audio only.  Suitable for PMR446 radios
+2. [Bell-like 2400bps](#bell-like-2400bps) : faster, but not suitable for PMR446 radios
+3. [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) : high bitrate and versatile (small and large packet support), but not suitable for audio streaming
+4. [M17](#m17) : fast and suitable for audio streaming, but required audio bandwidth exceeds that of PMR446 radios.
+5. [FDMDV](#fdmdv---freedv-1600) : Codec2 audio only.  Suitable for PMR446 radios
+6. [FreeDV 2400B](#freedv-2400b) : Codec2 audio only.  Suitable for PMR446 radios
+
+If you want to know whether a modem is suitable for PMR446 radios without using them, you can do an offline check.  Send the encoded audio through a 300-3000Hz bandpass filter (using sox) and decode it.  If it decodes, it should work on PMR446 radios.
 
 # Bell 202 1200bps
 `minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
@@ -40,6 +43,70 @@ $ minimodem --rx 1200
 ## Result
 Experiments have shown that 1200bps is about the maximum for this way of generating audio FSK using the Midland G9-Pro and the Yaesu FT65-E.  2400baud doesn't work.
 
+# Bell-like 2400bps
+The mark and space frequencies need to be adjusted, otherwise they fall out of the 300-3000Hz audio bandwidth of the PMR446 radios.  The mark and space frequencies are 1200Hz and 2400Hz respectively (from [Direwolf user guide](https://packet-radio.net/wp-content/uploads/2018/10/Direwolf-User-Guide.pdf)).  The `minimodem`-command line tool is used to generate the audio.
+
+```bash
+echo "The quick brown fox jumps over the lazy dog." | minimodem --tx 2400 -f output.wav --mark 1200 --space 2400
+```
+
+Sending station:
+```bash
+while true; do echo "The quick brown fox jumps over the lazy dog." |minimodem --tx 2400 --mark 1200 --space 2400; done
+```
+Receiving station:
+```bash
+minimodem --rx 2400 --mark 1200 --space 2400
+```
+## Analog loopback through USB sound card
+Receiving this signal works fine using analog loopback through USB-sound card.  The signal is a constant-amplitude frequency modulated signal.
+
+## Loopback through PMR446 radios
+When looping this through the PMR446 radios, the amplitude is far from constant.  The signal can not be decoded by minimodem.  Let's create a new audio file with a constant amplitude for further investigation.
+
+```bash
+$ echo "The quick brown fox jumps over the lazy dog." | minimodem --tx 2400 --mark 1200 --space 2400 -f bell2400.wav -R 48000
+$ minimodem --rx 2400 --mark 1200 --space 2400 -f bell2400.wav -R 48000
+### CARRIER 2400 @ 1200.0 Hz ###
+The quick brown fox jumps over the lazy dog.
+### NOCARRIER ndata=45 confidence=1.636 ampl=0.998 bps=2402.14 (0.1% fast) ###
+```
+bell2400.wav can be correctly decoded.  Send it through a 300-3000Hz bandpass filter:
+
+```bash
+$ sox -t wav -r 48000 bell2400.wav -t wav bell2400_filt.wav sinc 300-3000
+sox WARN sinc: sinc clipped 734 samples; decrease volume?
+sox WARN dither: dither clipped 635 samples; decrease volume?
+$ minimodem --rx 2400 --mark 1200 --space 2400 -f bell2400_filt.wav -R 48000
+### CARRIER 2400 @ 1200.0 Hz ###
+խ
+### NOCARRIER ndata=2 confidence=1.506 ampl=0.947 bps=2400.00 (rate perfect) ###
+### CARRIER 2400 @ 1200.0 Hz ###
+ � W
+### NOCARRIER ndata=4 confidence=1.570 ampl=0.965 bps=2400.00 (rate perfect) ###
+### CARRIER 2400 @ 1200.0 Hz ###
+ W 
+### NOCARRIER ndata=3 confidence=1.584 ampl=0.967 bps=2400.00 (rate perfect) ###
+### CARRIER 2400 @ 1200.0 Hz ###
+��
+### NOCARRIER ndata=3 confidence=1.565 ampl=0.964 bps=2400.00 (rate perfect) ###
+```
+
+Decoding doesn't work with the 300-3000Hz bandpass filter.  The signal is not suitable for PMR446 radios.  Let's find out where the limits are.
+
+```bash
+$ sox -t wav -r 48000 bell2400.wav -t wav bell2400_filt.wav sinc 100-3700
+sox WARN sinc: sinc clipped 147 samples; decrease volume?
+sox WARN dither: dither clipped 130 samples; decrease volume?
+$ minimodem --rx 2400 --mark 1200 --space 2400 -f bell2400_filt.wav -R 48000
+### CARRIER 2400 @ 1200.0 Hz ###
+The quick brown fox jumps over the lazy dog.
+
+### NOCARRIER ndata=45 confidence=1.628 ampl=0.993 bps=2402.14 (0.1% fast) ###
+```
+
+At least 100-3700Hz is required for Bell-like 2400bps.  The signal is not suitable for PMR446 radios.
+
 ----
 
 # Aicodix modem - Rattlegram - Ribbit
@@ -57,6 +124,7 @@ This modem normally operates on files.  To make it decode continuously you can r
 ```bash
 while arecord -f S16_LE -c 1 -r 8000 - | ./decode - - ; do echo ; sleep 1 ; done
 ```
+The encoder requires command line options for setting mode, offset and call sign.  This information is encoded in the packet, so that the decoder doesn't require any options.
 
 ## Master version
 
@@ -157,7 +225,7 @@ The modulation is unknown, but it's 1.6kHz wide.  So it's probably a variant of 
 ### Next version
 This version allows to encode packets of 256, 512 and 1024 bytes.  The 512 bytes version should be compatible to the Reticulum 500 bytes MTU.
 
-### Installation instructions
+#### Installation instructions
 ```bash
 $ mkdir rattlegram-modem
 $ cd rattlegram-modem/
@@ -165,7 +233,7 @@ $ git clone git@github.com:aicodix/dsp.git
 $ git clone git@github.com:aicodix/code.git
 $ git clone git@github.com:aicodix/modem.git
 $ cd modem/
-$ git checkout short
+$ git checkout next
 ```
 Edit `Makefile` and select the g++ compiler instead of clang++
 ```
@@ -176,21 +244,25 @@ Run make
 ```bash
 make
 ```
-### Offline test
+
+#### Offline test
 ```bash
-$ ./decode decoded.dat encoded.wav 
-symbol pos: 2329
-coarse cfo: 2000 Hz 
-oper mode: 16
-call sign: ANONYMOUS
-demod .... done
-coarse sfo: 0.294881 ppm
-finer cfo: 2000 Hz 
-Es/N0 (dB): 33.5243 31.3554 30.1929 29.7553
-bit flips: 0
+$ ./encode encoded.wav 48000 16 1 1450 29 NOCALL uncoded.dat
+PAPR: 4.49018 .. 6.8622 dB
+```
+<img src="./measurements/Spectrogram_rattleGram_mode_29.png" alt="mode 29 spectrogram" width="500px"/>
+
+```bash
+$ $ ./decode encoded.wav decoded.dat
+symbol pos: 5716
+coarse cfo: 1450 Hz 
+oper mode: 29
+call sign:    NOCALL
+demod ..... done
+Es/N0 (dB): 36.2695 36.1927 37.3462 38.1263 38.6745
 ```
 
-### Loopback test on USB sound card
+#### Loopback test on USB sound card
 ```bash
 $ pactl set-sink-volume alsa_output.usb-GeneralPlus_USB_Audio_Device-00.analog-stereo 100%
 $ pactl set-source-volume alsa_input.usb-GeneralPlus_USB_Audio_Device-00.mono-fallback 25%
@@ -215,7 +287,7 @@ bit flips: 0
 ```
 The USB loopback caused a 1dB to 3dB reduction in SNR.
 
-### Test using radioes and USB sound card 
+### Test using radios and USB sound card 
 
 ### Test setup
 
