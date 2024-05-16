@@ -1,12 +1,40 @@
-# Overview
-1. [Bell 202 1200bps](#bell-202-1200bps) : slow, but widely used
-2. [Bell-like 2400bps](#bell-like-2400bps) : faster, but not suitable for PMR446 radios
-3. [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) : high bitrate and versatile (small and large packet support), but not suitable for audio streaming
-4. [M17](#m17) : fast and suitable for audio streaming, but required audio bandwidth exceeds that of PMR446 radios.
-5. [FDMDV](#fdmdv---freedv-1600) : Codec2 audio only.  Suitable for PMR446 radios
-6. [FreeDV 2400B](#freedv-2400b) : Codec2 audio only.  Suitable for PMR446 radios
+# Modem overview
+| Modem | Suitable for PMR446 radios | Suitable for audio streaming | Suitable for data |
+|-------|-----------------------------|------------------------------|---------------------|
+| [Bell 202 1200bps](#bell-202-1200bps) | ✅ | ❌ | ✅ |
+| [Bell-like 2400bps](#bell-like-2400bps) | ❌ | ❌ | ✅ |
+| [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) | ✅ | ❌ | ✅ |
+| [M17](#m17) | ❌ | ✅ | ✅ |
+| [FDMDV](#fdmdv---freedv-1600) | ✅ | ✅ | ❌ |
+| [FreeDV 2400B](#freedv-2400b) | ✅ | ✅ | ❌ |
+
+One of the drawbacks of using PMR446 radios is the limited audio bandwidth of 300-3kHz.  
 
 If you want to know whether a modem is suitable for PMR446 radios without using them, you can do an offline check.  Send the encoded audio through a 300-3000Hz bandpass filter (using sox) and decode it.  If it decodes, it should work on PMR446 radios.
+
+# Setup for audio loopback test through PMR446 radios
+## Hardware
+* Yaesu FT-65E : sending station, 50ohm dummy load, Low power setting, Narrow FM
+* Midland G9Pro : receiving station
+* USB-sound card :
+  * Speaker output directly connected to the microphone input of the Yaesu FT-65E
+  * Microphone input directly connected to the speaker output of the Midland G9Pro
+
+## Software
+### Output audio level
+The output audio level of the USB-sound card is set to x %.
+```bash
+$ pactl set-sink-volume alsa_output.usb-GeneralPlus_USB_Audio_Device-00.analog-stereo x%
+```
+
+### Input audio level
+Turn the volume knob of the Midland G90 90° clock-wise from the power-off state.  The input audio level of the USB-sound card is set to y %.  Check the volume settings with REW.  Generate a 0dBFS 1kHz audio signal and check the audio level in REW using the oscilloscope function and the spectrogram function.
+
+```bash
+The input audio level of the USB-sound card is set to y %.
+```bash
+$ pactl set-source-volume alsa_input.usb-GeneralPlus_USB_Audio_Device-00.mono-fallback y%
+```
 
 # Bell 202 1200bps
 `minimodem` - general-purpose software audio FSK modem is used to this purpose.  It's available from the Ubuntu package manager.
@@ -125,6 +153,8 @@ This modem normally operates on files.  To make it decode continuously you can r
 while arecord -f S16_LE -c 1 -r 8000 - | ./decode - - ; do echo ; sleep 1 ; done
 ```
 The encoder requires command line options for setting mode, offset and call sign.  This information is encoded in the packet, so that the decoder doesn't require any options.
+
+As demonstrated in [rattlegram-openmodem](https://github.com/LieBtrau/rattlegram-openmodem), the ESP32 is too slow to decode the audio in real-time.
 
 ## Master version
 
@@ -276,7 +306,7 @@ Es/N0 (dB): 34.0841 34.0125 35.3639 36.2742 36.9051
 $ diff ./uncoded.dat ./decoded.dat
 ```
 
-Decoded audio is identical to the uncoded audio.  This should be ok for PMR446 radios.
+Decoded audio is identical to the uncoded audio.  This should be ok for PMR446 radios.  And indeed, it does.  The audio is decoded correctly, but the signal to noise level is only about 12dB.  This is probably due to the audio level settings of the USB sound card.
 
 #### Loopback test on USB sound card
 ```bash
@@ -502,7 +532,7 @@ fdmdv_mod audio-codec.md - | fdmdv_demod - audio-codec_out.md
 diff audio-codec.md audio-codec_out.md 
 Binary files audio-codec.md and audio-codec_out.md differ
 ```
-The [FreeDV data modes](https://github.com/LieBtrau/codec2/blob/master/README_data.md) are designed for that purpose.  The most suitable mode for PMR446 radios is DATAC1 with an audio bandwidth of 1.7kHz.  And a payload rate of 980bps.  This will not be investiged further, because Rattlegram is already capable faster data rates.
+The data is not the same.  The data is not random, but it's not the same as the input data either.  The data is not intelligible.
 
 ## Inspect the FDMDV audio
 Save the encoded audio to a WAV-file:
@@ -525,7 +555,7 @@ rec -c 1 -b 16 -t s16 -r 8000 - | fdmdv_demod - - | c2dec 1400 - - | aplay -c 1 
 Sending FDMDV data over the PMR446 radio works.  The audio is decoded correctly, but is by times not very intelligible.  It would be better to have the option to use a higher coding rate (2400bps?) for codec2 and that the FDMDV-modem uses a wider audio bandwidth.  The PMR446 radios have more available bandwidth than the 1kHz used by FDMDV.  That should be possible with FreeDV.
 
 # FreeDV 2400B
-This mode is designed specifically for VHF analog FM.
+This mode is designed specifically for VHF analog FM.  It uses Manchester encoded 2FSK (ME-2FSK).
 You'll need to clone the [codec2 repository](https://github.com/drowe67/codec2) and build the tools yourself.
 
 ## Full digital loopback audio test
@@ -534,6 +564,12 @@ The mode can be tested on your PC using the following command line.  The modulat
 $  ./freedv_tx 2400B ../../../m17-tools/apollo11_1.wav - | sox -t .s16 -r 48000 - -t .s16 - sinc 300-3000 | ./freedv_rx 2400B - - | play -t .s16 -r 8000 -
 ```
 Remark that the modem sample rate is 48000Hz, but the audio sample rate is 8000Hz.  The audio is upsampled to 48000Hz before passing it to the modem.
+
+## Full digital loopback random data test
+The modem can be tested with random data.  The following command line tools are used:
+```bash
+$ ./freedv_data_tx 2400B - --frames 15 | ./src/freedv_data_rx 2400B -
+```  
 
 ## Loop back test on USB sound card
 ### Create the audio file
