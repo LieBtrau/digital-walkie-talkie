@@ -23,3 +23,4 @@
   * doesn't use an audio codec.  Uses opamp circuits for audio filtering
 * [VHF/UHF Transceiver Personality Board](https://g1lro.uk/?p=456)
   * SA868 board with SMD-filter
+* [VoltNode UHF repeater](https://github.com/voltlog/VoltNode/blob/main/VoltNode%20UHF%20repeater%20schematic%20revB.pdf)
