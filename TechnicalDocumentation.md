@@ -1,6 +1,3 @@
-# Microcontroller
-Support for bluetooth serial port profile ([SPP](https://www.bluetooth.com/specifications/specs/serial-port-profile-1-1/)) is needed.  Only the ESP32 has this feature.  There's already support for it in Arduino/PlatformIO as well.
-
 # Wireless Physical Layer
 ## Technology choice
 Using either an software modem with an analog transceiver (probably narrow-band FM) or using a digital module (4(G)FSK)
@@ -23,13 +20,3 @@ Using either an software modem with an analog transceiver (probably narrow-band 
 * The transceiver only works in a single band : 434MHz or 868MHz.
 * Can use low power MCU
 * Lower power consumption
-
-# Analog audio path
-An audio codec will be used instead of the ADC/DAC inside the ESP32 because it offers more functions.
-* Sampling rate of 8kHz and 48kHz must be supported.
-* Microphone input
-* Line output
-
-## Options
-* ES8311 : Used in ESP32-LyraT-Mini, mono in/out
-* ES8388 : Used in Aithinker Audio toolkit, stereo in/out (mono is enough)
