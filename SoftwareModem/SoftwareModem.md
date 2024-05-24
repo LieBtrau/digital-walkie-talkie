@@ -555,7 +555,9 @@ rec -c 1 -b 16 -t s16 -r 8000 - | fdmdv_demod - - | c2dec 1400 - - | aplay -c 1 
 Sending FDMDV data over the PMR446 radio works.  The audio is decoded correctly, but is by times not very intelligible.  It would be better to have the option to use a higher coding rate (2400bps?) for codec2 and that the FDMDV-modem uses a wider audio bandwidth.  The PMR446 radios have more available bandwidth than the 1kHz used by FDMDV.  That should be possible with FreeDV.
 
 # FreeDV 2400B
-This mode is designed specifically for VHF analog FM.  It uses Manchester encoded 2FSK (ME-2FSK).
+This mode is designed specifically for VHF analog FM.  The Codec2-1300 is used.  Golay (23,12,7) is FEC, resulting in a 2400bps data stream.  That code uses 4096 code words of 23 bits, which can correct 3 (or 5?) errors per code word.
+This 2400bps data is send through a Manchester encoder to remove the DC-component.  The output of the Manchester encoder (4800bps) is send through a 2FSK modem.
+
 You'll need to clone the [codec2 repository](https://github.com/drowe67/codec2) and build the tools yourself.
 
 ## Full digital loopback audio test
