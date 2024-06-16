@@ -2,11 +2,12 @@
 | Modem | Suitable for PMR446 radios | Suitable for audio streaming | Suitable for data |
 |-------|-----------------------------|------------------------------|---------------------|
 | [Bell 202 1200bps](#bell-202-1200bps) | ✅ | ❌ | ✅ |
-| [Bell-like 2400bps](#bell-like-2400bps) | ❌ | ❌ | ✅ |
+| [Bell-like 2400bps](#bell-like-2400bps) | ❌ | ❌ | ❌ |
 | [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) | ✅ | ❌ | ✅ |
 | [M17](#m17) | ❌ | ✅ | ✅ |
 | [FDMDV](#fdmdv---freedv-1600) | ✅ | ✅ | ❌ |
-| [FreeDV 2400B](#freedv-2400b) | ✅ | ✅ | ❌ |
+| [FreeDV 2400B](#freedv-2400b) | ✅ | ✅ | ? |
+| [Fldigi](#Fldigi) | ✅ | ❌ | ✅ |
 
 One of the drawbacks of using PMR446 radios is the limited audio bandwidth of 300-3kHz.  
 
@@ -592,3 +593,11 @@ The audio sounds good.  This modem also decodes noise when no signal is present.
 ### Hardware setup
 Yaesu FT-65E sends audio to Midland G9Pro.  Input of Yaesu is connected to the output of the sound card.  Output of the Midland is connected to the input of the sound card.  Decoding works, but it's not very intelligible, maybe due to the buffer under-runs.  The audio has a lot of artefacts.
 Recording the audio output from the Midland G9Pro first and then decoding it offline works much better.
+
+## Data transmission
+It should be possible according to the [README_data](https://github.com/drowe67/codec2/blob/main/README_data.md), but the example code didn't work in my case.  There's no forward error correction (FEC) on mode 2400B for data.
+
+# Fldigi
+Fldigi contains many [modes](http://www.w1hkj.com/FldigiHelp/mode_table_page.html).  This tool is data oriented.  The baudrate of the modems is too slow for the transfer of real-time codec2 data.
+
+I have done some tests using acoustic coupling with direct smartphone to smartphone communication (no radioes) using [Andflmsg](https://github.com/cwc/AndFlmsg) which is far more user friendly than Fldigi.  
