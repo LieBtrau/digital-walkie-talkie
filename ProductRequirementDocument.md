@@ -24,3 +24,8 @@
 * [VHF/UHF Transceiver Personality Board](https://g1lro.uk/?p=456)
   * SA868 board with SMD-filter
 * [VoltNode UHF repeater](https://github.com/voltlog/VoltNode/blob/main/VoltNode%20UHF%20repeater%20schematic%20revB.pdf)
+* [ESP32TNC](https://github.com/amedes/ESP32TNC)
+  * FX.25 KISS TNC
+  * 1200baud AFSK
+  * runs on M5StickC Plus hardware
+  * [ESP32TNC HAT](https://github.com/amedes/ESP32TNC?tab=readme-ov-file#esp32tnc-hat) : interface to audio ports of RF-transceiver 

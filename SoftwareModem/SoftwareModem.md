@@ -3,13 +3,17 @@
 |-------|-----------------------------|------------------------------|---------------------|
 | [Bell 202 1200bps](#bell-202-1200bps) | ✅ | ❌ | ✅ |
 | [Bell-like 2400bps](#bell-like-2400bps) | ❌ | ❌ | ❌ |
+| [V.26 : QPSK2400](#direwolf--2400bps-qpsk-itu-t-rec-v26--bell-201)| | | |
+| [V.27 : 8PSK4800](#direwolf--4800bps-8psk-itu-t-rec-v27)| | | |
 | [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) | ✅ | ❌ | ✅ |
 | [M17](#m17) | ❌ | ✅ | ✅ |
 | [FDMDV](#fdmdv---freedv-1600) | ✅ | ✅ | ❌ |
 | [FreeDV 2400B](#freedv-2400b) | ✅ | ✅ | ? |
 | [Fldigi](#Fldigi) | ✅ | ❌ | ✅ |
 
-One of the drawbacks of using PMR446 radios is the limited audio bandwidth of 300-3kHz.  
+Using PMR446 radios has some [drawbacks](https://raw.githubusercontent.com/wb2osz/direwolf/master/doc/A-Better-APRS-Packet-Demodulator-Part-1-1200-baud.pdf):
+* limited audio bandwidth of 300-3kHz. 
+* pre/de-emphasis of audio.  This distorts the data signal.
 
 If you want to know whether a modem is suitable for PMR446 radios without using them, you can do an offline check.  Send the encoded audio through a 300-3000Hz bandpass filter (using sox) and decode it.  If it decodes, it should work on PMR446 radios.
 
@@ -72,8 +76,12 @@ $ minimodem --rx 1200
 ## Result
 Experiments have shown that 1200bps is about the maximum for this way of generating audio FSK using the Midland G9-Pro and the Yaesu FT65-E.  2400baud doesn't work.
 
+----
+
 # Bell-like 2400bps
-The mark and space frequencies need to be adjusted, otherwise they fall out of the 300-3000Hz audio bandwidth of the PMR446 radios.  The mark and space frequencies are 1200Hz and 2400Hz respectively (from [Direwolf user guide](https://packet-radio.net/wp-content/uploads/2018/10/Direwolf-User-Guide.pdf)).  The `minimodem`-command line tool is used to generate the audio.
+The mark and space frequencies need to be adjusted, otherwise they fall out of the 300-3000Hz audio bandwidth of the PMR446 radios.  The mark and space frequencies are 1200Hz and 2400Hz respectively (from [Direwolf user guide](https://packet-radio.net/wp-content/uploads/2018/10/Direwolf-User-Guide.pdf)).  That's Minimum Shift Keying in which the difference between the higher and the lower frequency equals half the bitrate.
+
+The `minimodem`-command line tool is used to generate the audio.
 
 ```bash
 echo "The quick brown fox jumps over the lazy dog." | minimodem --tx 2400 -f output.wav --mark 1200 --space 2400
@@ -81,7 +89,7 @@ echo "The quick brown fox jumps over the lazy dog." | minimodem --tx 2400 -f out
 
 Sending station:
 ```bash
-while true; do echo "The quick brown fox jumps over the lazy dog." |minimodem --tx 2400 --mark 1200 --space 2400; done
+while true; do echo "The quick brown fox jumps over the lazy dog." | minimodem --tx 2400 --mark 1200 --space 2400; done
 ```
 Receiving station:
 ```bash
@@ -135,6 +143,55 @@ The quick brown fox jumps over the lazy dog.
 ```
 
 At least 100-3700Hz is required for Bell-like 2400bps.  The signal is not suitable for PMR446 radios.
+
+----
+
+# Direwolf : 2400bps QPSK ITU-T Rec. V.26 / Bell 201
+See [2400 & 4800 bps PSK for APRS / Packet Radio](https://github.com/wb2osz/direwolf/blob/master/doc/2400-4800-PSK-for-APRS-Packet-Radio.pdf) for more info about testing this mode.
+
+```bash
+$ sudo apt install direwolf
+$ gen_packets -B 2400 -J -n 100 -o test.wav
+$ sox -t wav test.wav -t wav test_filt.wav sinc 300-3300
+$ atest -B 2400 -J -P P test.wav | grep decoded
+62 packets decoded in 0.262 seconds.  154.5 x realtime
+$ atest -B 2400 -J -P P test_filt.wav | grep decoded
+70 packets decoded in 0.256 seconds.  157.6 x realtime
+```
+
+This mode should work on VHF/UHF mobile transceivers.
+
+----
+
+# Direwolf : 4800bps 8PSK ITU-T Rec. V.27
+See [2400 & 4800 bps PSK for APRS / Packet Radio](https://github.com/wb2osz/direwolf/blob/master/doc/2400-4800-PSK-for-APRS-Packet-Radio.pdf) for more info about testing this mode.
+
+```bash
+$ gen_packets -B 4800 -n 100 -o test4800.wav
+$ sox -t wav test4800.wav -t wav test4800_filt.wav sinc 300-3300
+$ atest -B 4800 -P W test4800.wav | grep decoded
+65 packets decoded in 0.166 seconds.  125.8 x realtime
+$ atest -B 4800 -P W test4800_filt.wav | grep decoded
+58 packets decoded in 0.161 seconds.  129.5 x realtime
+```
+
+Running it once again with FX.25 frames:
+```bash
+$ gen_packets -B 4800 -n 100 -X 64 -o test4800fx.wav
+Data rate set to 4800 bits / second.
+Using V.27 8PSK rather than AFSK.
+Output file set to test4800fx.wav
+built in message...
+$ sox -t wav test4800fx.wav -t wav test4800fx_filt.wav sinc 300-3300
+$ atest -B 4800 -P W test4800fx_filt.wav | grep decoded
+70 packets decoded in 0.309 seconds.  132.7 x realtime
+$ atest -B 4800 -P W test4800fx.wav | grep decoded
+68 packets decoded in 0.316 seconds.  129.6 x realtime
+```
+With FEC enabled, we can decode more packets.
+
+
+This mode probably doesn't work on VHF/UHF mobile transceivers.
 
 ----
 
@@ -557,7 +614,7 @@ Sending FDMDV data over the PMR446 radio works.  The audio is decoded correctly,
 
 # FreeDV 2400B
 This mode is designed specifically for VHF analog FM.  The Codec2-1300 is used.  Golay (23,12,7) is FEC, resulting in a 2400bps data stream.  That code uses 4096 code words of 23 bits, which can correct 3 (or 5?) errors per code word.
-This 2400bps data is send through a Manchester encoder to remove the DC-component.  The output of the Manchester encoder (4800bps) is send through a 2FSK modem.
+This 2400bps data is send through a Manchester encoder to remove the DC-component.  Data gets encoded as 0x01C0 or 0xFF3F.  That's it.
 
 You'll need to clone the [codec2 repository](https://github.com/drowe67/codec2) and build the tools yourself.
 
@@ -598,6 +655,14 @@ Recording the audio output from the Midland G9Pro first and then decoding it off
 
 ## Data transmission
 It should be possible according to the [README_data](https://github.com/drowe67/codec2/blob/main/README_data.md), but the example code didn't work in my case.  There's no forward error correction (FEC) on mode 2400B for data.
+
+# Codec2 raw FSK-modem
+2FSK 1200baud, 1500Hz center frequency, 1200Hz between carriers
+
+```bash
+ ./fsk_get_test_bits - 10000 | ./fsk_mod -p10 2 48000 1200 1500 1200 - - |sox -t s16 -r 48000 - -t s16  - sinc 300-3000 | ./fsk_demod -p 10 2 48000 1200 - - | ./fsk_put_test_bits -b 0.015 -
+```
+
 
 # Fldigi
 Fldigi contains many [modes](http://www.w1hkj.com/FldigiHelp/mode_table_page.html).  This tool is data oriented.  The baudrate of the modems is too slow for the transfer of real-time codec2 data.
