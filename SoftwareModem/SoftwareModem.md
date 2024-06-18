@@ -3,8 +3,8 @@
 |-------|-----------------------------|------------------------------|---------------------|
 | [Bell 202 1200bps](#bell-202-1200bps) | ✅ | ❌ | ✅ |
 | [Bell-like 2400bps](#bell-like-2400bps) | ❌ | ❌ | ❌ |
-| [V.26 : QPSK2400](#direwolf--2400bps-qpsk-itu-t-rec-v26--bell-201)| | | |
-| [V.27 : 8PSK4800](#direwolf--4800bps-8psk-itu-t-rec-v27)| | | |
+| [V.26 : QPSK2400](#direwolf--2400bps-qpsk-itu-t-rec-v26--bell-201)| ✅| ? | ✅ |
+| [V.27 : 8PSK4800](#direwolf--4800bps-8psk-itu-t-rec-v27)| ❌ | ❌ | ❌ |
 | [Aicodix modem - Rattlegram - Ribbit](#aicodix-modem---rattlegram---ribbit) | ✅ | ❌ | ✅ |
 | [M17](#m17) | ❌ | ✅ | ✅ |
 | [FDMDV](#fdmdv---freedv-1600) | ✅ | ✅ | ❌ |
@@ -151,15 +151,32 @@ See [2400 & 4800 bps PSK for APRS / Packet Radio](https://github.com/wb2osz/dire
 
 ```bash
 $ sudo apt install direwolf
-$ gen_packets -B 2400 -J -n 100 -o test.wav
-$ sox -t wav test.wav -t wav test_filt.wav sinc 300-3300
-$ atest -B 2400 -J -P P test.wav | grep decoded
+$ gen_packets -B 2400 -J -n 100 -o test2400.wav
+$ sox -t wav test2400.wav -t wav test2400_filt.wav sinc 300-3300
+$ atest -B 2400 -J -P P test2400.wav | grep decoded
 62 packets decoded in 0.262 seconds.  154.5 x realtime
-$ atest -B 2400 -J -P P test_filt.wav | grep decoded
+$ atest -B 2400 -J -P P test2400_filt.wav | grep decoded
 70 packets decoded in 0.256 seconds.  157.6 x realtime
 ```
 
-This mode should work on VHF/UHF mobile transceivers.
+## Loopback through PMR446 radios
+Use REW and the built-in 1kHz tone together with the built-in spectrum analyzer to set the audio levels correctly.
+
+### TX station
+```bash
+$ aplay test2400.wav 
+Playing WAVE 'test2400.wav' : Signed 16 bit Little Endian, Rate 44100 Hz, Mono
+```
+
+### RX station
+```bash
+$ arecord -c 1 -f S16_LE -r 44100 -d 50 recorded.wav
+Recording WAVE 'recorded.wav' : Signed 16 bit Little Endian, Rate 44100 Hz, Mono
+$ atest -B 2400 -J -P P recorded.wav | grep decoded
+64 packets decoded in 0.340 seconds.  147.2 x realtime
+```
+
+This mode works on VHF/UHF mobile transceivers.
 
 ----
 
@@ -190,6 +207,22 @@ $ atest -B 4800 -P W test4800fx.wav | grep decoded
 ```
 With FEC enabled, we can decode more packets.
 
+## Loopback through PMR446 radios
+Use REW and the built-in 1kHz tone together with the built-in spectrum analyzer to set the audio levels correctly.
+
+### TX station
+```bash
+$ aplay test4800.wav 
+Playing WAVE 'test4800.wav' : Signed 16 bit Little Endian, Rate 44100 Hz, Mono
+```
+
+### RX station
+```bash
+$ arecord -c 1 -f S16_LE -r 44100 -d 30 recorded.wav
+Recording WAVE 'recorded.wav' : Signed 16 bit Little Endian, Rate 44100 Hz, Mono
+$ atest -B 4800 -P W recorded.wav | grep decoded
+0 packets decoded in 0.247 seconds.  121.3 x realtime
+```
 
 This mode probably doesn't work on VHF/UHF mobile transceivers.
 
@@ -624,6 +657,14 @@ The mode can be tested on your PC using the following command line.  The modulat
 $  ./freedv_tx 2400B ../../../m17-tools/apollo11_1.wav - | sox -t .s16 -r 48000 - -t .s16 - sinc 300-3000 | ./freedv_rx 2400B - - | play -t .s16 -r 8000 -
 ```
 Remark that the modem sample rate is 48000Hz, but the audio sample rate is 8000Hz.  The audio is upsampled to 48000Hz before passing it to the modem.
+
+Audio files can be created with:
+```bash
+./freedv_tx 2400B ../../../m17-tools/apollo11_1.wav - | sox -t .s16 -c 1 -r 48000 - -t wav out.wav
+```
+<img src="./measurements/Spectrogram_FreeDV-2400B.png" width="500px" />
+
+It's clear that most energy is within the 300-3kHz audio passband.
 
 ## Full digital loopback random data test
 The modem can be tested with random data.  The following command line tools are used:
