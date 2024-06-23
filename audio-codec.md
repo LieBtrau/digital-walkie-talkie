@@ -9,7 +9,7 @@
 * bitrates as low as 700bps possible (but not usable, see [Codec2 evaluation](#codec2-evaluation)).
 * open source
 * already implemented on embedded platforms : STM32, nRF52, ESP32
-* used in [FreeDV](https://freedv.org/)</a>, [QRadioLink](http://qradiolink.org/), [M17](https://m17project.org/)
+* used in [FreeDV](https://freedv.org/), [QRadioLink](http://qradiolink.org/), [M17](https://m17project.org/)
 
 ### Codec2 Configuration
 Audio input format : 16bit signed integer, 8kHz sample rate, mono
