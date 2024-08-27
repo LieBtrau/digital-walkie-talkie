@@ -20,3 +20,13 @@ Using either an software modem with an analog transceiver (probably narrow-band 
 * The transceiver only works in a single band : 434MHz or 868MHz.
 * Can use low power MCU
 * Lower power consumption
+
+# Processor
+## Requirements
+* >2MB of RAM
+* >200MHz CPU
+* Bluetooth SPP (for compatibility with [OpenModem](https://unsigned.io/openmodem/))
+
+## Choice
+The ESP32 is the only processor that meets these requirements.
+
