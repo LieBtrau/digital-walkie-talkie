@@ -17,6 +17,8 @@ Using PMR446 radios has some [drawbacks](https://raw.githubusercontent.com/wb2os
 
 If you want to know whether a modem is suitable for PMR446 radios without using them, you can do an offline check.  Send the encoded audio through a 300-3000Hz bandpass filter (using sox) and decode it.  If it decodes, it should work on PMR446 radios.
 
+VARA-FM is not included in this list, because it's not open-source and it only works on Windows.
+
 # Setup for audio loopback test through PMR446 radios
 ## Hardware
 * Yaesu FT-65E : sending station, 50ohm dummy load, Low power setting, Narrow FM
@@ -224,13 +226,12 @@ $ atest -B 4800 -P W recorded.wav | grep decoded
 0 packets decoded in 0.247 seconds.  121.3 x realtime
 ```
 
-This mode probably doesn't work on VHF/UHF mobile transceivers.
+This mode doesn't work on VHF/UHF mobile transceivers (tested with USB-soundcard and built-in soundcard of laptop)
 
 ----
 
 # Aicodix modem - Rattlegram - Ribbit
-This is the modem used in [Rattlegram](https://play.google.com/store/apps/details?id=com.aicodix.rattlegram&gl=US&pli=1)
-To build it, have a look at the [installation instructions](#Installation-instructions) below, but checkout the `master`-branch instead of the `short`-branch.
+This is the modem used in [Rattlegram](https://play.google.com/store/apps/details?id=com.aicodix.rattlegram&gl=US&pli=1).  To build it, have a look at the [installation instructions](#Installation-instructions) below, but checkout the `master`-branch instead of the `short`-branch.
 
 Andreas Spiess made [a video about Rattlegram](https://www.youtube.com/watch?v=ubPP48ojJ3E).
 
@@ -245,11 +246,12 @@ while arecord -f S16_LE -c 1 -r 8000 - | ./decode - - ; do echo ; sleep 1 ; done
 ```
 The encoder requires command line options for setting mode, offset and call sign.  This information is encoded in the packet, so that the decoder doesn't require any options.
 
-As demonstrated in [rattlegram-openmodem](https://github.com/LieBtrau/rattlegram-openmodem), the ESP32 is too slow to decode the audio in real-time.
+As demonstrated in [rattlegram-openmodem](https://github.com/LieBtrau/rattlegram-openmodem), the ESP32 is too slow to decode the audio in real-time.  The Teensy4.0 might be fast enough.
 
-## Master version
+## Master branch
 
 ### Offline test ✅
+#### Step by step
 ```bash
 $ dd if=/dev/urandom of=uncoded.dat bs=1 count=5380
 5380+0 records in
@@ -276,6 +278,23 @@ bytecount = 5380
 audio_duration = 11
 bitrate = bytecount * 8 / audio_duration
 print('bitrate = {:n}bps'.format(bitrate))
+```
+
+#### Quick evaluation of compatibility with VHF/UHF mobile transceivers
+```bash
+$ mode=7;offset=1600
+$ ./encode - 8000 16 1 $offset $mode CALLSIGN uncoded.dat |sox -t s16 -r 8000 -c 1  - -t wav - sinc 300-3000 |./decode decoded.dat -
+sox WARN wav: Length in output .wav header will be wrong since can't seek to fix it
+symbol pos: 2301
+coarse cfo: 1600 Hz 
+real PAPR: 7.8043 .. 11.2667 dB
+oper mode: 7
+call sign:  CALLSIGN
+demod ...................................................... done
+coarse sfo: -0.00183248 ppm
+finer cfo: 1600 Hz 
+Es/N0 (dB): 36.3825 35.4475 34.7706 34.5991 33.4453 31.9402 31.7065 31.8481 31.7597 31.5086 31.4375 31.6749 31.7313 31.8028 31.915 31.8449 31.7818 31.4359 31.1164 31.0495 31.0764 31.058 30.9827 31.0011 31.0364 31.0322 31.0601 31.178 31.2443 31.0953 30.9785 31.009 31.0464 30.969 30.9021 30.8816 30.8526 30.9153 30.9527 30.9616 30.9548 30.9937 31.0538 31.0011 30.9443 30.9574 30.9964 31.0248 31.048 31.1053 31.1617 31.2243 31.2538 31.277
+bit flips: 0
 ```
 
 ## Loopback test on USB sound card ✅
@@ -312,38 +331,45 @@ coarse sfo: 0.0544232 ppm
 finer cfo: 1450 Hz 
 init Es/N0: 31.7376 dB
 ```
-Remark that the Es/N0, aka. signal-to-noise ratio is around 30dB.  I had trouble with my test setup, yielding only 5 to 6dB.  In those cases the callsign could still be decoded, but data decoding failed.
+Remark that the Es/N0, aka. signal-to-noise ratio is around 30dB.  
 
-
-### Overview of functioning modes
+### Overview of modes
 The _Bandwidth_ is dictated by the _Mode_.  The _Offset_ shifts the _Spectrum usage_ in the frequency domain.
+_Modulation_ is derived from the _mod_bits_ variable of the [encoder](https://github.com/aicodix/modem/blob/master/encode.cc).
 
-|Modulation | Mode | Offset [Hz] | Spectrum usage | Bandwidth [Hz]| Sample duration [s]| Bytes | Bitrate [bps]|
-|-----------|------|-------------|----------------|---------------|--------------------|-------|--------------|
-| 8PSK | 6    | 1800 |450Hz - 3.15Hz  | 2700    |10 | 5380 | 4304|
-| 8PSK | 7    | 1800 |550Hz - 3.05kHz | 2500    |11 | 5380 | 3912|
-| QPSK | 8    | 1800 |550Hz - 3.05kHz | 2500    |16 | 5380 | 2690|
-| QPSK | 9    | 1800 |700Hz - 2.95kHz | 2250    |18 | 5380 | 2391|
-| 8PSK | 10   | 1800 |200Hz - 3.40kHz | 2400    | 9 | 5380 | 4782|
-| 8PSK | 11   | 1800 |600Hz - 3.00kHz | 2400    |11 | 5380 | 3912|
-| QPSK | 12   | 1450 |250Hz - 2.65kHz | 2400    |18 | 5380 | 2391|
-| QPSK | 12   | 1800 |600Hz - 3.00kHz | 2400    |18 | 5380 | 2391|
-| QPSK | 13   | 1450 |650Hz - 2.25kHz | 1600    |25 | 5380 | 1721|
-|      | 24   | 1500 |                | 1600    | 3.8 | 512 |1077|
-|      | 27   | 1500 |                | 1700    | 2 | 512 |2048|
-|      | 29   | 1500 |                | 1900    | 1.5 | 512 |2730|
+Mode 10 uses 3200Hz of bandwidth.  This is not compatible to walkie-talkies.
 
-Maximum payload size is 5380 bytes.
+| Modulation | Mode | Offset [Hz] | Bandwidth [Hz] | Sample duration [s] | Bytes | Bitrate [bps] | Works on walkie-talkie | Es/N0 [dB] |
+|------------|------|-------------|----------------|---------------------|-------|---------------|------------------------|------------|
+| 8PSK       | 6    | 1650        | 2700           | 10                  | 5380  | 4304          | ✅, but 163 bit flips  | 20.7       |
+| 8PSK       | 7    | 1650        | 2500           | 11                  | 5380  | 3912          | ✅, 0 bit flips        | 27.0       |
+| QPSK       | 8    | 1650        | 2500           | 16                  | 5380  | 2690          | ✅, 0 bit flips        | 27.4       |
+| QPSK       | 9    |             | 2250           | 18                  | 5380  | 2391          |                        |            |
+| 8PSK       | 11   | 1650 - 1800 | 2400           | 11                  | 5380  | 3912          | ✅, 0 bit flips        | 27.9       |
+| QPSK       | 12   |             | 2400           | 18                  | 5380  | 2391          |                        |            |
+| QPSK       | 12   |             | 2400           | 18                  | 5380  | 2391          |                        |            |
+| QPSK       | 13   |             | 1600           | 25                  | 5380  | 1721          |                        |            |
+| QPSK       | 14   | 1600        |                | 170                 |       |               |                        |            |
+| QPSK       | 15   | 1600        |                | 128                 |       |               |                        |            |
+| QPSK       | 16   | 1600        |                | 85                  |       |               |                        |            |
+| QPSK       | 24   |             | 1600           | 3.4                 | 512   | 1077          |                        |            |
+| QAM16      | 27   | 1500        | 1700           | 2                   | 512   | 2048          | ✅                     | 26dB       |
+| QAM64      | 29   | 1200-2100   | 1900           | 1.5                 | 512   | 2730          | ✅                     | 27dB       |
 
-More info on [COFDMTV](https://www.aicodix.de/cofdmtv/).
+The 'master'-branch uses a fixed payload size of 5380 bytes, which makes it perfect for sending large files, but unsuitable for audio streaming.
+
+Mode 11 is the winner here.  It's fast and works over a range of audio offsets.  More info on [COFDMTV](https://www.aicodix.de/cofdmtv/).
 
 ## Other versions
-### Short version
-The short version creates fix length audio burst of 1.2s.  It either encodes 85 bytes (when your input file is shorter) or 170 bytes of data.  Files larger than 170 bytes will be truncated to 170 bytes.
+### Short branch
+The short version creates fix length audio burst of 1.2s.  It either encodes 85 bytes (when your input file is shorter), 128 or 170 bytes of data.  Files larger than 170 bytes will be truncated to 170 bytes.  The modes are 14, 15 and 16.  This is the modem setting used in Rattlegram.
+You can verify this by running the following command on your PC:
+```bash
+while arecord -f S16_LE -c 1 -r 8000 - | ./decode - - ; do echo ; sleep 1 ; done
+```
+Your PC will decode the audio in real-time.  You can now create messages on your phone using Rattlegram and "send" (acoustic coupling) them to your PC.
 
-The modulation is unknown, but it's 1.6kHz wide.  So it's probably a variant of mode 13 of the master-modem.
-
-### Next version
+### Next branch
 This version allows to encode packets of 256, 512 and 1024 bytes.  The 512 bytes version should be compatible to the Reticulum 500 bytes MTU.
 
 #### Installation instructions
@@ -397,7 +423,7 @@ Es/N0 (dB): 34.0841 34.0125 35.3639 36.2742 36.9051
 $ diff ./uncoded.dat ./decoded.dat
 ```
 
-Decoded audio is identical to the uncoded audio.  This should be ok for PMR446 radios.  And indeed, it does.  The audio is decoded correctly, but the signal to noise level is only about 12dB.  This is probably due to the audio level settings of the USB sound card.
+Decoded audio is identical to the uncoded audio.  This should be ok for PMR446 radios.  And indeed, it is.  The audio is decoded correctly.
 
 #### Loopback test on USB sound card
 ```bash
