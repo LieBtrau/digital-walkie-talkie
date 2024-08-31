@@ -11,7 +11,7 @@ The output frequency is one eight of the sampling frequency.  So there are only 
 
 THD+N = 7.87%
 
-## Analysis
+### Analysis
 The output definitely needs a reconstruction filter to filter out the high frequency noise (>4kHz).  The noise is likely due to the low number of samples per period.  The codec is not able to accurately reproduce the sine wave.
 
 With an 8kHz sampling frequency, a high order filter is needed to filter out the image frequencies.  The filter should have a cutoff frequency of 4kHz.  The filter should have a steep roll-off to filter out the image frequencies.
@@ -24,5 +24,15 @@ To ease the design of the filter, the sampling frequency should be increased to 
 
 THD+N = 0.68%
 
-## Analysis
+### Analysis
 The unwanted components at 8kHz are now downto -90dB.  Most of all the noise is gone.  The codec is now able to accurately reproduce the sine wave.  The codec is now ready for use in the aicodix codec.
+
+## Measurements Fs = 8kHz, upsampling to 48kHz
+<a href="./es8388_scope_8kHz_upsampled.png"><img src="./es8388_scope_8kHz_upsampled.png" width="500"/></a>
+<a href="./es8388_rta_8kHz_upsampled.png"><img src="./es8388_rta_8kHz_upsampled.png" width="500"/></a>
+
+THD+N = 1.28%
+
+### Analysis
+The output looks much cleaner and THD+N is much lower too.  The RTA shows much higher noise than I expected.
+
