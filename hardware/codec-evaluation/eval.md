@@ -4,6 +4,8 @@ The codec receives the I2S signal and outputs it to the headphone jack.  The out
 
 The output frequency is one eight of the sampling frequency.  So there are only 8 samples per period.  This is not enough to accurately represent a sine wave.  How well does the codec the reproduce the sine wave?  Is a reconstruction filter needed?
 
+A lot of noise is caused by noise on the USB-port.  For the noise measurements, the USB-port is disconnected.  A lab power supply is used to power the ESP32-A1S kit on the battery port.
+
 # ES8388
 ## Measurements Fs = 8kHz
 <a href="./es8388_scope_8kHz.png"><img src="./es8388_scope_8kHz.png" width="500"/></a>
