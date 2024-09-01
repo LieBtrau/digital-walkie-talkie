@@ -29,7 +29,9 @@ THD+N = 0.68%
 ### Analysis
 The unwanted components at 8kHz are now downto -90dB.  Most of all the noise is gone.  The codec is now able to accurately reproduce the sine wave.  The codec is now ready for use in the aicodix codec.
 
-## Measurements Fs = 8kHz, upsampling to 48kHz
+## Measurements Fs = 8kHz, upsampling to 48kHz, 149 taps FIR filter
+FIR filter designed with [Tfilter](http://t-filter.engineerjs.com/).  The filter only works with single precision floating point numbers.  With double precision floating point numbers, the filter does not work.  The ESP32 probably doesn't update in time.
+
 <a href="./es8388_scope_8kHz_upsampled.png"><img src="./es8388_scope_8kHz_upsampled.png" width="500"/></a>
 <a href="./es8388_rta_8kHz_upsampled.png"><img src="./es8388_rta_8kHz_upsampled.png" width="500"/></a>
 
@@ -38,3 +40,10 @@ THD+N = 1.28%
 ### Analysis
 The output looks much cleaner and THD+N is much lower too.  The RTA shows much higher noise than I expected.
 
+## Measurements Fs = 8kHz, upsampling to 48kHz, 12th order Chebyshev Type I filter
+Filter designed with [Jagged Planet IIR-Explorer](http://jaggedplanet.com/iir/iir-explorer.asp).  The filter is implemented with double precision floating point numbers.
+
+<a href="./es8388_scope_8kHz_upsampled_IIR_ChebyChev1.png"><img src="./es8388_scope_8kHz_upsampled_IIR_ChebyChev1.png" width="500"/></a>
+<a href="./es8388_rta_8kHz_upsampled_IIR_Chebychev1.png"><img src="./es8388_rta_8kHz_upsampled_IIR_Chebychev1.png" width="500"/></a>
+
+THD+N = 0.0079%
